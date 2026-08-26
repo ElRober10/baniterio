@@ -1,0 +1,15 @@
+# Java / Spring Boot
+back/target/
+
+# Angular / Node
+front/node_modules/
+front/dist/
+front/.angular/
+
+# IDEs and local files
+.idea/
+.vscode/settings.json
+*.iml
+.env
+.env.*
+!.env.example
