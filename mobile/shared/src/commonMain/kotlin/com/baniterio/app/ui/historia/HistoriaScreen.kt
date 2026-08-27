@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.baniterio.app.theme.BaniterioColors
+import com.baniterio.app.theme.BaniterioWordmark
 
 @Composable
 fun HistoriaScreen(onVolver: () -> Unit) {
@@ -24,6 +25,8 @@ fun HistoriaScreen(onVolver: () -> Unit) {
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
     ) {
+        BaniterioWordmark()
+        Spacer(Modifier.height(16.dp))
         Text(
             text = "← Volver",
             color = BaniterioColors.muted,

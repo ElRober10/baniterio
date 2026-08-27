@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -27,6 +28,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.baniterio.app.theme.BaniterioColors
+import com.baniterio.app.theme.BaniterioWordmark
 
 @Composable
 fun RegistroScreen(
@@ -47,8 +49,11 @@ fun RegistroScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
+            .padding(24.dp)
+            .imePadding(),
     ) {
+        BaniterioWordmark()
+        Spacer(Modifier.height(16.dp))
         Text(
             text = "Únete a la peña",
             style = MaterialTheme.typography.headlineMedium,

@@ -29,6 +29,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.baniterio.app.biometric.rememberBiometricAuthenticator
 import com.baniterio.app.theme.BaniterioColors
+import com.baniterio.app.theme.BaniterioWordmark
 import kotlinx.coroutines.launch
 
 @Composable
@@ -47,6 +48,8 @@ fun LoginScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,
     ) {
+        BaniterioWordmark()
+        Spacer(Modifier.height(16.dp))
         Text(
             text = "Accede a la peña",
             style = MaterialTheme.typography.headlineMedium,
