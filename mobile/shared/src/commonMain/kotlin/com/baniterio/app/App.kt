@@ -72,6 +72,7 @@ fun App() {
                 }
                 is Screen.Panel -> PanelScreen(
                     onAbrirSeccion = { destino -> ir(destino) },
+                    onCerrarSesion = { ir(Screen.Login) },
                 )
                 is Screen.Historia -> {
                     BackHandler { ir(Screen.Panel) }

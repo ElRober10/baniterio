@@ -27,7 +27,7 @@ import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.theme.BaniterioWordmark
 
 @Composable
-fun PanelScreen(onAbrirSeccion: (Screen) -> Unit) {
+fun PanelScreen(onAbrirSeccion: (Screen) -> Unit, onCerrarSesion: () -> Unit) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -35,7 +35,18 @@ fun PanelScreen(onAbrirSeccion: (Screen) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
-            BaniterioWordmark()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                BaniterioWordmark()
+                Text(
+                    text = "Cerrar sesión",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = BaniterioColors.muted,
+                    modifier = Modifier.clickable { onCerrarSesion() },
+                )
+            }
         }
         item {
             Text(
