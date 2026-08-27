@@ -22,16 +22,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.baniterio.app.model.Seccion
 import com.baniterio.app.model.seccionesPanel
+import com.baniterio.app.nav.Screen
 import com.baniterio.app.theme.BaniterioColors
+import com.baniterio.app.theme.BaniterioWordmark
 
 @Composable
-fun PanelScreen(onAbrirHistoria: () -> Unit) {
+fun PanelScreen(onAbrirSeccion: (Screen) -> Unit) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        item {
+            BaniterioWordmark()
+        }
         item {
             Text(
                 text = "¡Bienvenido de vuelta a la Bañiterio!",
@@ -47,7 +52,7 @@ fun PanelScreen(onAbrirHistoria: () -> Unit) {
             )
         }
         items(seccionesPanel) { seccion ->
-            TarjetaSeccion(seccion = seccion, onClick = { if (seccion.tieneContenido) onAbrirHistoria() })
+            TarjetaSeccion(seccion = seccion, onClick = { seccion.destino?.let(onAbrirSeccion) })
         }
     }
 }
@@ -59,7 +64,7 @@ private fun TarjetaSeccion(seccion: Seccion, onClick: () -> Unit) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(BaniterioColors.panel)
-            .clickable(enabled = seccion.tieneContenido, onClick = onClick)
+            .clickable(enabled = seccion.destino != null, onClick = onClick)
             .padding(20.dp),
     ) {
         Row(
@@ -72,7 +77,7 @@ private fun TarjetaSeccion(seccion: Seccion, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onBackground,
                 fontWeight = FontWeight.Bold,
             )
-            if (!seccion.tieneContenido) {
+            if (seccion.destino == null) {
                 Text(
                     text = "PRÓXIMAMENTE",
                     style = MaterialTheme.typography.labelLarge,

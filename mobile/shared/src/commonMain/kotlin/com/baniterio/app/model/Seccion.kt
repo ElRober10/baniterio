@@ -1,13 +1,15 @@
 package com.baniterio.app.model
 
+import com.baniterio.app.nav.Screen
+
 data class Seccion(
     val nombre: String,
     val descripcion: String,
-    val tieneContenido: Boolean = false,
+    val destino: Screen? = null,
 )
 
 val seccionesPanel = listOf(
-    Seccion("Historia", "Cómo nació el Bañiterio y qué significa su escudo.", tieneContenido = true),
+    Seccion("Historia", "Cómo nació el Bañiterio y qué significa su escudo.", destino = Screen.Historia),
     Seccion("Miembros", "Socios de la peña y sus datos de contacto."),
     Seccion("Eventos", "Calendario y organización de las quedadas y fiestas de la peña."),
     Seccion("Cuentas", "Ingresos, gastos y balance de la peña."),
