@@ -13,7 +13,7 @@ export interface LoginBody {
 }
 
 export interface UsuarioDto {
-  id: string;
+  id: number;
   nombre: string;
   apellidos: string;
   mote: string | null;

@@ -1,7 +1,6 @@
 package com.baniterio.api.identidad;
 
 import java.time.Instant;
-import java.util.UUID;
 
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -11,6 +10,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -31,8 +31,8 @@ import lombok.Setter;
 public class SolicitudIngreso {
 
     @Id
-    @GeneratedValue
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "pena_id", nullable = false)

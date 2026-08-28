@@ -5,7 +5,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Optional;
-import java.util.UUID;
 
 import javax.crypto.SecretKey;
 
@@ -47,7 +46,7 @@ public class JwtService {
         this.expiracion = Duration.ofDays(props.jwt().expiracionDias());
     }
 
-    public String generar(UUID usuarioId, boolean esSuperadmin) {
+    public String generar(Long usuarioId, boolean esSuperadmin) {
         Instant ahora = Instant.now();
         return Jwts.builder()
                 .subject(usuarioId.toString())
@@ -66,7 +65,7 @@ public class JwtService {
                     .parseSignedClaims(token)
                     .getPayload();
             return Optional.of(new UsuarioPrincipal(
-                    UUID.fromString(claims.getSubject()),
+                    Long.parseLong(claims.getSubject()),
                     Boolean.TRUE.equals(claims.get("esSuperadmin", Boolean.class))));
         } catch (Exception e) {
             log.debug("JWT rechazado: {}", e.getMessage());

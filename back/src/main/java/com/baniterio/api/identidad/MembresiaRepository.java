@@ -2,15 +2,14 @@ package com.baniterio.api.identidad;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface MembresiaRepository extends JpaRepository<Membresia, UUID> {
+public interface MembresiaRepository extends JpaRepository<Membresia, Long> {
 
-    List<Membresia> findByUsuarioId(UUID usuarioId);
+    List<Membresia> findByUsuarioId(Long usuarioId);
 
-    List<Membresia> findByPenaId(UUID penaId);
+    List<Membresia> findByPenaId(Long penaId);
 
-    Optional<Membresia> findByUsuarioIdAndPenaId(UUID usuarioId, UUID penaId);
+    Optional<Membresia> findByUsuarioIdAndPenaId(Long usuarioId, Long penaId);
 }
