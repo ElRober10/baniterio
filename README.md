@@ -31,11 +31,17 @@ Plataforma web y móvil para la gestión de las peñas de las fiestas del pueblo
    .\mvnw.cmd spring-boot:run
    ```
 
-   Al arrancar, la API aplica automáticamente las migraciones de Flyway, incluida `V6`, que siembra la peña «Bañiterio» y su lista de teléfonos autorizados.
+   Al arrancar, la API aplica automáticamente las migraciones de Flyway, incluida `V6`, que siembra la peña «Bañiterio» y el teléfono del fundador.
+
+   El resto de teléfonos autorizados de la peña piloto son datos personales y **no están en git**: viven en `back/scripts/seed-telefonos-baniterio.local.sql`. Aplícalo a mano una vez, tras arrancar la API por primera vez:
+
+   ```powershell
+   docker exec -i baniterio-postgres psql -U baniterio -d baniterio < back/scripts/seed-telefonos-baniterio.local.sql
+   ```
 
    Variables de entorno opcionales del backend:
 
-   - `JWT_SECRET`: clave de firma del JWT (hay un valor por defecto solo para local).
+   - `JWT_SECRET`: clave de firma del JWT. Hay un valor por defecto **solo para local**; con cualquier perfil activo distinto de `dev`/`test` la API se niega a arrancar si no lo defines.
    - `TELEFONO_FUNDADOR`: teléfono que se marca como superadmin al registrarse (por defecto `616985168`).
    - `DATABASE_URL` / `DATABASE_USERNAME` / `DATABASE_PASSWORD`: conexión a PostgreSQL.
 

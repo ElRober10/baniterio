@@ -1,24 +1,13 @@
+-- No editar tras aplicarse: Flyway valida el checksum. Teléfonos nuevos → nueva migración V7.
+
 -- Peña piloto. Idempotente: si ya existe (por slug), no se duplica.
 INSERT INTO pena (nombre, slug, activa)
 VALUES ('Bañiterio', 'baniterio', TRUE)
 ON CONFLICT (slug) DO NOTHING;
 
--- Teléfonos autorizados de la peña Bañiterio.
--- El primero (616985168) es el del usuario fundador.
+-- Único teléfono sembrado: el del usuario fundador (coincide con app.identidad.telefono-fundador).
+-- El resto de teléfonos autorizados de la peña piloto son datos personales y no viven en git:
+-- se cargan a mano con back/scripts/seed-telefonos-baniterio.local.sql (ver README).
 INSERT INTO telefono_autorizado (telefono, pena_id)
-SELECT numero, (SELECT id FROM pena WHERE slug = 'baniterio')
-FROM (VALUES
-    ('616985168'),
-    ('610832295'), ('628215369'), ('620330952'), ('679874772'), ('686072485'),
-    ('669595418'), ('667846992'), ('679838983'), ('699783259'), ('658723954'),
-    ('654419992'), ('686138781'), ('619365502'), ('600039136'), ('680995661'),
-    ('630833954'), ('667625912'), ('636285861'), ('667339851'), ('651499128'),
-    ('686842945'), ('658576814'), ('610531944'), ('680250908'), ('663302912'),
-    ('653734658'), ('695085853'), ('653736710'), ('628904515'), ('646092105'),
-    ('703676246'), ('646593935'), ('645301476'), ('620909665'), ('607967700'),
-    ('696221164'), ('669076955'), ('652781296'), ('626238653'), ('626232586'),
-    ('636703195'), ('626596944'), ('699657177'), ('637691976'), ('650031957'),
-    ('609792628'), ('655146932'), ('620403257'), ('661038940'), ('680766641'),
-    ('606332168'), ('618735707'), ('620704571'), ('677258998'), ('616416139')
-) AS t(numero)
+SELECT '616985168', (SELECT id FROM pena WHERE slug = 'baniterio')
 ON CONFLICT (telefono) DO NOTHING;

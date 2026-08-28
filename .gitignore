@@ -1,6 +1,9 @@
 # Java / Spring Boot
 back/target/
 
+# Scripts SQL locales (datos personales: teléfonos autorizados de la peña)
+back/scripts/*.local.sql
+
 # Angular / Node
 front/node_modules/
 front/dist/

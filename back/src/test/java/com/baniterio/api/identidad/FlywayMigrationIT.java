@@ -20,15 +20,19 @@ class FlywayMigrationIT extends IntegrationTest {
     }
 
     @Test
-    void siembra_la_pena_baniterio_con_sus_telefonos() {
+    void siembra_la_pena_baniterio_y_solo_el_telefono_del_fundador() {
         Integer penas = jdbc.queryForObject(
             "SELECT count(*) FROM pena WHERE slug = 'baniterio'", Integer.class);
-        Integer telefonos = jdbc.queryForObject("""
+        assertThat(penas).isEqualTo(1);
+
+        // V6 siembra un único teléfono: el del fundador. Los demás se cargan a mano
+        // desde back/scripts/seed-telefonos-baniterio.local.sql (fuera de git).
+        // Otros ITs dan de alta teléfonos propios, así que filtramos por el número exacto.
+        Integer fundador = jdbc.queryForObject("""
             SELECT count(*) FROM telefono_autorizado t
             JOIN pena p ON p.id = t.pena_id
-            WHERE p.slug = 'baniterio'
+            WHERE p.slug = 'baniterio' AND t.telefono = '616985168'
             """, Integer.class);
-        assertThat(penas).isEqualTo(1);
-        assertThat(telefonos).isEqualTo(56);
+        assertThat(fundador).isEqualTo(1);
     }
 }
