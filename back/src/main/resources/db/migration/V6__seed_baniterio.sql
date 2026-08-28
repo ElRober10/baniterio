@@ -1,7 +1,3 @@
--- Migración Flyway nº 6. Flyway ejecuta en orden los ficheros V1__*, V2__*, ...
--- al arrancar la app la primera vez y anota cada uno en la tabla flyway_schema_history
--- para no repetirlo. Las V1-V5 crean las tablas; esta V6 mete datos iniciales (siembra).
---
 -- No editar tras aplicarse: Flyway valida el checksum. Teléfonos nuevos → nueva migración V7.
 
 -- Peña piloto. Idempotente: si ya existe (por slug), no se duplica.
