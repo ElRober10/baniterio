@@ -1,0 +1,54 @@
+- generic [ref=f4e53]:
+  - complementary [ref=f4e54]:
+    - link "Bañiterio" [ref=f4e55] [cursor=pointer]:
+      - /url: /
+    - navigation "Navegación de la peña" [ref=f4e57]:
+      - link "Inicio" [ref=f4e58] [cursor=pointer]:
+        - /url: /panel
+      - generic [ref=f4e59]:
+        - text: Miembros
+        - generic [ref=f4e60]: Pronto
+      - generic [ref=f4e61]:
+        - text: Eventos
+        - generic [ref=f4e62]: Pronto
+      - generic [ref=f4e63]:
+        - text: Cuentas
+        - generic [ref=f4e64]: Pronto
+      - generic [ref=f4e65]:
+        - text: Inventario
+        - generic [ref=f4e66]: Pronto
+      - generic [ref=f4e67]:
+        - text: Ropa
+        - generic [ref=f4e68]: Pronto
+    - button "Cerrar sesión" [ref=f4e69]: ← Cerrar sesión
+  - main [ref=f4e71]:
+    - generic [ref=f4e72]:
+      - text: Robledo del Mazo · Valle del Gévalo
+      - heading "¡Bienvenido de vuelta a la Bañiterio!" [level=1] [ref=f4e73]
+      - paragraph [ref=f4e74]: Este es tu panel. Desde aquí podrás llevar los miembros, los eventos, las cuentas, el inventario y la ropa de la peña — todavía estamos construyendo cada sección.
+      - generic [ref=f4e75]:
+        - generic [ref=f4e76]:
+          - generic [ref=f4e77]:
+            - heading "Miembros" [level=2] [ref=f4e78]
+            - generic [ref=f4e79]: Próximamente
+          - paragraph [ref=f4e80]: Socios de la peña y sus datos de contacto.
+        - generic [ref=f4e81]:
+          - generic [ref=f4e82]:
+            - heading "Eventos" [level=2] [ref=f4e83]
+            - generic [ref=f4e84]: Próximamente
+          - paragraph [ref=f4e85]: Calendario y organización de las quedadas y fiestas de la peña.
+        - generic [ref=f4e86]:
+          - generic [ref=f4e87]:
+            - heading "Cuentas" [level=2] [ref=f4e88]
+            - generic [ref=f4e89]: Próximamente
+          - paragraph [ref=f4e90]: Ingresos, gastos y balance de la peña.
+        - generic [ref=f4e91]:
+          - generic [ref=f4e92]:
+            - heading "Inventario" [level=2] [ref=f4e93]
+            - generic [ref=f4e94]: Próximamente
+          - paragraph [ref=f4e95]: Material y enseres que tiene la peña.
+        - generic [ref=f4e96]:
+          - generic [ref=f4e97]:
+            - heading "Ropa" [level=2] [ref=f4e98]
+            - generic [ref=f4e99]: Próximamente
+          - paragraph [ref=f4e100]: Pedidos y tallas del vestuario de la peña.

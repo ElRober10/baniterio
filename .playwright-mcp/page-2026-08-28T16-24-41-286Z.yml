@@ -1,0 +1,15 @@
+- generic [ref=e5]:
+  - link "Volver" [ref=e6] [cursor=pointer]:
+    - /url: /
+    - generic [ref=e7]: ←
+    - text: Volver
+  - generic [ref=e8]:
+    - link "Bañiterio" [ref=e10] [cursor=pointer]:
+      - /url: /
+    - heading "Únete a la peña" [level=1] [ref=e12]
+    - paragraph [ref=e13]: Rellena tus datos para darte de alta.
+    - paragraph [ref=e32]: ¡Cuenta creada! Te llevamos al login…
+    - paragraph [ref=e30]:
+      - text: ¿Ya tienes cuenta?
+      - link "Entra aquí" [ref=e31] [cursor=pointer]:
+        - /url: /login

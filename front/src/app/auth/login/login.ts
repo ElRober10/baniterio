@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth.service';
 
 /**
@@ -14,6 +14,8 @@ import { AuthService } from '../auth.service';
  *   mensaje de error). Un "signal" es un valor reactivo de Angular.
  * - `mensajeError`: cuando `estado === 'error'`, el texto concreto (credenciales
  *   incorrectas vs. no se pudo conectar).
+ * - `sesionExpirada`: true si se llegó aquí desde el interceptor tras un 401
+ *   (URL con `?expirada=1`); la plantilla muestra un aviso.
  * - `enviar()`: si el form es válido, llama a AuthService.login. En éxito
  *   navega a /panel (el token ya lo guardó AuthService).
  */
@@ -30,6 +32,7 @@ export class Login {
 
   protected readonly estado = signal<'idle' | 'enviando' | 'error'>('idle');
   protected readonly mensajeError = signal('');
+  protected readonly sesionExpirada = inject(ActivatedRoute).snapshot.queryParamMap.has('expirada');
 
   protected readonly form = this.formBuilder.group({
     telefono: ['', [Validators.required, Validators.pattern(/^[67]\d{8}$/)]],

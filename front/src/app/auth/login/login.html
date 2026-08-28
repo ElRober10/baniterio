@@ -17,6 +17,12 @@
       <h1 class="font-display text-2xl font-bold">Accede a la peña</h1>
       <p class="mt-2 text-sm leading-relaxed text-muted">Introduce tu teléfono y contraseña para entrar.</p>
 
+      @if (sesionExpirada) {
+        <p class="mt-4 rounded-xl border border-gold/30 bg-gold/10 px-4 py-3 text-sm text-gold-soft">
+          Tu sesión ha caducado. Vuelve a entrar.
+        </p>
+      }
+
       <form class="mt-6 flex flex-col gap-4" [formGroup]="form" (ngSubmit)="enviar()">
         <label class="flex flex-col gap-1.5 text-sm font-medium">
           Teléfono
