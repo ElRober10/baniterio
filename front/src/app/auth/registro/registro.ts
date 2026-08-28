@@ -12,10 +12,11 @@ import { AuthService } from '../auth.service';
  * - `estado` (signal): 'idle' | 'enviando' | 'ok' | 'no_autorizado' | 'error'.
  *   registro.html usa un `@switch` sobre este signal para mostrar el formulario,
  *   el mensaje de éxito o el aviso de teléfono no autorizado.
+ * - `mensajeError` (signal): cuando `estado === 'error'`, el texto concreto
+ *   según lo que devolvió el backend (o si no hubo conexión).
  * - `enviar()`: llama a AuthService.registro. En éxito → 'ok' y a los 1,2 s
- *   redirige a /login. Si el backend responde 403 con
- *   {codigo:'TELEFONO_NO_AUTORIZADO'} → 'no_autorizado' (mensaje de "pide
- *   acceso"); cualquier otro error → 'error'.
+ *   redirige a /login. Un 403 TELEFONO_NO_AUTORIZADO → pantalla 'no_autorizado';
+ *   el resto de errores → 'error' con su mensaje.
  */
 type Estado = 'idle' | 'enviando' | 'ok' | 'no_autorizado' | 'error';
 
@@ -31,6 +32,7 @@ export class Registro {
   private readonly auth = inject(AuthService);
 
   protected readonly estado = signal<Estado>('idle');
+  protected readonly mensajeError = signal('');
 
   protected readonly form = this.formBuilder.group({
     nombre: ['', [Validators.required]],
@@ -65,8 +67,27 @@ export class Registro {
           setTimeout(() => this.router.navigateByUrl('/login'), 1200);
         },
         error: (err: HttpErrorResponse) => {
-          this.estado.set(err.error?.codigo === 'TELEFONO_NO_AUTORIZADO' ? 'no_autorizado' : 'error');
+          if (err.error?.codigo === 'TELEFONO_NO_AUTORIZADO') {
+            this.estado.set('no_autorizado');
+            return;
+          }
+          this.mensajeError.set(this.mensajeDe(err));
+          this.estado.set('error');
         },
       });
+  }
+
+  private mensajeDe(err: HttpErrorResponse): string {
+    if (err.status === 0) {
+      return 'No se pudo conectar con el servidor. Inténtalo de nuevo en un momento.';
+    }
+    switch (err.error?.codigo) {
+      case 'YA_REGISTRADO':
+        return 'Ya existe una cuenta con ese teléfono o ese email.';
+      case 'VALIDACION':
+        return 'Revisa los datos del formulario: hay algún campo incorrecto.';
+      default:
+        return 'No se pudo completar el registro. Inténtalo de nuevo más tarde.';
+    }
   }
 }
