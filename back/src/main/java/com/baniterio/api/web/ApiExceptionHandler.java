@@ -14,6 +14,20 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+/**
+ * Traductor central de excepciones → respuestas HTTP JSON. Con
+ * {@code @RestControllerAdvice}, Spring envía aquí cualquier excepción que
+ * escape de un controlador y aplica el {@code @ExceptionHandler} que coincida.
+ *
+ * <p>Así los controladores y servicios solo tienen que lanzar la excepción de
+ * dominio ({@code TelefonoNoAutorizadoException}, etc.) sin preocuparse del
+ * código de estado ni del formato del cuerpo. El cuerpo siempre lleva un
+ * {@code "codigo"} estable que el front usa para distinguir casos.
+ *
+ * <p>Nota: los 401 de "no has enviado token" NO pasan por aquí; los genera
+ * antes Spring Security ({@code SecurityConfig}), porque la petición ni siquiera
+ * llega al controlador.
+ */
 @RestControllerAdvice
 public class ApiExceptionHandler {
 

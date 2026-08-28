@@ -17,6 +17,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Una peña (fila de la tabla {@code pena}). El {@code slug} es su identificador
+ * "bonito" para URLs y para buscarla por texto ({@code baniterio}). Mismo patrón
+ * JPA + Lombok que {@link Usuario}.
+ */
 @Entity
 @Table(name = "pena")
 @Getter

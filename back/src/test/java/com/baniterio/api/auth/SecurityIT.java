@@ -17,6 +17,12 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Test de integración de la seguridad: comprueba que {@code GET /api/v1/auth/yo}
+ * devuelve 401 sin token y 200 con los datos correctos cuando el token es
+ * válido. Ejercita de verdad el {@link JwtAuthenticationFilter} + la cadena de
+ * filtros de Spring Security sobre HTTP real.
+ */
 class SecurityIT extends IntegrationTest {
 
     @LocalServerPort

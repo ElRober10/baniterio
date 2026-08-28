@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
+/** Acceso a BBDD para {@link Membresia} (relación usuario–peña con rol). */
 public interface MembresiaRepository extends JpaRepository<Membresia, Long> {
 
     List<Membresia> findByUsuarioId(Long usuarioId);

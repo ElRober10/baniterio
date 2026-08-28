@@ -7,6 +7,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Comprueba que las migraciones Flyway se aplican bien contra un Postgres real
+ * y que la siembra (V6) deja la peña y el teléfono del fundador. Es la red de
+ * seguridad del SQL: si alguien rompe una migración, este test falla en
+ * {@code mvn verify}.
+ */
 class FlywayMigrationIT extends IntegrationTest {
 
     @Autowired

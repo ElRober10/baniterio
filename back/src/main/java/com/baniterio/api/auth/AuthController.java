@@ -17,6 +17,22 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Punto de entrada HTTP de la autenticación. Solo traduce entre HTTP y el
+ * dominio: valida el cuerpo de la petición ({@code @Valid}) y delega la lógica
+ * en {@link AuthService}. Devuelve records (los DTO de {@code auth.dto}) que
+ * Spring convierte a JSON.
+ *
+ * <ul>
+ *   <li>{@code POST /api/v1/auth/registro} — alta de usuario (201).
+ *   <li>{@code POST /api/v1/auth/login} — devuelve un JWT (200).
+ *   <li>{@code GET  /api/v1/auth/yo} — datos del usuario del token; ruta
+ *       protegida (necesita {@code Authorization: Bearer}).
+ * </ul>
+ *
+ * <p>Los errores (403/409/400/401) no se manejan aquí: las excepciones que
+ * lanza {@link AuthService} las recoge {@link com.baniterio.api.web.ApiExceptionHandler}.
+ */
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {

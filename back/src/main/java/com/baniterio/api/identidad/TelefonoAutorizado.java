@@ -19,6 +19,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Un teléfono con permiso para registrarse en una peña (la "lista blanca").
+ *
+ * <p>{@code usado} pasa a {@code true} cuando alguien completa el registro con
+ * ese número, para que no se reutilice. {@code @ManyToOne} = muchos teléfonos
+ * pertenecen a una peña (columna {@code pena_id}). {@code FetchType.LAZY} = la
+ * peña no se carga de BBDD hasta que se accede a ella.
+ */
 @Entity
 @Table(name = "telefono_autorizado")
 @Getter
