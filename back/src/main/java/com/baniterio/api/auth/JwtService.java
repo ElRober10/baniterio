@@ -16,6 +16,7 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -23,11 +24,25 @@ public class JwtService {
 
     private static final Logger log = LoggerFactory.getLogger(JwtService.class);
 
+    /**
+     * Valor por defecto de {@code app.jwt.secret} en application.yml. Es público y conocido:
+     * sirve para arrancar en local sin configurar nada, y está prohibido fuera de desarrollo.
+     */
+    public static final String SECRETO_DEV_POR_DEFECTO =
+            "ZGV2LW9ubHktYmFuaXRlcmlvLXNlY3JldC1jaGFuZ2UtaW4tcHJvZC0xMjM0NQ==";
+
+    /** Perfiles en los que se tolera el secreto de desarrollo ({@code default} = sin perfiles activos). */
+    private static final String[] PERFILES_DE_DESARROLLO = {"dev", "test", "default"};
+
     private final SecretKey key;
     private final Duration expiracion;
 
-    public JwtService(AppProperties props) {
-        byte[] material = decodificar(props.jwt().secret());
+    public JwtService(AppProperties props, Environment env) {
+        String secret = props.jwt().secret();
+        if (SECRETO_DEV_POR_DEFECTO.equals(secret) && !env.matchesProfiles(PERFILES_DE_DESARROLLO)) {
+            throw new IllegalStateException("JWT_SECRET debe configurarse fuera de desarrollo");
+        }
+        byte[] material = decodificar(secret);
         this.key = Keys.hmacShaKeyFor(material);
         this.expiracion = Duration.ofDays(props.jwt().expiracionDias());
     }
@@ -39,7 +54,7 @@ public class JwtService {
                 .claim("esSuperadmin", esSuperadmin)
                 .issuedAt(Date.from(ahora))
                 .expiration(Date.from(ahora.plus(expiracion)))
-                .signWith(key)
+                .signWith(key, Jwts.SIG.HS256)
                 .compact();
     }
 
