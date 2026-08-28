@@ -76,7 +76,10 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest req) {
+        // Un usuario desactivado se rechaza con el MISMO error que unas credenciales malas:
+        // no se filtra que la cuenta existe pero está deshabilitada.
         Usuario usuario = usuarios.findByTelefono(req.telefono())
+                .filter(Usuario::isActivo)
                 .filter(u -> passwordEncoder.matches(req.password(), u.getPasswordHash()))
                 .orElseThrow(CredencialesInvalidasException::new);
 

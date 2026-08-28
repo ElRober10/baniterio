@@ -11,10 +11,12 @@ public record RegistroRequest(
         String telefono,
 
         @NotBlank @Email
+        @Size(max = 160, message = "El email no puede superar los 160 caracteres")
         String email,
 
+        // El máximo de 72 no es cosmético: BCrypt trunca en silencio a partir de 72 bytes.
         @NotBlank
-        @Size(min = 6, message = "La contraseña debe tener al menos 6 caracteres")
+        @Size(min = 6, max = 72, message = "La contraseña debe tener entre 6 y 72 caracteres")
         String password,
 
         @NotBlank @Size(max = 80)

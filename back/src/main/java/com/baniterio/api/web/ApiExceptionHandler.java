@@ -6,6 +6,7 @@ import java.util.Map;
 import com.baniterio.api.auth.CredencialesInvalidasException;
 import com.baniterio.api.auth.RegistroConflictoException;
 import com.baniterio.api.auth.TelefonoNoAutorizadoException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -30,6 +31,17 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(RegistroConflictoException.class)
     ResponseEntity<Map<String, Object>> conflicto() {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("codigo", "YA_REGISTRADO"));
+    }
+
+    /**
+     * Carrera entre dos registros simultáneos con el mismo teléfono/email: ambos pasan las
+     * comprobaciones previas y uno choca contra `uk_usuario_telefono` / `uk_usuario_email`
+     * al confirmar. Se devuelve el mismo 409 que la comprobación previa, no un 500.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<Map<String, Object>> integridad() {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("codigo", "YA_REGISTRADO"));
     }
