@@ -31,6 +31,14 @@ Plataforma web y móvil para la gestión de las peñas de las fiestas del pueblo
    .\mvnw.cmd spring-boot:run
    ```
 
+   Al arrancar, la API aplica automáticamente las migraciones de Flyway, incluida `V6`, que siembra la peña «Bañiterio» y su lista de teléfonos autorizados.
+
+   Variables de entorno opcionales del backend:
+
+   - `JWT_SECRET`: clave de firma del JWT (hay un valor por defecto solo para local).
+   - `TELEFONO_FUNDADOR`: teléfono que se marca como superadmin al registrarse (por defecto `616985168`).
+   - `DATABASE_URL` / `DATABASE_USERNAME` / `DATABASE_PASSWORD`: conexión a PostgreSQL.
+
 3. Instalar dependencias y arrancar Angular:
 
    ```powershell
