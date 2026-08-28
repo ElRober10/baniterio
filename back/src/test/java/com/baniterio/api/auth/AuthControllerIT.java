@@ -84,6 +84,27 @@ class AuthControllerIT extends IntegrationTest {
     }
 
     @Test
+    void mismo_email_con_otro_telefono_autorizado_devuelve_409() {
+        // Teléfono A (669595418) con email X → 201
+        http.post().uri("/api/v1/auth/registro")
+                .body(registroValido("669595418", "duplicado@x.com"))
+                .exchange()
+                .expectStatus().isCreated();
+
+        // Teléfono B (667846992, aún sin usar) con el MISMO email X → pasa la puerta 403,
+        // pero existsByEmail(X) es true → 409 YA_REGISTRADO
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = http.post().uri("/api/v1/auth/registro")
+                .body(registroValido("667846992", "duplicado@x.com"))
+                .exchange()
+                .expectStatus().isEqualTo(409)
+                .expectBody(Map.class)
+                .returnResult().getResponseBody();
+
+        assertThat(body.get("codigo")).isEqualTo("YA_REGISTRADO");
+    }
+
+    @Test
     void registro_con_telefono_mal_formado_devuelve_400() {
         @SuppressWarnings("unchecked")
         Map<String, Object> body = http.post().uri("/api/v1/auth/registro")
