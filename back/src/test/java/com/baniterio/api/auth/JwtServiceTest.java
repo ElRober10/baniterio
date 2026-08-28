@@ -1,7 +1,6 @@
 package com.baniterio.api.auth;
 
 import java.util.Base64;
-import java.util.UUID;
 
 import com.baniterio.api.config.AppProperties;
 import io.jsonwebtoken.Jwts;
@@ -38,7 +37,7 @@ class JwtServiceTest {
 
     @Test
     void genera_y_verifica_un_token() {
-        UUID id = UUID.randomUUID();
+        Long id = 42L;
 
         String token = jwt.generar(id, true);
         var principal = jwt.verificar(token);
@@ -50,7 +49,7 @@ class JwtServiceTest {
 
     @Test
     void rechaza_un_token_manipulado() {
-        String token = jwt.generar(UUID.randomUUID(), false);
+        String token = jwt.generar(7L, false);
         assertThat(jwt.verificar(token + "x")).isEmpty();
     }
 
@@ -61,7 +60,7 @@ class JwtServiceTest {
 
     @Test
     void firma_siempre_con_hs256() {
-        String token = jwt.generar(UUID.randomUUID(), false);
+        String token = jwt.generar(7L, false);
 
         String alg = Jwts.parser()
                 .verifyWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET)))
@@ -78,7 +77,7 @@ class JwtServiceTest {
         // expiracionDias = -1 → el token nace caducado hace un día (determinista, sin sleeps).
         JwtService caducado = servicio(SECRET, -1, sinPerfiles());
 
-        String token = caducado.generar(UUID.randomUUID(), false);
+        String token = caducado.generar(7L, false);
 
         assertThat(caducado.verificar(token)).isEmpty();
     }

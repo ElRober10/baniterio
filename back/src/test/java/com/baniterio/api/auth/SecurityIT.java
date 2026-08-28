@@ -74,7 +74,7 @@ class SecurityIT extends IntegrationTest {
             .returnResult().getResponseBody();
 
         assertThat(body).isNotNull();
-        assertThat(body.id()).isEqualTo(u.getId().toString());
+        assertThat(body.id()).isEqualTo(u.getId());
         assertThat(body.nombre()).isEqualTo("Ana");
         assertThat(body.apellidos()).isEqualTo("Pérez");
         assertThat(body.mote()).isEqualTo("Anita");

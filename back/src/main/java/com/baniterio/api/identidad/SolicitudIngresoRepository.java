@@ -1,13 +1,12 @@
 package com.baniterio.api.identidad;
 
 import java.util.List;
-import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface SolicitudIngresoRepository extends JpaRepository<SolicitudIngreso, UUID> {
+public interface SolicitudIngresoRepository extends JpaRepository<SolicitudIngreso, Long> {
 
-    List<SolicitudIngreso> findByPenaIdAndEstado(UUID penaId, EstadoSolicitud estado);
+    List<SolicitudIngreso> findByPenaIdAndEstado(Long penaId, EstadoSolicitud estado);
 
-    List<SolicitudIngreso> findByPenaId(UUID penaId);
+    List<SolicitudIngreso> findByPenaId(Long penaId);
 }
