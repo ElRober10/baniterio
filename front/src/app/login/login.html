@@ -1,0 +1,61 @@
+<div class="relative flex min-h-screen flex-col items-center justify-center gap-4 overflow-hidden bg-surface px-6 py-16">
+  <div aria-hidden="true" class="pointer-events-none absolute left-1/2 top-1/2 h-128 w-lg -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand/20 blur-3xl"></div>
+
+  <div class="relative w-full max-w-sm">
+    <a class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted transition hover:text-ink" routerLink="/">
+      <span aria-hidden="true">←</span> Volver
+    </a>
+
+    <div class="relative overflow-hidden rounded-3xl bg-panel p-8 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)]">
+      <div class="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-gold via-gold-soft to-brand-bright"></div>
+
+      <a class="mb-8 flex items-center gap-3 font-display text-lg font-bold" routerLink="/">
+        <img src="logo-mark.png" alt="" class="h-9 w-9 rounded-lg" />
+        <span class="font-metal text-gold">Bañiterio</span>
+      </a>
+
+      <h1 class="font-display text-2xl font-bold">Accede a la peña</h1>
+      <p class="mt-2 text-sm leading-relaxed text-muted">Introduce tu teléfono y contraseña para entrar.</p>
+
+      <form class="mt-6 flex flex-col gap-4" [formGroup]="form" (ngSubmit)="enviar()">
+        <label class="flex flex-col gap-1.5 text-sm font-medium">
+          Teléfono
+          <input
+            type="tel"
+            formControlName="telefono"
+            autocomplete="tel"
+            class="rounded-xl border border-outline bg-surface/40 px-4 py-2.5 font-sans text-base text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/25"
+          />
+          @if (form.controls.telefono.invalid && form.controls.telefono.touched) {
+            <span class="text-xs font-normal text-red-400">Introduce tu teléfono.</span>
+          }
+        </label>
+
+        <label class="flex flex-col gap-1.5 text-sm font-medium">
+          Contraseña
+          <input
+            type="password"
+            formControlName="password"
+            autocomplete="current-password"
+            class="rounded-xl border border-outline bg-surface/40 px-4 py-2.5 font-sans text-base text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/25"
+          />
+          @if (form.controls.password.invalid && form.controls.password.touched) {
+            <span class="text-xs font-normal text-red-400">Introduce tu contraseña.</span>
+          }
+        </label>
+
+        <button
+          type="submit"
+          class="mt-2 rounded-xl bg-brand px-6 py-3 font-display font-bold text-gold shadow-[0_0_30px_-8px_rgba(248,211,73,0.5)] transition hover:bg-brand-bright"
+        >
+          Entrar
+        </button>
+      </form>
+
+      <p class="mt-8 text-center text-sm text-muted">
+        ¿No tienes cuenta todavía?
+        <a class="font-medium text-brand-bright transition hover:text-gold" routerLink="/registro">Regístrate</a>
+      </p>
+    </div>
+  </div>
+</div>

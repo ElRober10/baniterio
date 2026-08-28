@@ -1,0 +1,74 @@
+<div class="flex flex-col lg:h-dvh lg:overflow-hidden">
+  <header class="relative z-10 shrink-0 border-b border-outline bg-surface/80 backdrop-blur">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <a class="flex items-center gap-3 font-display text-lg font-bold" routerLink="/">
+        <img src="logo-mark.png" alt="" class="h-9 w-9 rounded-lg" />
+        <span class="font-metal text-gold">Bañiterio</span>
+      </a>
+      <nav class="flex items-center gap-6 text-sm text-muted" aria-label="Navegación principal">
+        <a class="transition hover:text-ink" routerLink="/login">Entrar</a>
+        <a
+          class="rounded-xl bg-brand px-5 py-2.5 font-medium text-gold shadow-[0_0_25px_-8px_rgba(248,211,73,0.5)] transition hover:bg-brand-bright"
+          routerLink="/registro"
+        >
+          Registrarse
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="relative flex-1 overflow-y-auto lg:overflow-hidden">
+    <div aria-hidden="true" class="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-brand/30 blur-3xl"></div>
+    <div aria-hidden="true" class="pointer-events-none absolute -right-10 top-0 h-96 w-96 rounded-full bg-gold/10 blur-3xl"></div>
+
+    <div class="relative mx-auto flex max-w-6xl flex-col gap-4 px-6 py-8 lg:h-full lg:justify-center lg:py-4">
+      <div class="grid shrink-0 gap-6 lg:grid-cols-[1fr_280px] lg:items-center lg:gap-12">
+        <div class="flex flex-col items-start gap-4">
+          <span class="font-sans text-sm font-medium tracking-wide text-brand-bright">Robledo del Mazo · Valle del Gévalo</span>
+          <h1 class="font-metal text-4xl font-normal leading-tight sm:text-5xl">
+            Peña <span class="text-gold">Bañiterio</span>
+          </h1>
+          <div class="flex flex-col items-start gap-3">
+            <a
+              class="rounded-xl bg-brand px-6 py-3 font-display font-bold text-gold shadow-[0_0_35px_-8px_rgba(248,211,73,0.5)] transition hover:bg-brand-bright"
+              routerLink="/login"
+            >
+              Acceder a la peña <span aria-hidden="true">→</span>
+            </a>
+            <a class="text-sm font-medium text-brand-bright transition hover:text-gold" routerLink="/registro">¿Eres nuevo? Regístrate</a>
+          </div>
+        </div>
+
+        <div class="flex justify-center lg:justify-stretch">
+          <img
+            src="logo.png"
+            alt="Ilustración del logo de Bañiterio: el chico del Bañito tirándose en bomba dentro de la jarra de cerveza del Bruterio, con una rosa en el hombro en memoria de Rosi"
+            class="relative z-10 h-56 w-auto drop-shadow-[0_0_40px_rgba(248,211,73,0.35)] sm:h-64 lg:h-auto lg:w-full"
+          />
+        </div>
+      </div>
+
+      <div class="relative flex min-h-0 flex-col overflow-hidden rounded-3xl bg-panel lg:max-h-[52vh]">
+        <div class="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-gold via-gold-soft to-brand-bright"></div>
+        <div class="grid gap-5 overflow-y-auto p-6 text-base leading-relaxed text-muted sm:p-8 lg:grid-cols-2 lg:gap-10 lg:text-[0.95rem]">
+          <p>
+            El <span class="font-metal text-gold">Bañiterio</span> nace en Robledo del Mazo, capital del Valle del Gévalo, de la unión de dos peñas con mucha historia propia. Por un lado,
+            <strong class="font-medium text-ink">El Bañito Bañito</strong>, que vistió primero de blanco y después de rojo. Por otro,
+            <strong class="font-medium text-ink">El Bruterio</strong>, fiel al azul desde siempre. De la mezcla de esos dos colores —rojo y azul— nació el morado que hoy nos identifica, y de la unión de su gente, el <span class="font-metal text-gold">Bañiterio</span>.
+          </p>
+          <p>
+            Nuestro escudo nace de esa misma unión: el Bruterio llevaba una jarra de cerveza rompiéndose junto al lema «aquí no se friega», y el Bañito Bañito, un chico bañándose de noche. El logo del <span class="font-metal text-gold">Bañiterio</span> es la mezcla de los dos: el chico del Bañito tirándose en bomba dentro de la jarra del Bruterio. Y en el hombro izquierdo lleva una rosa, en recuerdo de nuestra amiga Rosi, que ya no está con nosotros pero sigue siendo parte de esta familia.
+          </p>
+          <div class="flex flex-col gap-4">
+            <p>
+              Pero el <span class="font-metal text-gold">Bañiterio</span> es mucho más que las fiestas del pueblo: es un grupo de amigos unido durante todo el año. Organizamos eventos propios, como las Migas Santas y las Chuletas Santas, y colaboramos de forma desinteresada en las fiestas de San Miguel, echando una mano con los juegos y con todo lo que haga falta.
+            </p>
+            <p class="font-display text-sm font-semibold text-gold-soft">
+              Amistad, buen rollo y grandes amigos: así es la familia del <span class="font-metal text-gold">Bañiterio</span>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
