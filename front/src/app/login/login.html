@@ -24,10 +24,12 @@
             type="tel"
             formControlName="telefono"
             autocomplete="tel"
+            maxlength="9"
+            inputmode="numeric"
             class="rounded-xl border border-outline bg-surface/40 px-4 py-2.5 font-sans text-base text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/25"
           />
           @if (form.controls.telefono.invalid && form.controls.telefono.touched) {
-            <span class="text-xs font-normal text-red-400">Introduce tu teléfono.</span>
+            <span class="text-xs font-normal text-red-400">Introduce un teléfono válido (9 dígitos, empieza por 6 o 7).</span>
           }
         </label>
 
@@ -44,11 +46,18 @@
           }
         </label>
 
+        @if (estado() === 'error') {
+          <p class="rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-300">
+            Teléfono o contraseña incorrectos.
+          </p>
+        }
+
         <button
           type="submit"
-          class="mt-2 rounded-xl bg-brand px-6 py-3 font-display font-bold text-gold shadow-[0_0_30px_-8px_rgba(248,211,73,0.5)] transition hover:bg-brand-bright"
+          [disabled]="estado() === 'enviando'"
+          class="mt-2 rounded-xl bg-brand px-6 py-3 font-display font-bold text-gold shadow-[0_0_30px_-8px_rgba(248,211,73,0.5)] transition hover:bg-brand-bright disabled:opacity-60"
         >
-          Entrar
+          {{ estado() === 'enviando' ? 'Entrando…' : 'Entrar' }}
         </button>
       </form>
 
