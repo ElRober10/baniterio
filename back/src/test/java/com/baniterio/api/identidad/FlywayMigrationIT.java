@@ -1,14 +1,12 @@
 package com.baniterio.api.identidad;
 
 import com.baniterio.api.support.IntegrationTest;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Disabled("habilitar en Task 2 al crear V6")
 class FlywayMigrationIT extends IntegrationTest {
 
     @Autowired
