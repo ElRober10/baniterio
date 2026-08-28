@@ -4,6 +4,7 @@ import com.baniterio.api.auth.dto.LoginRequest;
 import com.baniterio.api.auth.dto.LoginResponse;
 import com.baniterio.api.auth.dto.RegistroRequest;
 import com.baniterio.api.auth.dto.UsuarioResponse;
+import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -41,7 +42,10 @@ public class AuthController {
 
     @GetMapping("/yo")
     public ResponseEntity<UsuarioResponse> yo(@AuthenticationPrincipal UsuarioPrincipal principal) {
+        // `activo` es la única palanca de revocación con JWT stateless de 7 días:
+        // se comprueba en cada petición, no solo al iniciar sesión.
         return usuarios.findById(principal.id())
+                .filter(Usuario::isActivo)
                 .map(UsuarioResponse::de)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.status(401).build());
