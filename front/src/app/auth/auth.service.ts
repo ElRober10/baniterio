@@ -4,6 +4,22 @@ import { Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { LoginBody, LoginDto, RegistroBody, UsuarioDto } from './auth.types';
 
+/**
+ * Servicio de autenticación del front. Único sitio que habla con los endpoints
+ * /api/v1/auth/* y único sitio que toca el token guardado.
+ *
+ * - `registro()` / `login()` devuelven un Observable (RxJS): no hacen la
+ *   petición hasta que alguien se suscribe (lo hacen los componentes).
+ * - `login()` además, con `tap(...)`, guarda el JWT en localStorage cuando la
+ *   respuesta llega bien. `tap` es un "efecto de lado" que no altera el flujo.
+ * - `token()` / `cerrarSesion()` leen y borran ese JWT.
+ *
+ * `@Injectable({ providedIn: 'root' })` = hay una sola instancia para toda la
+ * app y cualquier componente puede pedirla con `inject(AuthService)`.
+ *
+ * Pendiente (diferido en el plan): un interceptor que añada
+ * `Authorization: Bearer <token>` automáticamente a las peticiones protegidas.
+ */
 const CLAVE_TOKEN = 'baniterio.token';
 
 @Injectable({ providedIn: 'root' })

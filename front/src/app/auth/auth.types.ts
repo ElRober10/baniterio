@@ -1,3 +1,12 @@
+/**
+ * Tipos compartidos entre AuthService y los componentes de login/registro.
+ * Son solo "formas" (contratos) de los datos que van y vienen del backend;
+ * TypeScript los usa para autocompletar y avisar de errores, no generan código.
+ *
+ * `*Body` = lo que enviamos. `*Dto` = lo que recibimos. `CodigoError` = los
+ * valores del campo "codigo" que puede traer una respuesta de error del backend
+ * (ver ApiExceptionHandler.java).
+ */
 export interface RegistroBody {
   telefono: string;
   email: string;
