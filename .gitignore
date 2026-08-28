@@ -16,3 +16,6 @@ front/.angular/
 .env
 .env.*
 !.env.example
+
+# Playwright MCP (capturas y logs de sesiones de prueba)
+.playwright-mcp/
