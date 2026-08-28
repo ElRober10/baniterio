@@ -3,6 +3,7 @@ package com.baniterio.api.web;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.baniterio.api.auth.CredencialesInvalidasException;
 import com.baniterio.api.auth.RegistroConflictoException;
 import com.baniterio.api.auth.TelefonoNoAutorizadoException;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,12 @@ public class ApiExceptionHandler {
     ResponseEntity<Map<String, Object>> telefonoNoAutorizado() {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(Map.of("codigo", "TELEFONO_NO_AUTORIZADO"));
+    }
+
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    ResponseEntity<Map<String, Object>> credenciales() {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("codigo", "CREDENCIALES_INVALIDAS"));
     }
 
     @ExceptionHandler(RegistroConflictoException.class)

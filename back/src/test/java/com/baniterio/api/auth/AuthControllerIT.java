@@ -6,6 +6,7 @@ import com.baniterio.api.support.IntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -116,5 +117,83 @@ class AuthControllerIT extends IntegrationTest {
 
         assertThat(body.get("codigo")).isEqualTo("VALIDACION");
         assertThat(body).containsKey("errores");
+    }
+
+    // --- Login ---
+    // Teléfonos usados solo aquí (sembrados por V6, no consumidos por otros tests):
+    // 600010009, 600010043, 600010047. 700000000 no está sembrado.
+
+    @Test
+    void login_correcto_devuelve_token_y_usuario() {
+        http.post().uri("/api/v1/auth/registro")
+                .body(registroValido("600010009", "login-ok@x.com"))
+                .exchange()
+                .expectStatus().isCreated();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = http.post().uri("/api/v1/auth/login")
+                .body(Map.of("telefono", "600010009", "password", "secreto1"))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(Map.class)
+                .returnResult().getResponseBody();
+
+        assertThat((String) body.get("token")).isNotBlank();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> usuario = (Map<String, Object>) body.get("usuario");
+        assertThat(usuario).containsKey("id");
+    }
+
+    @Test
+    void login_con_password_incorrecta_devuelve_401() {
+        http.post().uri("/api/v1/auth/registro")
+                .body(registroValido("600010043", "login-bad@x.com"))
+                .exchange()
+                .expectStatus().isCreated();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = http.post().uri("/api/v1/auth/login")
+                .body(Map.of("telefono", "600010043", "password", "otra-cosa"))
+                .exchange()
+                .expectStatus().isEqualTo(401)
+                .expectBody(Map.class)
+                .returnResult().getResponseBody();
+
+        assertThat(body.get("codigo")).isEqualTo("CREDENCIALES_INVALIDAS");
+    }
+
+    @Test
+    void login_con_telefono_desconocido_devuelve_401() {
+        http.post().uri("/api/v1/auth/login")
+                .body(Map.of("telefono", "700000000", "password", "loquesea"))
+                .exchange()
+                .expectStatus().isEqualTo(401);
+    }
+
+    @Test
+    void el_token_del_login_vale_para_yo() {
+        http.post().uri("/api/v1/auth/registro")
+                .body(registroValido("600010047", "yo@x.com"))
+                .exchange()
+                .expectStatus().isCreated();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> login = http.post().uri("/api/v1/auth/login")
+                .body(Map.of("telefono", "600010047", "password", "secreto1"))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(Map.class)
+                .returnResult().getResponseBody();
+        String token = (String) login.get("token");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = http.get().uri("/api/v1/auth/yo")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(Map.class)
+                .returnResult().getResponseBody();
+
+        assertThat(body.get("nombre")).isEqualTo("Ana");
     }
 }
