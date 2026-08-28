@@ -13,6 +13,7 @@ public record RegistroRequest(
         @NotBlank @Email
         String email,
 
+        @NotBlank
         @Size(min = 6, message = "La contraseña debe tener al menos 6 caracteres")
         String password,
 
