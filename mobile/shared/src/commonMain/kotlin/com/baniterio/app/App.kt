@@ -15,9 +15,9 @@ import androidx.compose.ui.backhandler.BackHandler
 import com.baniterio.app.nav.Screen
 import com.baniterio.app.theme.BaniterioTheme
 import com.baniterio.app.ui.historia.HistoriaScreen
-import com.baniterio.app.ui.login.LoginScreen
+import com.baniterio.app.ui.auth.login.LoginScreen
 import com.baniterio.app.ui.panel.PanelScreen
-import com.baniterio.app.ui.registro.RegistroScreen
+import com.baniterio.app.ui.auth.registro.RegistroScreen
 
 private const val CLAVE_LOGIN = "Login"
 private const val CLAVE_REGISTRO = "Registro"
