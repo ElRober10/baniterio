@@ -1,6 +1,9 @@
 package com.baniterio.api.auth;
 
+import com.baniterio.api.auth.dto.LoginRequest;
+import com.baniterio.api.auth.dto.LoginResponse;
 import com.baniterio.api.auth.dto.RegistroRequest;
+import com.baniterio.api.auth.dto.UsuarioResponse;
 import com.baniterio.api.config.AppProperties;
 import com.baniterio.api.identidad.Membresia;
 import com.baniterio.api.identidad.MembresiaRepository;
@@ -21,14 +24,17 @@ public class AuthService {
     private final UsuarioRepository usuarios;
     private final MembresiaRepository membresias;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
     private final String telefonoFundador;
 
     public AuthService(TelefonoAutorizadoRepository telefonosAutorizados, UsuarioRepository usuarios,
-                       MembresiaRepository membresias, PasswordEncoder passwordEncoder, AppProperties props) {
+                       MembresiaRepository membresias, PasswordEncoder passwordEncoder, AppProperties props,
+                       JwtService jwtService) {
         this.telefonosAutorizados = telefonosAutorizados;
         this.usuarios = usuarios;
         this.membresias = membresias;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
         this.telefonoFundador = props.identidad().telefonoFundador();
     }
 
@@ -66,5 +72,15 @@ public class AuthService {
         telefonosAutorizados.save(autorizado);
 
         return usuario;
+    }
+
+    @Transactional(readOnly = true)
+    public LoginResponse login(LoginRequest req) {
+        Usuario usuario = usuarios.findByTelefono(req.telefono())
+                .filter(u -> passwordEncoder.matches(req.password(), u.getPasswordHash()))
+                .orElseThrow(CredencialesInvalidasException::new);
+
+        String token = jwtService.generar(usuario.getId(), usuario.isEsSuperadmin());
+        return new LoginResponse(token, UsuarioResponse.de(usuario));
     }
 }

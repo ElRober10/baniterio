@@ -1,5 +1,7 @@
 package com.baniterio.api.auth;
 
+import com.baniterio.api.auth.dto.LoginRequest;
+import com.baniterio.api.auth.dto.LoginResponse;
 import com.baniterio.api.auth.dto.RegistroRequest;
 import com.baniterio.api.auth.dto.UsuarioResponse;
 import com.baniterio.api.identidad.UsuarioRepository;
@@ -30,6 +32,11 @@ public class AuthController {
     @ResponseStatus(HttpStatus.CREATED)
     public UsuarioResponse registro(@Valid @RequestBody RegistroRequest req) {
         return UsuarioResponse.de(authService.registrar(req));
+    }
+
+    @PostMapping("/login")
+    public LoginResponse login(@Valid @RequestBody LoginRequest req) {
+        return authService.login(req);
     }
 
     @GetMapping("/yo")
