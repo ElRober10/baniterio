@@ -1,0 +1,22 @@
+- generic [ref=f1e5]:
+  - link "Volver" [ref=f1e6] [cursor=pointer]:
+    - /url: /
+    - generic [ref=f1e7]: ←
+    - text: Volver
+  - generic [ref=f1e8]:
+    - link "Bañiterio" [ref=f1e10] [cursor=pointer]:
+      - /url: /
+    - heading "Accede a la peña" [level=1] [ref=f1e12]
+    - paragraph [ref=f1e13]: Introduce tu teléfono y contraseña para entrar.
+    - generic [ref=f1e14]:
+      - generic [ref=f1e15]:
+        - text: Teléfono
+        - textbox "Teléfono" [ref=f1e16]
+      - generic [ref=f1e17]:
+        - text: Contraseña
+        - textbox "Contraseña" [ref=f1e18]
+      - button "Entrar" [ref=f1e19]
+    - paragraph [ref=f1e20]:
+      - text: ¿No tienes cuenta todavía?
+      - link "Regístrate" [ref=f1e21] [cursor=pointer]:
+        - /url: /registro

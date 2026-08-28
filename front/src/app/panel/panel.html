@@ -15,9 +15,9 @@
       }
     </nav>
 
-    <a class="border-t border-outline px-6 py-4 text-sm font-medium text-muted transition hover:text-ink" routerLink="/">
+    <button type="button" (click)="salir()" class="border-t border-outline px-6 py-4 text-left text-sm font-medium text-muted transition hover:text-ink">
       <span aria-hidden="true">←</span> Cerrar sesión
-    </a>
+    </button>
   </aside>
 
   <div class="flex min-w-0 flex-1 flex-col">
@@ -26,7 +26,7 @@
         <img src="logo-mark.png" alt="" class="h-9 w-9 rounded-lg" />
         <span class="font-metal text-gold">Bañiterio</span>
       </a>
-      <a class="text-sm font-medium text-muted transition hover:text-ink" routerLink="/">Cerrar sesión</a>
+      <button type="button" (click)="salir()" class="text-sm font-medium text-muted transition hover:text-ink">Cerrar sesión</button>
     </header>
 
     <nav class="flex gap-2 overflow-x-auto border-b border-outline bg-panel px-4 py-3 lg:hidden" aria-label="Navegación de la peña">

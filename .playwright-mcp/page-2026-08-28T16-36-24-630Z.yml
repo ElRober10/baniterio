@@ -1,0 +1,34 @@
+- generic [ref=f2e4]:
+  - banner [ref=f2e5]:
+    - generic [ref=f2e6]:
+      - link "Bañiterio" [ref=f2e7] [cursor=pointer]:
+        - /url: /
+      - navigation "Navegación principal" [ref=f2e9]:
+        - link "Entrar" [ref=f2e10] [cursor=pointer]:
+          - /url: /login
+        - link "Registrarse" [ref=f2e11] [cursor=pointer]:
+          - /url: /registro
+  - main [ref=f2e12]:
+    - generic [ref=f2e13]:
+      - generic [ref=f2e14]:
+        - generic [ref=f2e15]:
+          - generic [ref=f2e16]: Robledo del Mazo · Valle del Gévalo
+          - heading "Peña Bañiterio" [level=1] [ref=f2e17]
+          - generic [ref=f2e18]:
+            - link "Acceder a la peña" [ref=f2e19] [cursor=pointer]:
+              - /url: /login
+              - text: Acceder a la peña →
+            - link "¿Eres nuevo? Regístrate" [ref=f2e20] [cursor=pointer]:
+              - /url: /registro
+        - 'img "Ilustración del logo de Bañiterio: el chico del Bañito tirándose en bomba dentro de la jarra de cerveza del Bruterio, con una rosa en el hombro en memoria de Rosi" [ref=f2e22]'
+      - generic [ref=f2e25]:
+        - paragraph [ref=f2e26]:
+          - text: El Bañiterio nace en Robledo del Mazo, capital del Valle del Gévalo, de la unión de dos peñas con mucha historia propia. Por un lado,
+          - strong [ref=f2e27]: El Bañito Bañito
+          - text: ", que vistió primero de blanco y después de rojo. Por otro,"
+          - strong [ref=f2e28]: El Bruterio
+          - text: ", fiel al azul desde siempre. De la mezcla de esos dos colores —rojo y azul— nació el morado que hoy nos identifica, y de la unión de su gente, el Bañiterio."
+        - paragraph [ref=f2e29]: "Nuestro escudo nace de esa misma unión: el Bruterio llevaba una jarra de cerveza rompiéndose junto al lema «aquí no se friega», y el Bañito Bañito, un chico bañándose de noche. El logo del Bañiterio es la mezcla de los dos: el chico del Bañito tirándose en bomba dentro de la jarra del Bruterio. Y en el hombro izquierdo lleva una rosa, en recuerdo de nuestra amiga Rosi, que ya no está con nosotros pero sigue siendo parte de esta familia."
+        - generic [ref=f2e30]:
+          - paragraph [ref=f2e31]: "Pero el Bañiterio es mucho más que las fiestas del pueblo: es un grupo de amigos unido durante todo el año. Organizamos eventos propios, como las Migas Santas y las Chuletas Santas, y colaboramos de forma desinteresada en las fiestas de San Miguel, echando una mano con los juegos y con todo lo que haga falta."
+          - paragraph [ref=f2e32]: "Amistad, buen rollo y grandes amigos: así es la familia del Bañiterio."
