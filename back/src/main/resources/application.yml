@@ -1,25 +1,33 @@
+# Configuración de la aplicación. Sintaxis ${VARIABLE:valor-por-defecto}:
+# usa la variable de entorno si existe, si no el valor tras los dos puntos
+# (el de por defecto sirve para desarrollo local).
+
 spring:
   application:
     name: baniterio-api
-  datasource:
+  datasource:                       # conexión a Postgres
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/baniterio}
     username: ${DATABASE_USERNAME:baniterio}
     password: ${DATABASE_PASSWORD:baniterio-local}
   jpa:
-    open-in-view: false
+    open-in-view: false             # buena práctica: no dejar la sesión de BBDD abierta durante el render
     hibernate:
-      ddl-auto: validate
+      ddl-auto: validate            # Hibernate NO crea/altera tablas; solo comprueba que las entidades cuadran con el esquema que hizo Flyway
   flyway:
-    enabled: true
+    enabled: true                   # aplica las migraciones db/migration/V*.sql al arrancar
 
 server:
   port: ${SERVER_PORT:8080}
 
+# Config propia (la lee AppProperties.java)
 app:
   jwt:
+    # Clave para firmar los JWT. El valor por defecto es SOLO para local: al
+    # estar en el repo no es secreto, y JwtService se niega a arrancar con él
+    # fuera de los perfiles dev/test/default. En producción: pasar JWT_SECRET.
     secret: ${JWT_SECRET:ZGV2LW9ubHktYmFuaXRlcmlvLXNlY3JldC1jaGFuZ2UtaW4tcHJvZC0xMjM0NQ==}
     expiracion-dias: 7
   identidad:
-    telefono-fundador: ${TELEFONO_FUNDADOR:616985168}
+    telefono-fundador: ${TELEFONO_FUNDADOR:616985168}   # este teléfono entra como superadmin al registrarse
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}   # desde qué origen (el front) acepta peticiones el navegador

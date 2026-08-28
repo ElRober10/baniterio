@@ -21,6 +21,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Relación "este usuario pertenece a esta peña, con este rol". Tabla puente
+ * entre {@code usuario} y {@code pena}. El rol ({@code ADMIN} / {@code MIEMBRO})
+ * se guarda como texto ({@code @Enumerated(EnumType.STRING)}). La restricción
+ * única {@code (usuario_id, pena_id)} impide dos membresías del mismo par.
+ */
 @Entity
 @Table(name = "membresia")
 @Getter

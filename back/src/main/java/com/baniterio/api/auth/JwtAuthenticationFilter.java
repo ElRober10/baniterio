@@ -14,6 +14,22 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+/**
+ * Filtro que se ejecuta ANTES que los controladores en cada petición HTTP.
+ *
+ * <p>Si la petición trae cabecera {@code Authorization: Bearer <token>}, valida
+ * el token con {@link JwtService} y, si es correcto, registra al usuario como
+ * "autenticado" en el {@code SecurityContext} de Spring Security (dándole la
+ * autoridad {@code ROLE_SUPERADMIN} si procede). A partir de ese momento
+ * {@code @AuthenticationPrincipal} funciona y las rutas protegidas dejan pasar.
+ *
+ * <p>Si no hay cabecera, o el token es inválido, no hace nada y la petición
+ * sigue como anónima: será {@code SecurityConfig} quien decida si esa ruta
+ * exige estar autenticado (→ 401) o es pública.
+ *
+ * <p>{@code OncePerRequestFilter} garantiza que se ejecuta una sola vez por
+ * petición aunque Spring haga reenvíos internos.
+ */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 

@@ -13,6 +13,12 @@ import org.springframework.mock.env.MockEnvironment;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+/**
+ * Test unitario de {@link JwtService}: se instancia la clase a mano (sin Spring,
+ * sin base de datos, sin Docker), por eso es rápido. Cubre el ida y vuelta
+ * (generar → verificar), el rechazo de tokens manipulados / caducados / basura,
+ * que siempre firma con HS256, y la guardia del secreto de desarrollo.
+ */
 class JwtServiceTest {
 
     private static final String SECRET =

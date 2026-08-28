@@ -18,6 +18,26 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
+/**
+ * Emite y valida los JSON Web Tokens (JWT) de la aplicación.
+ *
+ * <p>Un JWT es un texto firmado con tres partes separadas por puntos
+ * ({@code cabecera.datos.firma}). Aquí dentro guardamos como "datos" el id del
+ * usuario ({@code sub}) y si es superadmin, más una fecha de caducidad (7 días).
+ * La "firma" es un hash HMAC-SHA256 calculado con una clave secreta que solo
+ * conoce el servidor: si alguien manipula los datos, la firma deja de cuadrar y
+ * el token se rechaza. No hace falta guardar nada en base de datos ("stateless").
+ *
+ * <ul>
+ *   <li>{@link #generar} — lo llama el login tras comprobar la contraseña.
+ *   <li>{@link #verificar} — lo llama {@link JwtAuthenticationFilter} en cada
+ *       petición que trae cabecera {@code Authorization: Bearer <token>}.
+ * </ul>
+ *
+ * <p>El constructor se niega a arrancar si en producción se está usando el
+ * secreto de desarrollo por defecto (que está en el repo y por tanto no es
+ * secreto).
+ */
 @Service
 public class JwtService {
 

@@ -17,6 +17,24 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/**
+ * Lógica de negocio de registro y login. Aquí vive el "qué reglas se aplican",
+ * separado del "cómo se recibe por HTTP" ({@link AuthController}).
+ *
+ * <p>{@link #registrar} es {@code @Transactional}: crea el usuario, crea su
+ * membresía en la peña y marca el teléfono como usado en la MISMA transacción,
+ * de modo que si algo falla a mitad, no queda nada a medias.
+ *
+ * <p>Reglas clave:
+ * <ul>
+ *   <li>Solo se registra quien tenga su teléfono en {@code telefono_autorizado}
+ *       y sin usar (puerta de entrada de la peña).
+ *   <li>El teléfono del fundador (de {@code app.identidad.telefono-fundador})
+ *       entra como superadmin y con rol {@code ADMIN}.
+ *   <li>En login, un usuario inactivo se rechaza con el MISMO error que una
+ *       contraseña mala (no se filtra que la cuenta existe).
+ * </ul>
+ */
 @Service
 public class AuthService {
 

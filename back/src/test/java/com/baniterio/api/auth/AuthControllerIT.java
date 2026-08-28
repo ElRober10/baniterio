@@ -19,6 +19,19 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Test de integración de los endpoints de registro y login, de punta a punta:
+ * peticiones HTTP reales contra la app real y Postgres real.
+ *
+ * <p>Cubre los caminos del contrato: alta correcta (201), fundador → superadmin,
+ * teléfono no autorizado (403), email/teléfono repetido (409), datos inválidos
+ * (400), login correcto (200 + token), contraseña mala / teléfono desconocido /
+ * usuario desactivado (401), y que el token del login sirve para {@code /yo}.
+ *
+ * <p>Para no depender de la siembra de V6, cada test se da de alta su propio
+ * teléfono autorizado con {@link #telefonoAutorizadoNuevo()} (un número
+ * aleatorio válido); así los tests no se pisan entre sí.
+ */
 class AuthControllerIT extends IntegrationTest {
 
     /** Sembrado por V6 y además es `app.identidad.telefono-fundador`. */

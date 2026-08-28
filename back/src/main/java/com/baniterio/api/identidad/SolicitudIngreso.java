@@ -21,6 +21,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Petición de acceso de alguien cuyo teléfono NO está autorizado todavía.
+ * Guarda sus datos y un {@code estado} (PENDIENTE/APROBADA/RECHAZADA) para que
+ * un admin la resuelva. Aún no hay endpoints que la usen: el flujo de solicitud
+ * y su aprobación quedan para más adelante (fuera del alcance de registro/login).
+ */
 @Entity
 @Table(name = "solicitud_ingreso")
 @Getter
