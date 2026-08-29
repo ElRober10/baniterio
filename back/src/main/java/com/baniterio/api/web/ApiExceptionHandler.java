@@ -5,7 +5,9 @@ import java.util.Map;
 
 import com.baniterio.api.auth.CredencialesInvalidasException;
 import com.baniterio.api.auth.RegistroConflictoException;
+import com.baniterio.api.auth.SolicitudYaPendienteException;
 import com.baniterio.api.auth.TelefonoNoAutorizadoException;
+import com.baniterio.api.auth.TelefonoYaAutorizadoException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,22 +33,34 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    /** {@code { "codigo": <codigo> }} con el estado dado. */
+    private static ResponseEntity<Map<String, Object>> error(HttpStatus estado, String codigo) {
+        return ResponseEntity.status(estado).body(Map.of("codigo", codigo));
+    }
+
     @ExceptionHandler(TelefonoNoAutorizadoException.class)
     ResponseEntity<Map<String, Object>> telefonoNoAutorizado() {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(Map.of("codigo", "TELEFONO_NO_AUTORIZADO"));
+        return error(HttpStatus.FORBIDDEN, "TELEFONO_NO_AUTORIZADO");
     }
 
     @ExceptionHandler(CredencialesInvalidasException.class)
     ResponseEntity<Map<String, Object>> credenciales() {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(Map.of("codigo", "CREDENCIALES_INVALIDAS"));
+        return error(HttpStatus.UNAUTHORIZED, "CREDENCIALES_INVALIDAS");
     }
 
     @ExceptionHandler(RegistroConflictoException.class)
     ResponseEntity<Map<String, Object>> conflicto() {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(Map.of("codigo", "YA_REGISTRADO"));
+        return error(HttpStatus.CONFLICT, "YA_REGISTRADO");
+    }
+
+    @ExceptionHandler(SolicitudYaPendienteException.class)
+    ResponseEntity<Map<String, Object>> solicitudPendiente() {
+        return error(HttpStatus.CONFLICT, "SOLICITUD_YA_PENDIENTE");
+    }
+
+    @ExceptionHandler(TelefonoYaAutorizadoException.class)
+    ResponseEntity<Map<String, Object>> telefonoYaAutorizado() {
+        return error(HttpStatus.CONFLICT, "TELEFONO_YA_AUTORIZADO");
     }
 
     /**
@@ -56,8 +70,7 @@ public class ApiExceptionHandler {
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
     ResponseEntity<Map<String, Object>> integridad() {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(Map.of("codigo", "YA_REGISTRADO"));
+        return error(HttpStatus.CONFLICT, "YA_REGISTRADO");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

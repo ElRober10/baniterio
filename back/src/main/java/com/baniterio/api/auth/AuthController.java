@@ -3,6 +3,7 @@ package com.baniterio.api.auth;
 import com.baniterio.api.auth.dto.LoginRequest;
 import com.baniterio.api.auth.dto.LoginResponse;
 import com.baniterio.api.auth.dto.RegistroRequest;
+import com.baniterio.api.auth.dto.SolicitudIngresoRequest;
 import com.baniterio.api.auth.dto.UsuarioResponse;
 import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
@@ -54,6 +55,13 @@ public class AuthController {
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest req) {
         return authService.login(req);
+    }
+
+    /** Solicitud de acceso para un teléfono que no está en la lista de la peña. */
+    @PostMapping("/solicitudes")
+    @ResponseStatus(HttpStatus.CREATED)
+    public void solicitarIngreso(@Valid @RequestBody SolicitudIngresoRequest req) {
+        authService.solicitarIngreso(req);
     }
 
     @GetMapping("/yo")

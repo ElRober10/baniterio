@@ -3,11 +3,17 @@ package com.baniterio.api.auth;
 import com.baniterio.api.auth.dto.LoginRequest;
 import com.baniterio.api.auth.dto.LoginResponse;
 import com.baniterio.api.auth.dto.RegistroRequest;
+import com.baniterio.api.auth.dto.SolicitudIngresoRequest;
 import com.baniterio.api.auth.dto.UsuarioResponse;
 import com.baniterio.api.config.AppProperties;
+import com.baniterio.api.identidad.EstadoSolicitud;
 import com.baniterio.api.identidad.Membresia;
 import com.baniterio.api.identidad.MembresiaRepository;
+import com.baniterio.api.identidad.Pena;
+import com.baniterio.api.identidad.PenaRepository;
 import com.baniterio.api.identidad.RolMembresia;
+import com.baniterio.api.identidad.SolicitudIngreso;
+import com.baniterio.api.identidad.SolicitudIngresoRepository;
 import com.baniterio.api.identidad.TelefonoAutorizado;
 import com.baniterio.api.identidad.TelefonoAutorizadoRepository;
 import com.baniterio.api.identidad.Usuario;
@@ -43,16 +49,23 @@ public class AuthService {
     private final MembresiaRepository membresias;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final SolicitudIngresoRepository solicitudes;
+    private final PenaRepository penas;
     private final String telefonoFundador;
+
+    /** Peña piloto. Con el alcance de una sola peña, se resuelve por slug. */
+    private static final String SLUG_PENA = "baniterio";
 
     public AuthService(TelefonoAutorizadoRepository telefonosAutorizados, UsuarioRepository usuarios,
                        MembresiaRepository membresias, PasswordEncoder passwordEncoder, AppProperties props,
-                       JwtService jwtService) {
+                       JwtService jwtService, SolicitudIngresoRepository solicitudes, PenaRepository penas) {
         this.telefonosAutorizados = telefonosAutorizados;
         this.usuarios = usuarios;
         this.membresias = membresias;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.solicitudes = solicitudes;
+        this.penas = penas;
         this.telefonoFundador = props.identidad().telefonoFundador();
     }
 
@@ -103,5 +116,34 @@ public class AuthService {
 
         String token = jwtService.generar(usuario.getId(), usuario.isEsSuperadmin());
         return new LoginResponse(token, UsuarioResponse.de(usuario));
+    }
+
+    /**
+     * Registra una solicitud de acceso de alguien cuyo teléfono NO está en la
+     * lista de la peña. Queda {@code PENDIENTE} hasta que un admin la revise
+     * (panel de admin: pendiente).
+     */
+    @Transactional
+    public SolicitudIngreso solicitarIngreso(SolicitudIngresoRequest req) {
+        if (telefonosAutorizados.existsByTelefonoAndUsadoFalse(req.telefono())) {
+            throw new TelefonoYaAutorizadoException();
+        }
+        if (solicitudes.existsByTelefonoAndEstado(req.telefono(), EstadoSolicitud.PENDIENTE)) {
+            throw new SolicitudYaPendienteException();
+        }
+
+        Pena pena = penas.findBySlug(SLUG_PENA).orElseThrow();
+
+        return solicitudes.save(SolicitudIngreso.builder()
+                .pena(pena)
+                .telefono(req.telefono())
+                .email(req.email())
+                .nombre(req.nombre())
+                .apellidos(req.apellidos())
+                .motivo(req.motivo())
+                .relacion(req.relacion())
+                .conocidos(req.conocidos())
+                .estado(EstadoSolicitud.PENDIENTE)
+                .build());
     }
 }

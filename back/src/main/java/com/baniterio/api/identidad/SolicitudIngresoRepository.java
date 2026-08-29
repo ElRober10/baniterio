@@ -4,11 +4,13 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-/** Acceso a BBDD para {@link SolicitudIngreso}. Todavía sin usar (no hay
- *  endpoints de solicitud de acceso). */
+/** Acceso a BBDD para {@link SolicitudIngreso}. */
 public interface SolicitudIngresoRepository extends JpaRepository<SolicitudIngreso, Long> {
 
     List<SolicitudIngreso> findByPenaIdAndEstado(Long penaId, EstadoSolicitud estado);
 
     List<SolicitudIngreso> findByPenaId(Long penaId);
+
+    /** ¿Ese teléfono ya tiene una solicitud sin resolver? (para no duplicar). */
+    boolean existsByTelefonoAndEstado(String telefono, EstadoSolicitud estado);
 }

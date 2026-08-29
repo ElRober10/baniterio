@@ -77,6 +77,14 @@ export class Registro {
       });
   }
 
+  /** Va al formulario de solicitud de acceso llevando lo ya tecleado. */
+  protected irASolicitarAcceso(): void {
+    const v = this.form.getRawValue();
+    this.router.navigate(['/solicitar-acceso'], {
+      state: { nombre: v.nombre, apellidos: v.apellidos, telefono: v.telefono, email: v.email },
+    });
+  }
+
   private mensajeDe(err: HttpErrorResponse): string {
     if (err.status === 0) {
       return 'No se pudo conectar con el servidor. Inténtalo de nuevo en un momento.';
