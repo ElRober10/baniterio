@@ -59,6 +59,12 @@ endpoint protegido, hay que añadir en `crearHttpClient` un
 `install(Auth) { bearer { loadTokens { ... } } }` (o una cabecera por defecto
 leyendo el token del repo).
 
+### Administración
+
+Los admins (y miembros con permiso concedido) ven una sección al final del panel
+para revisar solicitudes de acceso y gestionar rol/estado/permisos de los
+miembros. El backend valida el permiso en cada endpoint (`/api/v1/admin/*`).
+
 ### Running tests
 
 Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:

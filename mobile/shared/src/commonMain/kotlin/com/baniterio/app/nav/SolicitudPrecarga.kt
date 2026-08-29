@@ -9,4 +9,5 @@ data class SolicitudPrecarga(
     val apellidos: String,
     val telefono: String,
     val email: String,
+    val password: String = "",
 )

@@ -27,7 +27,11 @@ import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.theme.BaniterioWordmark
 
 @Composable
-fun PanelScreen(onAbrirSeccion: (Screen) -> Unit, onCerrarSesion: () -> Unit) {
+fun PanelScreen(
+    onAbrirSeccion: (Screen) -> Unit,
+    onCerrarSesion: () -> Unit,
+    tieneAdmin: Boolean,
+) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -62,7 +66,7 @@ fun PanelScreen(onAbrirSeccion: (Screen) -> Unit, onCerrarSesion: () -> Unit) {
                 color = BaniterioColors.muted,
             )
         }
-        items(seccionesPanel) { seccion ->
+        items(seccionesPanel(tieneAdmin)) { seccion ->
             TarjetaSeccion(seccion = seccion, onClick = { seccion.destino?.let(onAbrirSeccion) })
         }
     }

@@ -18,6 +18,9 @@ import com.baniterio.app.data.Dependencias
 import com.baniterio.app.nav.Screen
 import com.baniterio.app.nav.SolicitudPrecarga
 import com.baniterio.app.theme.BaniterioTheme
+import com.baniterio.app.ui.admin.AdminIndexScreen
+import com.baniterio.app.ui.admin.AdminPermisosScreen
+import com.baniterio.app.ui.admin.AdminSolicitudesScreen
 import com.baniterio.app.ui.historia.HistoriaScreen
 import com.baniterio.app.ui.auth.desbloqueo.DesbloqueoScreen
 import com.baniterio.app.ui.auth.login.LoginScreen
@@ -31,6 +34,9 @@ private const val CLAVE_REGISTRO = "Registro"
 private const val CLAVE_SOLICITAR = "SolicitarAcceso"
 private const val CLAVE_PANEL = "Panel"
 private const val CLAVE_HISTORIA = "Historia"
+private const val CLAVE_ADMIN_INDEX = "AdminIndex"
+private const val CLAVE_ADMIN_SOLICITUDES = "AdminSolicitudes"
+private const val CLAVE_ADMIN_PERMISOS = "AdminPermisos"
 
 private fun Screen.aClave(): String = when (this) {
     Screen.Desbloqueo -> CLAVE_DESBLOQUEO
@@ -39,6 +45,9 @@ private fun Screen.aClave(): String = when (this) {
     Screen.SolicitarAcceso -> CLAVE_SOLICITAR
     Screen.Panel -> CLAVE_PANEL
     Screen.Historia -> CLAVE_HISTORIA
+    Screen.AdminIndex -> CLAVE_ADMIN_INDEX
+    Screen.AdminSolicitudes -> CLAVE_ADMIN_SOLICITUDES
+    Screen.AdminPermisos -> CLAVE_ADMIN_PERMISOS
 }
 
 private fun claveAScreen(clave: String): Screen = when (clave) {
@@ -47,6 +56,9 @@ private fun claveAScreen(clave: String): Screen = when (clave) {
     CLAVE_SOLICITAR -> Screen.SolicitarAcceso
     CLAVE_PANEL -> Screen.Panel
     CLAVE_HISTORIA -> Screen.Historia
+    CLAVE_ADMIN_INDEX -> Screen.AdminIndex
+    CLAVE_ADMIN_SOLICITUDES -> Screen.AdminSolicitudes
+    CLAVE_ADMIN_PERMISOS -> Screen.AdminPermisos
     else -> Screen.Login
 }
 
@@ -67,7 +79,9 @@ fun App(deps: Dependencias) {
     // de la sesión `usuarioActual` no es null, así que esto no hace nada.
     LaunchedEffect(Unit) {
         if (deps.repo.usuarioActual == null &&
-            (screen == Screen.Panel || screen == Screen.Historia)
+            (screen == Screen.Panel || screen == Screen.Historia ||
+                screen == Screen.AdminIndex || screen == Screen.AdminSolicitudes ||
+                screen == Screen.AdminPermisos)
         ) {
             screenKey = if (deps.almacen.hayCredenciales) CLAVE_DESBLOQUEO else CLAVE_LOGIN
         }
@@ -78,9 +92,9 @@ fun App(deps: Dependencias) {
     var datosSolicitud by rememberSaveable(
         stateSaver = Saver<SolicitudPrecarga?, List<String>>(
             save = { valor ->
-                valor?.let { listOf(it.nombre, it.apellidos, it.telefono, it.email) }
+                valor?.let { p -> listOf(p.nombre, p.apellidos, p.telefono, p.email, p.password) }
             },
-            restore = { l -> SolicitudPrecarga(l[0], l[1], l[2], l[3]) },
+            restore = { l -> SolicitudPrecarga(l[0], l[1], l[2], l[3], l[4]) },
         ),
     ) { mutableStateOf<SolicitudPrecarga?>(null) }
 
@@ -136,12 +150,29 @@ fun App(deps: Dependencias) {
                         deps.almacen.borrar()
                         ir(Screen.Login)
                     },
+                    tieneAdmin = deps.repo.usuarioActual?.areas?.isNotEmpty() == true,
                 )
                 is Screen.Historia -> {
                     BackHandler { ir(Screen.Panel) }
                     HistoriaScreen(
                         onVolver = { ir(Screen.Panel) },
                     )
+                }
+                is Screen.AdminIndex -> {
+                    BackHandler { ir(Screen.Panel) }
+                    AdminIndexScreen(
+                        areas = deps.repo.usuarioActual?.areas ?: emptyList(),
+                        onAbrir = { ir(it) },
+                        onVolver = { ir(Screen.Panel) },
+                    )
+                }
+                is Screen.AdminSolicitudes -> {
+                    BackHandler { ir(Screen.AdminIndex) }
+                    AdminSolicitudesScreen(adminRepo = deps.adminRepo, onVolver = { ir(Screen.AdminIndex) })
+                }
+                is Screen.AdminPermisos -> {
+                    BackHandler { ir(Screen.AdminIndex) }
+                    AdminPermisosScreen(adminRepo = deps.adminRepo, onVolver = { ir(Screen.AdminIndex) })
                 }
             }
         }
