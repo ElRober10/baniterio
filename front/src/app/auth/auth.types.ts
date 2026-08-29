@@ -38,6 +38,8 @@ export interface UsuarioDto {
   apellidos: string;
   mote: string | null;
   esSuperadmin: boolean;
+  rol: 'ADMIN' | 'MIEMBRO' | null;
+  areas: string[];
 }
 
 export interface LoginDto {
@@ -51,4 +53,11 @@ export type CodigoError =
   | 'CREDENCIALES_INVALIDAS'
   | 'VALIDACION'
   | 'SOLICITUD_YA_PENDIENTE'
-  | 'TELEFONO_YA_AUTORIZADO';
+  | 'TELEFONO_YA_AUTORIZADO'
+  | 'SIN_PERMISO'
+  | 'SOLICITUD_YA_RESUELTA'
+  | 'ULTIMO_ADMIN'
+  | 'NO_TE_PUEDES_DEGRADAR'
+  | 'NO_TE_PUEDES_DESACTIVAR'
+  | 'SOLO_EL_SUPERADMIN'
+  | 'MIEMBRO_NO_ENCONTRADO';
