@@ -30,6 +30,13 @@ export interface SolicitudIngresoBody {
   motivo: string;
   relacion: string;
   conocidos: string;
+  /**
+   * Contraseña que el usuario tecleó en el registro, arrastrada en memoria para
+   * que al aprobar la solicitud se pueda crear la cuenta directamente. Opcional:
+   * si el usuario llegó a /solicitar-acceso sin pasar por el registro (o recargó)
+   * no viaja y el backend crea la solicitud igual.
+   */
+  password?: string;
 }
 
 export interface UsuarioDto {

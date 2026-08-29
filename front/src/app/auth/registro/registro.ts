@@ -81,7 +81,13 @@ export class Registro {
   protected irASolicitarAcceso(): void {
     const v = this.form.getRawValue();
     this.router.navigate(['/solicitar-acceso'], {
-      state: { nombre: v.nombre, apellidos: v.apellidos, telefono: v.telefono, email: v.email },
+      state: {
+        nombre: v.nombre,
+        apellidos: v.apellidos,
+        telefono: v.telefono,
+        email: v.email,
+        password: v.password,
+      },
     });
   }
 
