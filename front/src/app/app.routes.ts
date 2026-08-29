@@ -1,4 +1,7 @@
 import { Routes } from '@angular/router';
+import { areaGuard } from './admin/area.guard';
+import { AdminPermisos } from './admin/permisos/permisos';
+import { AdminSolicitudes } from './admin/solicitudes/solicitudes';
 import { authGuard, invitadoGuard } from './auth/auth.guard';
 import { Home } from './home/home';
 import { Login } from './auth/login/login';
@@ -20,7 +23,17 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: '', component: PanelInicio },
-      // administracion/* → Task 3
+      // administracion/* → protegidas además por areaGuard (permiso concreto del panel).
+      {
+        path: 'administracion/solicitudes',
+        component: AdminSolicitudes,
+        canActivate: [areaGuard('ADMIN_SOLICITUDES')],
+      },
+      {
+        path: 'administracion/permisos',
+        component: AdminPermisos,
+        canActivate: [areaGuard('ADMIN_PERMISOS')],
+      },
     ],
   },
 ];
