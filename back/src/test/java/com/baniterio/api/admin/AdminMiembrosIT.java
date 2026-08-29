@@ -1,5 +1,6 @@
 package com.baniterio.api.admin;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
@@ -13,6 +14,7 @@ import com.baniterio.api.identidad.RolMembresia;
 import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
 import com.baniterio.api.support.IntegrationTest;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,9 +61,28 @@ class AdminMiembrosIT extends IntegrationTest {
 
     private RestTestClient http;
 
+    /** Ids de las membresías que {@link #desactivarAdminsExistentes} tocó, para restaurarlas. */
+    private final List<Long> membresiasDesactivadas = new ArrayList<>();
+
     @BeforeEach
     void setUp() {
         http = RestTestClient.bindToServer().baseUrl("http://localhost:" + port).build();
+    }
+
+    /**
+     * Deshace lo que {@link #desactivarAdminsExistentes} desactivó: la BBDD la
+     * comparten todos los {@code *IT} (no hay rollback), así que un test no debe
+     * dejar a la peña sin admins para el siguiente.
+     */
+    @AfterEach
+    void restaurarAdminsDesactivados() {
+        for (Long id : membresiasDesactivadas) {
+            membresias.findById(id).ifPresent(m -> {
+                m.setActiva(true);
+                membresias.save(m);
+            });
+        }
+        membresiasDesactivadas.clear();
     }
 
     // --- Helpers ---
@@ -132,12 +153,17 @@ class AdminMiembrosIT extends IntegrationTest {
                 .expectStatus().isNoContent();
     }
 
-    /** Deja sin admins activos: base determinista para el escenario ULTIMO_ADMIN. */
+    /**
+     * Deja sin admins activos: base determinista para el escenario ULTIMO_ADMIN.
+     * Guarda los ids tocados para que {@link #restaurarAdminsDesactivados} los
+     * revierta al terminar el test.
+     */
     private void desactivarAdminsExistentes() {
         for (Membresia m : membresias.findByPenaId(penaId())) {
             if (m.getRol() == RolMembresia.ADMIN && m.isActiva()) {
                 m.setActiva(false);
                 membresias.save(m);
+                membresiasDesactivadas.add(m.getId());
             }
         }
     }
@@ -335,5 +361,100 @@ class AdminMiembrosIT extends IntegrationTest {
             List<String> areas = (List<String>) item.get("areas");
             assertThat(areas).containsExactly("ADMIN_SOLICITUDES");
         });
+    }
+
+    @Test
+    void desactivar_a_un_miembro_le_corta_el_acceso_aunque_su_token_siga_vivo() {
+        Persona admin = crearAdmin();
+        Persona m = crearMiembro();
+        concederAreas(admin.token(), m.id(), "ADMIN_SOLICITUDES");
+
+        // Con el área concedida, entra en su sección del panel.
+        http.get().uri("/api/v1/admin/solicitudes")
+                .header(AUTHORIZATION, "Bearer " + m.token())
+                .exchange()
+                .expectStatus().isOk();
+
+        // El admin lo desactiva.
+        http.put().uri("/api/v1/admin/miembros/" + m.id() + "/activo")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("activo", false))
+                .exchange()
+                .expectStatus().isNoContent();
+
+        // El MISMO token (JWT de 7 días, aún vigente) ya no vale: 403.
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = http.get().uri("/api/v1/admin/solicitudes")
+                .header(AUTHORIZATION, "Bearer " + m.token())
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectBody(Map.class)
+                .returnResult().getResponseBody();
+        assertThat(body.get("codigo")).isEqualTo("SIN_PERMISO");
+
+        // Al reactivarlo, NO recupera el área sola: al desactivar se borraron las concesiones.
+        http.put().uri("/api/v1/admin/miembros/" + m.id() + "/activo")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("activo", true))
+                .exchange()
+                .expectStatus().isNoContent();
+
+        assertThat(permisos.findByUsuarioId(m.id())).isEmpty();
+        http.get().uri("/api/v1/admin/solicitudes")
+                .header(AUTHORIZATION, "Bearer " + m.token())
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    void un_miembro_con_area_permisos_no_puede_acunarse_admin_a_si_mismo() {
+        Persona admin = crearAdmin();
+        Persona m = crearMiembro();
+        concederAreas(admin.token(), m.id(), "ADMIN_PERMISOS");
+        Persona otro = crearMiembro();
+
+        // El área ADMIN_PERMISOS SÍ le deja listar y tocar activo/áreas de otros.
+        http.get().uri("/api/v1/admin/miembros")
+                .header(AUTHORIZATION, "Bearer " + m.token())
+                .exchange()
+                .expectStatus().isOk();
+        http.put().uri("/api/v1/admin/miembros/" + otro.id() + "/areas")
+                .header(AUTHORIZATION, "Bearer " + m.token())
+                .body(Map.of("areas", List.of("ADMIN_SOLICITUDES")))
+                .exchange()
+                .expectStatus().isNoContent();
+        http.put().uri("/api/v1/admin/miembros/" + otro.id() + "/activo")
+                .header(AUTHORIZATION, "Bearer " + m.token())
+                .body(Map.of("activo", false))
+                .exchange()
+                .expectStatus().isNoContent();
+
+        // Pero NO puede ascender a nadie a ADMIN (ni a sí mismo): eso lo reserva a admins de verdad.
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = http.put().uri("/api/v1/admin/miembros/" + m.id() + "/rol")
+                .header(AUTHORIZATION, "Bearer " + m.token())
+                .body(Map.of("rol", "ADMIN"))
+                .exchange()
+                .expectStatus().isForbidden()
+                .expectBody(Map.class)
+                .returnResult().getResponseBody();
+        assertThat(body.get("codigo")).isEqualTo("SIN_PERMISO");
+        assertThat(membresias.findByUsuarioIdAndPenaId(m.id(), penaId()).orElseThrow().getRol())
+                .isEqualTo(RolMembresia.MIEMBRO);
+    }
+
+    @Test
+    void cambiar_rol_de_un_miembro_inexistente_devuelve_404() {
+        String admin = crearAdmin().token();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = http.put().uri("/api/v1/admin/miembros/999999/rol")
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("rol", "ADMIN"))
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody(Map.class)
+                .returnResult().getResponseBody();
+        assertThat(body.get("codigo")).isEqualTo("MIEMBRO_NO_ENCONTRADO");
     }
 }

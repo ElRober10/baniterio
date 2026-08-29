@@ -212,6 +212,13 @@ class AdminSolicitudesIT extends IntegrationTest {
                 .body(Map.of("telefono", s.telefono(), "password", "secreto1"))
                 .exchange().expectStatus().isOk();
 
+        // La solicitud queda resuelta y sin el hash (RGPD): el usuario ya lo tiene.
+        SolicitudIngreso sol = solicitudes.findById(s.id()).orElseThrow();
+        assertThat(sol.getEstado()).isEqualTo(EstadoSolicitud.APROBADA);
+        assertThat(sol.getResueltaPor()).isNotNull();
+        assertThat(sol.getResueltaAt()).isNotNull();
+        assertThat(sol.getPasswordHash()).isNull();
+
         verify(servicioEmail).enviar(eq(s.email()), any(), contains("iniciar sesión"));
     }
 
@@ -232,6 +239,13 @@ class AdminSolicitudesIT extends IntegrationTest {
         assertThat(telefonos.findByTelefono(s.telefono())).get()
                 .extracting(TelefonoAutorizado::isUsado).isEqualTo(false);
         assertThat(usuarios.findByTelefono(s.telefono())).isEmpty();
+
+        // La solicitud queda resuelta y sin hash residual (aquí no traía, pero comprobamos el contrato).
+        SolicitudIngreso sol = solicitudes.findById(s.id()).orElseThrow();
+        assertThat(sol.getEstado()).isEqualTo(EstadoSolicitud.APROBADA);
+        assertThat(sol.getResueltaPor()).isNotNull();
+        assertThat(sol.getResueltaAt()).isNotNull();
+        assertThat(sol.getPasswordHash()).isNull();
 
         verify(servicioEmail).enviar(eq(s.email()), any(), contains("registro"));
     }
@@ -308,5 +322,20 @@ class AdminSolicitudesIT extends IntegrationTest {
             assertThat(item.get("traeContrasena")).isEqualTo(true);
             assertThat(item.get("estado")).isEqualTo("PENDIENTE");
         });
+    }
+
+    @Test
+    void listar_solicitudes_con_estado_no_valido_devuelve_400_validacion() {
+        String admin = tokenAdmin();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = http.get().uri("/api/v1/admin/solicitudes?estado=pendiente")
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody(Map.class)
+                .returnResult().getResponseBody();
+
+        assertThat(body.get("codigo")).isEqualTo("VALIDACION");
     }
 }

@@ -9,6 +9,7 @@ import com.baniterio.api.admin.dto.AprobarResponse;
 import com.baniterio.api.admin.dto.MiembroResumen;
 import com.baniterio.api.admin.dto.SolicitudResumen;
 import com.baniterio.api.auth.RegistroConflictoException;
+import com.baniterio.api.auth.ServicioPermisos;
 import com.baniterio.api.identidad.AreaProtegida;
 import com.baniterio.api.identidad.EstadoSolicitud;
 import com.baniterio.api.identidad.Membresia;
@@ -66,11 +67,13 @@ public class AdminService {
     private final TelefonoAutorizadoRepository telefonos;
     private final PenaRepository penas;
     private final PermisoAreaRepository permisos;
+    private final ServicioPermisos servicioPermisos;
     private final ApplicationEventPublisher publisher;
 
     public AdminService(SolicitudIngresoRepository solicitudes, UsuarioRepository usuarios,
                         MembresiaRepository membresias, TelefonoAutorizadoRepository telefonos,
                         PenaRepository penas, PermisoAreaRepository permisos,
+                        ServicioPermisos servicioPermisos,
                         ApplicationEventPublisher publisher) {
         this.solicitudes = solicitudes;
         this.usuarios = usuarios;
@@ -78,12 +81,29 @@ public class AdminService {
         this.telefonos = telefonos;
         this.penas = penas;
         this.permisos = permisos;
+        this.servicioPermisos = servicioPermisos;
         this.publisher = publisher;
+    }
+
+    /** Id de la peña piloto. Si falta la siembra (V6), es un fallo de arranque legítimo (500). */
+    private Long penaId() {
+        return penas.findBySlug(SLUG_PENA)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Falta la peña piloto '" + SLUG_PENA + "'"))
+                .getId();
+    }
+
+    /**
+     * ¿El objetivo es el superadmin y quien actúa es otra persona? Solo el propio
+     * superadmin puede cambiarse el rol o el estado; ningún otro admin puede.
+     */
+    private boolean esSuperadminAjeno(Usuario objetivo, Long adminId, Long miembroId) {
+        return objetivo.isEsSuperadmin() && !adminId.equals(miembroId);
     }
 
     @Transactional(readOnly = true)
     public List<SolicitudResumen> listarSolicitudes(EstadoSolicitud estado) {
-        Long penaId = penas.findBySlug(SLUG_PENA).orElseThrow().getId();
+        Long penaId = penaId();
         return solicitudes.findByPenaIdAndEstado(penaId, estado).stream()
                 .sorted(Comparator.comparing(SolicitudIngreso::getCreatedAt))
                 .map(s -> new SolicitudResumen(s.getId(), s.getNombre(), s.getApellidos(),
@@ -145,6 +165,9 @@ public class AdminService {
         sol.setEstado(EstadoSolicitud.APROBADA);
         sol.setResueltaPor(admin);
         sol.setResueltaAt(Instant.now());
+        // RGPD / minimización: el usuario ya se creó con el hash (arriba); una vez
+        // resuelta la solicitud, el hash no debe quedarse ahí.
+        sol.setPasswordHash(null);
 
         publisher.publishEvent(new SolicitudResueltaEvent(
                 sol.getEmail(), sol.getNombre(), true, cuentaCreada, null));
@@ -164,6 +187,9 @@ public class AdminService {
         sol.setMotivoRechazo(texto);
         sol.setResueltaPor(usuarios.findById(adminId).orElseThrow());
         sol.setResueltaAt(Instant.now());
+        // RGPD / minimización: al rechazar no se crea usuario, así que el hash
+        // que trajera la solicitud se descarta sin más.
+        sol.setPasswordHash(null);
 
         publisher.publishEvent(new SolicitudResueltaEvent(
                 sol.getEmail(), sol.getNombre(), false, false, texto));
@@ -174,7 +200,7 @@ public class AdminService {
     /** Todos los miembros de la peña piloto, ordenados por apellidos y nombre. */
     @Transactional(readOnly = true)
     public List<MiembroResumen> listarMiembros() {
-        Long penaId = penas.findBySlug(SLUG_PENA).orElseThrow().getId();
+        Long penaId = penaId();
         return membresias.findByPenaId(penaId).stream()
                 .map(m -> {
                     Usuario u = m.getUsuario();
@@ -191,17 +217,24 @@ public class AdminService {
     }
 
     /**
-     * Cambia el rol de un miembro. Salvaguardas (todas → 409): solo el propio
-     * superadmin se toca a sí mismo; no puedes degradarte tú; y no puedes dejar
-     * la peña sin ningún admin activo.
+     * Cambia el rol de un miembro. Salvaguardas: ascender a {@code ADMIN} solo lo
+     * puede hacer un administrador de verdad (tener el área {@code ADMIN_PERMISOS}
+     * concedida NO basta para acuñar admins) → 403 {@code SIN_PERMISO}. Y (todas →
+     * 409): solo el propio superadmin se toca a sí mismo; no puedes degradarte tú;
+     * y no puedes dejar la peña sin ningún admin activo. Un {@code id} sin
+     * membresía en la peña → 404 {@code MIEMBRO_NO_ENCONTRADO}.
      */
     @Transactional
     public void cambiarRol(Long miembroId, Long adminId, RolMembresia nuevoRol) {
-        Long penaId = penas.findBySlug(SLUG_PENA).orElseThrow().getId();
-        Membresia m = membresias.findByUsuarioIdAndPenaId(miembroId, penaId).orElseThrow();
+        Long penaId = penaId();
+        Membresia m = membresias.findByUsuarioIdAndPenaId(miembroId, penaId)
+                .orElseThrow(MiembroNoEncontradoException::new);
         Usuario objetivo = m.getUsuario();
 
-        if (objetivo.isEsSuperadmin() && !adminId.equals(miembroId)) {
+        if (nuevoRol == RolMembresia.ADMIN && !servicioPermisos.esAdministrador(adminId)) {
+            throw new SinPermisoException();
+        }
+        if (esSuperadminAjeno(objetivo, adminId, miembroId)) {
             throw new SoloSuperadminException();
         }
         if (adminId.equals(miembroId) && nuevoRol == RolMembresia.MIEMBRO) {
@@ -218,18 +251,25 @@ public class AdminService {
     /**
      * Activa o desactiva a un miembro (usuario y membresía a la vez). Salvaguardas
      * (todas → 409): no puedes desactivarte tú; solo el propio superadmin se toca
-     * a sí mismo; y no puedes desactivar al último admin activo.
+     * a sí mismo; y no puedes desactivar al último admin activo. Un {@code id} sin
+     * membresía en la peña → 404 {@code MIEMBRO_NO_ENCONTRADO}.
+     *
+     * <p>Al desactivar se borran también sus filas de {@code permiso_area}: como
+     * un usuario desactivado no tiene ningún acceso ({@link ServicioPermisos}),
+     * dejar ahí las concesiones solo serviría para restaurar en silencio un
+     * acceso admin obsoleto si más tarde se le reactiva.
      */
     @Transactional
     public void cambiarActivo(Long miembroId, Long adminId, boolean activo) {
-        Long penaId = penas.findBySlug(SLUG_PENA).orElseThrow().getId();
-        Membresia m = membresias.findByUsuarioIdAndPenaId(miembroId, penaId).orElseThrow();
+        Long penaId = penaId();
+        Membresia m = membresias.findByUsuarioIdAndPenaId(miembroId, penaId)
+                .orElseThrow(MiembroNoEncontradoException::new);
         Usuario objetivo = m.getUsuario();
 
         if (!activo && adminId.equals(miembroId)) {
             throw new AutoModificacionException("NO_TE_PUEDES_DESACTIVAR");
         }
-        if (objetivo.isEsSuperadmin() && !adminId.equals(miembroId)) {
+        if (esSuperadminAjeno(objetivo, adminId, miembroId)) {
             throw new SoloSuperadminException();
         }
         if (!activo && m.getRol() == RolMembresia.ADMIN && esUltimoAdminActivo(miembroId, penaId)) {
@@ -238,6 +278,9 @@ public class AdminService {
 
         objetivo.setActivo(activo);
         m.setActiva(activo);
+        if (!activo) {
+            permisos.deleteByUsuarioId(miembroId);
+        }
         usuarios.save(objetivo);
         membresias.save(m);
     }
@@ -246,10 +289,19 @@ public class AdminService {
      * Reemplaza el conjunto completo de áreas concedidas a un miembro por el que
      * se pasa (distinct). El {@code flush} tras el borrado evita que Hibernate
      * ordene los INSERT antes del DELETE y choque con {@code uk_permiso_area}.
+     *
+     * <p>El objetivo se resuelve por su membresía en la peña (como
+     * {@link #cambiarRol} / {@link #cambiarActivo}): así no se pueden conceder
+     * áreas a un usuario sin membresía, que sería un admin invisible en
+     * {@code GET /miembros}. Un {@code id} sin membresía → 404
+     * {@code MIEMBRO_NO_ENCONTRADO}.
      */
     @Transactional
     public void reemplazarAreas(Long miembroId, Long adminId, List<AreaProtegida> areas) {
-        Usuario objetivo = usuarios.findById(miembroId).orElseThrow();
+        Long penaId = penaId();
+        Membresia m = membresias.findByUsuarioIdAndPenaId(miembroId, penaId)
+                .orElseThrow(MiembroNoEncontradoException::new);
+        Usuario objetivo = m.getUsuario();
         Usuario admin = usuarios.findById(adminId).orElseThrow();
 
         permisos.deleteByUsuarioId(miembroId);
