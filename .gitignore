@@ -17,5 +17,9 @@ front/.angular/
 .env.*
 !.env.example
 
+# Config local con secretos (credenciales de correo, etc.). NO se sube.
+back/config/*
+!back/config/application.yml.example
+
 # Playwright MCP (capturas y logs de sesiones de prueba)
 .playwright-mcp/

@@ -1,0 +1,33 @@
+# Plantilla de configuración local con secretos.
+#
+# Copia este fichero a  back/config/application.yml  (mismo directorio, sin
+# ".example") y rellena los valores reales. Ese application.yml está en
+# .gitignore: NO se sube al repo.
+#
+# Spring Boot carga automáticamente  ./config/application.yml  (relativo al
+# directorio desde el que arrancas, que con  mvnw spring-boot:run  es  back/ )
+# y sus claves se fusionan por encima de  src/main/resources/application.yml.
+# No hace falta activar ningún perfil.
+
+spring:
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: TU_CORREO@gmail.com
+    # Contraseña de APLICACIÓN de Google (16 caracteres, sin espacios), NO la
+    # contraseña normal de la cuenta. Se genera en:
+    # https://myaccount.google.com/apppasswords  (requiere verificación en 2 pasos)
+    password: xxxxxxxxxxxxxxxx
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
+app:
+  email:
+    modo: smtp            # "smtp" = envía de verdad · "log" = solo escribe en el log
+    from: Bañiterio <TU_CORREO@gmail.com>
+    enlace-registro: http://localhost:4200/registro
+  jwt:
+    # Clave para firmar los JWT en local (256+ bits en base64). Genérate una con:
+    #   node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+    secret: PON_AQUI_UNA_CLAVE_BASE64_LARGA
