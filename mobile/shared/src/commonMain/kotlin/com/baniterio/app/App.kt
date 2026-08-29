@@ -22,6 +22,7 @@ import com.baniterio.app.ui.auth.desbloqueo.DesbloqueoScreen
 import com.baniterio.app.ui.auth.login.LoginScreen
 import com.baniterio.app.ui.panel.PanelScreen
 import com.baniterio.app.ui.auth.registro.RegistroScreen
+import com.baniterio.app.ui.auth.solicitaracceso.SolicitarAccesoScreen
 
 private const val CLAVE_DESBLOQUEO = "Desbloqueo"
 private const val CLAVE_LOGIN = "Login"
@@ -98,7 +99,15 @@ fun App(deps: Dependencias) {
                         },
                     )
                 }
-                is Screen.SolicitarAcceso -> {}
+                is Screen.SolicitarAcceso -> {
+                    BackHandler { ir(Screen.Registro) }
+                    SolicitarAccesoScreen(
+                        repo = deps.repo,
+                        precarga = datosSolicitud,
+                        onEnviada = { ir(Screen.Login) },
+                        onVolver = { ir(Screen.Registro) },
+                    )
+                }
                 is Screen.Panel -> PanelScreen(
                     onAbrirSeccion = { destino -> ir(destino) },
                     onCerrarSesion = { ir(Screen.Login) },
