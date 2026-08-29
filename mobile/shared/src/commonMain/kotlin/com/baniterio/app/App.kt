@@ -172,7 +172,11 @@ fun App(deps: Dependencias) {
                 }
                 is Screen.AdminPermisos -> {
                     BackHandler { ir(Screen.AdminIndex) }
-                    AdminPermisosScreen(adminRepo = deps.adminRepo, onVolver = { ir(Screen.AdminIndex) })
+                    AdminPermisosScreen(
+                        adminRepo = deps.adminRepo,
+                        miId = deps.repo.usuarioActual?.id,
+                        onVolver = { ir(Screen.AdminIndex) },
+                    )
                 }
             }
         }
