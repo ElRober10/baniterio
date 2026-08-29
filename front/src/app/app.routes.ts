@@ -3,6 +3,7 @@ import { authGuard, invitadoGuard } from './auth/auth.guard';
 import { Home } from './home/home';
 import { Login } from './auth/login/login';
 import { Panel } from './panel/panel';
+import { PanelInicio } from './panel/inicio/inicio';
 import { Registro } from './auth/registro/registro';
 import { SolicitarAcceso } from './auth/solicitar-acceso/solicitar-acceso';
 
@@ -13,5 +14,13 @@ export const routes: Routes = [
   { path: 'registro', component: Registro, canActivate: [invitadoGuard] },
   { path: 'solicitar-acceso', component: SolicitarAcceso, canActivate: [invitadoGuard] },
   // Ruta privada: el authGuard te manda a /login si no hay sesión activa.
-  { path: 'panel', component: Panel, canActivate: [authGuard] },
+  {
+    path: 'panel',
+    component: Panel,
+    canActivate: [authGuard],
+    children: [
+      { path: '', component: PanelInicio },
+      // administracion/* → Task 3
+    ],
+  },
 ];
