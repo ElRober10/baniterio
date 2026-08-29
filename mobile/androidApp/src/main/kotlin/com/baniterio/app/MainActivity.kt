@@ -3,9 +3,10 @@ package com.baniterio.app
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.runtime.remember
 import androidx.fragment.app.FragmentActivity
+import com.baniterio.app.data.AlmacenCredenciales
+import com.baniterio.app.data.crearDependencias
 
 class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -13,13 +14,10 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            App()
+            val deps = remember {
+                crearDependencias(AlmacenCredenciales(applicationContext))
+            }
+            App(deps)
         }
     }
-}
-
-@Preview
-@Composable
-fun AppAndroidPreview() {
-    App()
 }
