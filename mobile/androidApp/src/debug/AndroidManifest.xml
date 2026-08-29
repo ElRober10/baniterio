@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Solo debug. El backend de desarrollo se sirve por HTTP en claro (10.0.2.2 para el
+    emulador, localhost), así que hace falta un network-security-config que lo permita.
+    Vive aquí, y no en src/main, para que ni la config ni el permiso de tráfico en claro
+    acaben en el APK de release: el merger de manifests añade este atributo solo en debug.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application android:networkSecurityConfig="@xml/network_security_config" />
+
+</manifest>
