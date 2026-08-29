@@ -13,6 +13,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import kotlinx.coroutines.CancellationException
 
 class AuthRepositoryImpl(private val http: HttpClient) : AuthRepository {
 
@@ -71,6 +72,8 @@ class AuthRepositoryImpl(private val http: HttpClient) : AuthRepository {
             val codigo = runCatching { e.response.body<ErrorResponse>().codigo }.getOrNull()
             val cod = CodigoErrorAuth.deCodigoBackend(codigo)
             ResultadoAuth.Error(cod, cod.mensaje)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             ResultadoAuth.Error(CodigoErrorAuth.SIN_CONEXION, CodigoErrorAuth.SIN_CONEXION.mensaje)
         }
