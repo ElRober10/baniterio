@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Solo debug (este fichero vive en src/debug/, no en src/main). Permite todo el
+    tráfico HTTP en claro en builds de depuración para poder hablar con el backend
+    de desarrollo sin TLS, sea cual sea su host: 10.0.2.2 (emulador), localhost, o
+    la IP LAN del PC cuando se prueba en un móvil físico. El APK de release NO
+    lleva esta config: allí solo se permite HTTPS.
+-->
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">10.0.2.2</domain>
-        <domain includeSubdomains="true">localhost</domain>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="true" />
 </network-security-config>
