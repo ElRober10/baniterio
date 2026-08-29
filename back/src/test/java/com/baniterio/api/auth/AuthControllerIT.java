@@ -440,4 +440,32 @@ class AuthControllerIT extends IntegrationTest {
 
         assertThat(body.get("codigo")).isEqualTo("VALIDACION");
     }
+
+    @Test
+    void solicitud_con_password_guarda_el_hash() {
+        String telefono = telefonoSinAutorizar();
+        Map<String, Object> req = new java.util.HashMap<>(solicitudValida(telefono));
+        req.put("password", "secreto1");
+
+        http.post().uri("/api/v1/auth/solicitudes").body(req)
+                .exchange().expectStatus().isCreated();
+
+        var sol = solicitudes.findByPenaId(
+                penas.findBySlug("baniterio").orElseThrow().getId()).stream()
+                .filter(s -> s.getTelefono().equals(telefono)).findFirst().orElseThrow();
+        assertThat(sol.getPasswordHash()).isNotBlank();
+        assertThat(sol.getPasswordHash()).isNotEqualTo("secreto1"); // está hasheada
+    }
+
+    @Test
+    void solicitud_sin_password_no_falla_y_deja_hash_null() {
+        String telefono = telefonoSinAutorizar();
+        http.post().uri("/api/v1/auth/solicitudes").body(solicitudValida(telefono))
+                .exchange().expectStatus().isCreated();
+
+        var sol = solicitudes.findByPenaId(
+                penas.findBySlug("baniterio").orElseThrow().getId()).stream()
+                .filter(s -> s.getTelefono().equals(telefono)).findFirst().orElseThrow();
+        assertThat(sol.getPasswordHash()).isNull();
+    }
 }

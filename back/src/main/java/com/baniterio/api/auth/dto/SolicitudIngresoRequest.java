@@ -10,8 +10,12 @@ import jakarta.validation.constraints.Size;
  * cuyo teléfono NO está en la lista de la peña para pedir que le den acceso.
  *
  * <p>Los 4 primeros campos son de identidad (como en el registro). Los 3
- * últimos son texto libre: por qué quiere entrar, qué relación tiene con la
+ * siguientes son texto libre: por qué quiere entrar, qué relación tiene con la
  * peña y a quién conoce — se piden 10+ caracteres para evitar respuestas vacías.
+ *
+ * <p>{@code password} es opcional: si el solicitante la pone, se guarda hasheada
+ * en la solicitud para crear el usuario ya con contraseña cuando se apruebe. Los
+ * clientes envían {@code null} (no {@code ""}) cuando no hay contraseña.
  */
 public record SolicitudIngresoRequest(
         @NotBlank
@@ -35,5 +39,8 @@ public record SolicitudIngresoRequest(
         String relacion,
 
         @NotBlank @Size(min = 10, max = 2000, message = "Cuéntanos un poco más (mínimo 10 caracteres)")
-        String conocidos) {
+        String conocidos,
+
+        @Size(min = 6, max = 72, message = "La contraseña debe tener entre 6 y 72 caracteres")
+        String password) {
 }
