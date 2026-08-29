@@ -31,3 +31,8 @@ app:
     telefono-fundador: ${TELEFONO_FUNDADOR:616985168}   # este teléfono entra como superadmin al registrarse
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}   # desde qué origen (el front) acepta peticiones el navegador
+  email:
+    # "smtp" = envía de verdad (requiere spring.mail.* configurado) · "log" = solo log
+    modo: ${MAIL_MODO:log}
+    from: ${MAIL_FROM:Bañiterio <no-reply@baniterio.local>}
+    enlace-registro: ${MAIL_ENLACE_REGISTRO:http://localhost:4200/registro}
