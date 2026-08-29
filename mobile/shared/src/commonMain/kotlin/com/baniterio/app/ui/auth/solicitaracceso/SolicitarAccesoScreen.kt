@@ -212,6 +212,7 @@ fun SolicitarAccesoScreen(
                                             motivo = motivo,
                                             relacion = relacion,
                                             conocidos = conocidos,
+                                            password = precarga?.password?.takeIf { it.isNotBlank() },
                                         ),
                                     )
                                 ) {

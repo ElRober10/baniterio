@@ -108,7 +108,7 @@ fun RegistroScreen(
                 Spacer(Modifier.height(24.dp))
                 Button(
                     onClick = {
-                        onSolicitarAcceso(SolicitudPrecarga(nombre, apellidos, telefono, email))
+                        onSolicitarAcceso(SolicitudPrecarga(nombre, apellidos, telefono, email, password))
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
