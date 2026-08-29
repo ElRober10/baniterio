@@ -59,6 +59,14 @@ public class SolicitudIngreso {
     @Column(length = 60)
     private String mote;
 
+    /**
+     * Hash BCrypt de la contraseña que el solicitante puso al intentar
+     * registrarse. Si viene, al aprobar la solicitud se crea el usuario ya con
+     * contraseña; si es {@code null}, al aprobar solo se autoriza el teléfono.
+     */
+    @Column(name = "password_hash", length = 72)
+    private String passwordHash;
+
     /** Por qué quiere entrar a la peña. */
     @Column(nullable = false, columnDefinition = "text")
     private String motivo;

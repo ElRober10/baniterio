@@ -26,6 +26,34 @@ class FlywayMigrationIT extends IntegrationTest {
     }
 
     @Test
+    void v8_crea_permiso_area_con_sus_columnas_y_la_unica() {
+        java.util.List<String> columnas = jdbc.queryForList("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'permiso_area'
+            ORDER BY column_name
+            """, String.class);
+        assertThat(columnas)
+            .containsExactlyInAnyOrder("id", "usuario_id", "area", "concedido_por", "created_at");
+
+        Integer unica = jdbc.queryForObject("""
+            SELECT count(*) FROM information_schema.table_constraints
+            WHERE table_name = 'permiso_area'
+              AND constraint_type = 'UNIQUE'
+              AND constraint_name = 'uk_permiso_area'
+            """, Integer.class);
+        assertThat(unica).isEqualTo(1);
+    }
+
+    @Test
+    void v8_anade_password_hash_a_solicitud_ingreso() {
+        Integer columna = jdbc.queryForObject("""
+            SELECT count(*) FROM information_schema.columns
+            WHERE table_name = 'solicitud_ingreso' AND column_name = 'password_hash'
+            """, Integer.class);
+        assertThat(columna).isEqualTo(1);
+    }
+
+    @Test
     void siembra_la_pena_baniterio_y_solo_el_telefono_del_fundador() {
         Integer penas = jdbc.queryForObject(
             "SELECT count(*) FROM pena WHERE slug = 'baniterio'", Integer.class);
