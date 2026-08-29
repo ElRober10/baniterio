@@ -18,6 +18,7 @@ import com.baniterio.app.nav.Screen
 import com.baniterio.app.nav.SolicitudPrecarga
 import com.baniterio.app.theme.BaniterioTheme
 import com.baniterio.app.ui.historia.HistoriaScreen
+import com.baniterio.app.ui.auth.desbloqueo.DesbloqueoScreen
 import com.baniterio.app.ui.auth.login.LoginScreen
 import com.baniterio.app.ui.panel.PanelScreen
 import com.baniterio.app.ui.auth.registro.RegistroScreen
@@ -73,7 +74,12 @@ fun App(deps: Dependencias) {
             color = MaterialTheme.colorScheme.background,
         ) {
             when (screen) {
-                is Screen.Desbloqueo -> {}
+                is Screen.Desbloqueo -> DesbloqueoScreen(
+                    repo = deps.repo,
+                    almacen = deps.almacen,
+                    onDesbloqueado = { ir(Screen.Panel) },
+                    onUsarOtraCuenta = { ir(Screen.Login) },
+                )
                 is Screen.Login -> LoginScreen(
                     repo = deps.repo,
                     almacen = deps.almacen,
