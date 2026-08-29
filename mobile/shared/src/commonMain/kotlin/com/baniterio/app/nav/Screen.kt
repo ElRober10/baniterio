@@ -7,4 +7,7 @@ sealed class Screen {
     data object SolicitarAcceso : Screen()
     data object Panel : Screen()
     data object Historia : Screen()
+    data object AdminIndex : Screen()
+    data object AdminSolicitudes : Screen()
+    data object AdminPermisos : Screen()
 }
