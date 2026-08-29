@@ -2,16 +2,21 @@ package com.baniterio.api.admin;
 
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 import com.baniterio.api.admin.dto.AprobarResponse;
+import com.baniterio.api.admin.dto.MiembroResumen;
 import com.baniterio.api.admin.dto.SolicitudResumen;
 import com.baniterio.api.auth.RegistroConflictoException;
+import com.baniterio.api.identidad.AreaProtegida;
 import com.baniterio.api.identidad.EstadoSolicitud;
 import com.baniterio.api.identidad.Membresia;
 import com.baniterio.api.identidad.MembresiaRepository;
 import com.baniterio.api.identidad.Pena;
 import com.baniterio.api.identidad.PenaRepository;
+import com.baniterio.api.identidad.PermisoArea;
+import com.baniterio.api.identidad.PermisoAreaRepository;
 import com.baniterio.api.identidad.RolMembresia;
 import com.baniterio.api.identidad.SolicitudIngreso;
 import com.baniterio.api.identidad.SolicitudIngresoRepository;
@@ -36,7 +41,10 @@ import org.springframework.util.StringUtils;
  * {@link ManejadorCorreoSolicitud}, para que un fallo de envío no revierta la
  * resolución.
  *
- * <p>La Task 7 ampliará esta clase con la gestión de miembros/permisos.
+ * <p>El segundo bloque (gestión de miembros: {@link #cambiarRol},
+ * {@link #cambiarActivo}, {@link #reemplazarAreas}) aplica las salvaguardas
+ * contra bloqueo: nadie se degrada ni se desactiva a sí mismo, solo el
+ * superadmin se toca a sí mismo, y nunca se queda la peña sin admin activo.
  */
 @Service
 public class AdminService {
@@ -57,16 +65,19 @@ public class AdminService {
     private final MembresiaRepository membresias;
     private final TelefonoAutorizadoRepository telefonos;
     private final PenaRepository penas;
+    private final PermisoAreaRepository permisos;
     private final ApplicationEventPublisher publisher;
 
     public AdminService(SolicitudIngresoRepository solicitudes, UsuarioRepository usuarios,
                         MembresiaRepository membresias, TelefonoAutorizadoRepository telefonos,
-                        PenaRepository penas, ApplicationEventPublisher publisher) {
+                        PenaRepository penas, PermisoAreaRepository permisos,
+                        ApplicationEventPublisher publisher) {
         this.solicitudes = solicitudes;
         this.usuarios = usuarios;
         this.membresias = membresias;
         this.telefonos = telefonos;
         this.penas = penas;
+        this.permisos = permisos;
         this.publisher = publisher;
     }
 
@@ -156,5 +167,111 @@ public class AdminService {
 
         publisher.publishEvent(new SolicitudResueltaEvent(
                 sol.getEmail(), sol.getNombre(), false, false, texto));
+    }
+
+    // --- Gestión de miembros (área ADMIN_PERMISOS) ---
+
+    /** Todos los miembros de la peña piloto, ordenados por apellidos y nombre. */
+    @Transactional(readOnly = true)
+    public List<MiembroResumen> listarMiembros() {
+        Long penaId = penas.findBySlug(SLUG_PENA).orElseThrow().getId();
+        return membresias.findByPenaId(penaId).stream()
+                .map(m -> {
+                    Usuario u = m.getUsuario();
+                    List<String> areas = permisos.findByUsuarioId(u.getId()).stream()
+                            .map(p -> p.getArea().name())
+                            .sorted()
+                            .toList();
+                    return new MiembroResumen(u.getId(), u.getNombre(), u.getApellidos(), u.getMote(),
+                            u.getTelefono(), m.getRol().name(), u.isActivo(), u.isEsSuperadmin(), areas);
+                })
+                .sorted(Comparator.comparing(MiembroResumen::apellidos)
+                        .thenComparing(MiembroResumen::nombre))
+                .toList();
+    }
+
+    /**
+     * Cambia el rol de un miembro. Salvaguardas (todas → 409): solo el propio
+     * superadmin se toca a sí mismo; no puedes degradarte tú; y no puedes dejar
+     * la peña sin ningún admin activo.
+     */
+    @Transactional
+    public void cambiarRol(Long miembroId, Long adminId, RolMembresia nuevoRol) {
+        Long penaId = penas.findBySlug(SLUG_PENA).orElseThrow().getId();
+        Membresia m = membresias.findByUsuarioIdAndPenaId(miembroId, penaId).orElseThrow();
+        Usuario objetivo = m.getUsuario();
+
+        if (objetivo.isEsSuperadmin() && !adminId.equals(miembroId)) {
+            throw new SoloSuperadminException();
+        }
+        if (adminId.equals(miembroId) && nuevoRol == RolMembresia.MIEMBRO) {
+            throw new AutoModificacionException("NO_TE_PUEDES_DEGRADAR");
+        }
+        if (nuevoRol == RolMembresia.MIEMBRO && esUltimoAdminActivo(miembroId, penaId)) {
+            throw new UltimoAdminException();
+        }
+
+        m.setRol(nuevoRol);
+        membresias.save(m);
+    }
+
+    /**
+     * Activa o desactiva a un miembro (usuario y membresía a la vez). Salvaguardas
+     * (todas → 409): no puedes desactivarte tú; solo el propio superadmin se toca
+     * a sí mismo; y no puedes desactivar al último admin activo.
+     */
+    @Transactional
+    public void cambiarActivo(Long miembroId, Long adminId, boolean activo) {
+        Long penaId = penas.findBySlug(SLUG_PENA).orElseThrow().getId();
+        Membresia m = membresias.findByUsuarioIdAndPenaId(miembroId, penaId).orElseThrow();
+        Usuario objetivo = m.getUsuario();
+
+        if (!activo && adminId.equals(miembroId)) {
+            throw new AutoModificacionException("NO_TE_PUEDES_DESACTIVAR");
+        }
+        if (objetivo.isEsSuperadmin() && !adminId.equals(miembroId)) {
+            throw new SoloSuperadminException();
+        }
+        if (!activo && m.getRol() == RolMembresia.ADMIN && esUltimoAdminActivo(miembroId, penaId)) {
+            throw new UltimoAdminException();
+        }
+
+        objetivo.setActivo(activo);
+        m.setActiva(activo);
+        usuarios.save(objetivo);
+        membresias.save(m);
+    }
+
+    /**
+     * Reemplaza el conjunto completo de áreas concedidas a un miembro por el que
+     * se pasa (distinct). El {@code flush} tras el borrado evita que Hibernate
+     * ordene los INSERT antes del DELETE y choque con {@code uk_permiso_area}.
+     */
+    @Transactional
+    public void reemplazarAreas(Long miembroId, Long adminId, List<AreaProtegida> areas) {
+        Usuario objetivo = usuarios.findById(miembroId).orElseThrow();
+        Usuario admin = usuarios.findById(adminId).orElseThrow();
+
+        permisos.deleteByUsuarioId(miembroId);
+        permisos.flush();
+        for (AreaProtegida area : new LinkedHashSet<>(areas)) {
+            permisos.save(PermisoArea.builder()
+                    .usuario(objetivo)
+                    .area(area)
+                    .concedidoPor(admin)
+                    .build());
+        }
+    }
+
+    /**
+     * Entre las membresías {@code ADMIN} de la peña con usuario y membresía
+     * activos, ¿queda solo una y es la de {@code usuarioId}?
+     */
+    private boolean esUltimoAdminActivo(Long usuarioId, Long penaId) {
+        List<Membresia> adminsActivos = membresias.findByPenaIdAndRol(penaId, RolMembresia.ADMIN).stream()
+                .filter(mm -> mm.isActiva() && mm.getUsuario().isActivo())
+                .toList();
+        return adminsActivos.size() == 1
+                && adminsActivos.get(0).getUsuario().getId().equals(usuarioId);
     }
 }
