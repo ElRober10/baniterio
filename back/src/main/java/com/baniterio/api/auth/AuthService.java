@@ -140,7 +140,7 @@ public class AuthService {
 
         Pena pena = penas.findBySlug(SLUG_PENA).orElseThrow();
 
-        return solicitudes.save(SolicitudIngreso.builder()
+        SolicitudIngreso solicitud = SolicitudIngreso.builder()
                 .pena(pena)
                 .telefono(req.telefono())
                 .email(req.email())
@@ -150,6 +150,11 @@ public class AuthService {
                 .relacion(req.relacion())
                 .conocidos(req.conocidos())
                 .estado(EstadoSolicitud.PENDIENTE)
-                .build());
+                .build();
+
+        if (StringUtils.hasText(req.password())) {
+            solicitud.setPasswordHash(passwordEncoder.encode(req.password()));
+        }
+        return solicitudes.save(solicitud);
     }
 }
