@@ -110,7 +110,11 @@ fun App(deps: Dependencias) {
                 }
                 is Screen.Panel -> PanelScreen(
                     onAbrirSeccion = { destino -> ir(destino) },
-                    onCerrarSesion = { ir(Screen.Login) },
+                    onCerrarSesion = {
+                        deps.repo.logout()
+                        deps.almacen.borrar()
+                        ir(Screen.Login)
+                    },
                 )
                 is Screen.Historia -> {
                     BackHandler { ir(Screen.Panel) }
