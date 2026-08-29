@@ -1,17 +1,17 @@
 package com.baniterio.app.biometric
 
 import androidx.compose.runtime.Composable
-import kotlinx.coroutines.delay
 
 actual class BiometricAuthenticator {
-    actual val estaDisponible: Boolean = true
+    // TODO: integrar LocalAuthentication (Face ID/Touch ID) cuando este target
+    // se compile en el Mac mini. Hasta entonces el stub falla en cerrado a
+    // propósito: DesbloqueoScreen es la puerta de entrada de la app, así que
+    // devolver `true` dejaría entrar a cualquiera con el móvil desbloqueado.
+    // `estaDisponible = false` hace además que LoginScreen no ofrezca guardar
+    // credenciales para huella en iOS.
+    actual val estaDisponible: Boolean = false
 
-    actual suspend fun autenticar(): Boolean {
-        // TODO: integrar LocalAuthentication (Face ID/Touch ID) cuando este target
-        // se compile en el Mac mini. De momento simula un acceso correcto.
-        delay(600)
-        return true
-    }
+    actual suspend fun autenticar(): Boolean = false
 }
 
 @Composable
