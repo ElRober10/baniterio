@@ -102,7 +102,7 @@ class AuthControllerIT extends IntegrationTest {
     }
 
     @Test
-    void el_fundador_queda_como_superadmin() {
+    void el_fundador_es_superadmin_y_ve_todas_las_areas() {
         @SuppressWarnings("unchecked")
         Map<String, Object> body = http.post().uri("/api/v1/auth/registro")
                 .body(registroValido(TELEFONO_FUNDADOR, "fundador@baniterio.com"))
@@ -112,6 +112,25 @@ class AuthControllerIT extends IntegrationTest {
                 .returnResult().getResponseBody();
 
         assertThat(body.get("esSuperadmin")).isEqualTo(true);
+        // El 201 de registro deja rol/areas vacíos (el cliente hace login a continuación).
+        assertThat(body.get("rol")).isNull();
+        assertThat((java.util.List<?>) body.get("areas")).isEmpty();
+
+        // Tras el login, el fundador se ve como ADMIN con TODAS las áreas del panel.
+        @SuppressWarnings("unchecked")
+        Map<String, Object> login = http.post().uri("/api/v1/auth/login")
+                .body(Map.of("telefono", TELEFONO_FUNDADOR, "password", "secreto1"))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(Map.class)
+                .returnResult().getResponseBody();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> usuario = (Map<String, Object>) login.get("usuario");
+        assertThat(usuario.get("rol")).isEqualTo("ADMIN");
+        @SuppressWarnings("unchecked")
+        java.util.List<String> areas = (java.util.List<String>) usuario.get("areas");
+        assertThat(areas).containsExactlyInAnyOrder("ADMIN_SOLICITUDES", "ADMIN_PERMISOS");
     }
 
     @Test
@@ -221,6 +240,9 @@ class AuthControllerIT extends IntegrationTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> usuario = (Map<String, Object>) body.get("usuario");
         assertThat(usuario).containsKey("id");
+        // Un registro normal es MIEMBRO y no tiene áreas del panel concedidas.
+        assertThat(usuario.get("rol")).isEqualTo("MIEMBRO");
+        assertThat((java.util.List<?>) usuario.get("areas")).isEmpty();
     }
 
     @Test
@@ -269,6 +291,9 @@ class AuthControllerIT extends IntegrationTest {
                 .returnResult().getResponseBody();
 
         assertThat(body.get("nombre")).isEqualTo("Ana");
+        // /yo consulta permisos en vivo igual que /login.
+        assertThat(body.get("rol")).isEqualTo("MIEMBRO");
+        assertThat((java.util.List<?>) body.get("areas")).isEmpty();
     }
 
     // --- Usuarios desactivados (única palanca de revocación con JWT stateless de 7 días) ---
