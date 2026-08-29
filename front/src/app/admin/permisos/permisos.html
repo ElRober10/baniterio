@@ -1,1 +1,145 @@
-<p>Permisos</p>
+<section class="mx-auto w-full max-w-3xl">
+  <h1 class="font-display text-2xl font-extrabold leading-tight">Permisos de la peña</h1>
+  <p class="mt-2 text-sm leading-relaxed text-muted">
+    Cada miembro: su rol, si está activo y a qué zonas del panel puede entrar.
+  </p>
+
+  @if (mensaje()) {
+    <p
+      role="status"
+      aria-live="polite"
+      class="mt-6 rounded-xl border border-brand-bright/30 bg-brand/15 px-4 py-3 text-sm text-gold-soft"
+    >
+      {{ mensaje() }}
+    </p>
+  }
+
+  <div class="mt-8">
+    @switch (estado()) {
+      @case ('cargando') {
+        <p class="text-sm text-muted">Cargando…</p>
+      }
+      @case ('error') {
+        <div class="rounded-2xl border border-red-400/30 bg-red-400/10 p-6">
+          <p class="text-sm text-red-300">No se han podido cargar los miembros.</p>
+          <button
+            type="button"
+            (click)="cargar()"
+            class="mt-4 rounded-xl border border-outline bg-surface px-4 py-2 text-sm font-medium text-ink transition hover:border-gold hover:text-gold"
+          >
+            Reintentar
+          </button>
+        </div>
+      }
+      @case ('lista') {
+        @if (miembros().length === 0) {
+          <p class="rounded-2xl border border-outline bg-panel p-6 text-sm text-muted">
+            No hay miembros en la peña.
+          </p>
+        } @else {
+          <ul class="flex flex-col gap-5">
+            @for (m of miembros(); track m.id) {
+              <li class="rounded-2xl border border-outline bg-panel p-6">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h2 class="font-display text-lg font-bold">{{ m.nombre }} {{ m.apellidos }}</h2>
+                  @if (m.mote) {
+                    <span class="text-sm italic text-muted">«{{ m.mote }}»</span>
+                  }
+                  <span
+                    class="rounded-full bg-surface px-2.5 py-1 text-xs font-semibold tracking-wide text-muted"
+                  >
+                    {{ m.telefono }}
+                  </span>
+                  @if (m.esSuperadmin) {
+                    <span
+                      class="rounded-full border border-brand-bright/30 bg-brand/15 px-2.5 py-1 text-xs font-semibold tracking-wide text-gold-soft"
+                    >
+                      Fundadora · acceso total
+                    </span>
+                  }
+                </div>
+
+                <div class="mt-5 flex flex-col gap-4">
+                  <div class="flex flex-wrap items-center gap-3">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-brand-bright"
+                      >Rol</span
+                    >
+                    <div class="inline-flex overflow-hidden rounded-xl border border-outline">
+                      <button
+                        type="button"
+                        [disabled]="m.esSuperadmin"
+                        (click)="ponerRol(m, 'ADMIN')"
+                        [class]="
+                          m.rol === 'ADMIN'
+                            ? 'bg-brand px-4 py-2 text-sm font-bold text-gold'
+                            : 'bg-surface px-4 py-2 text-sm font-medium text-muted transition hover:text-ink disabled:opacity-50'
+                        "
+                      >
+                        Admin
+                      </button>
+                      <button
+                        type="button"
+                        [disabled]="m.esSuperadmin"
+                        (click)="ponerRol(m, 'MIEMBRO')"
+                        [class]="
+                          m.rol === 'MIEMBRO'
+                            ? 'bg-brand px-4 py-2 text-sm font-bold text-gold'
+                            : 'bg-surface px-4 py-2 text-sm font-medium text-muted transition hover:text-ink disabled:opacity-50'
+                        "
+                      >
+                        Miembro
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-3">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-brand-bright"
+                      >Alta</span
+                    >
+                    <button
+                      type="button"
+                      [disabled]="m.esSuperadmin"
+                      (click)="activar(m, !m.activo)"
+                      [class]="
+                        m.activo
+                          ? 'rounded-xl border border-outline bg-surface px-4 py-2 text-sm font-medium text-ink transition hover:border-red-400/50 hover:text-red-300 disabled:opacity-50'
+                          : 'rounded-xl border border-red-400/40 bg-red-400/10 px-4 py-2 text-sm font-medium text-red-300 transition hover:border-gold hover:text-gold disabled:opacity-50'
+                      "
+                    >
+                      {{ m.activo ? 'Activo' : 'Inactivo' }}
+                    </button>
+                  </div>
+
+                  <div class="flex flex-col gap-2">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-brand-bright"
+                      >Zonas del panel</span
+                    >
+                    <div class="flex flex-wrap gap-4">
+                      @for (par of areasConocidas; track par[0]) {
+                        <label class="inline-flex items-center gap-2 text-sm text-ink">
+                          <input
+                            type="checkbox"
+                            class="h-4 w-4 rounded border-outline accent-brand-bright disabled:opacity-50"
+                            [checked]="
+                              m.areas.includes(par[0]) || m.rol === 'ADMIN' || m.esSuperadmin
+                            "
+                            [disabled]="m.rol === 'ADMIN' || m.esSuperadmin"
+                            (change)="alternarArea(m, par[0], $any($event.target).checked)"
+                          />
+                          {{ par[1] }}
+                        </label>
+                      }
+                    </div>
+                    @if (m.rol === 'ADMIN' || m.esSuperadmin) {
+                      <p class="text-xs text-muted">Acceso total por rol.</p>
+                    }
+                  </div>
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      }
+    }
+  </div>
+</section>
