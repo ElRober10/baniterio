@@ -21,7 +21,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
 
   const esApi = req.url.startsWith(environment.apiBaseUrl);
-  const esPublica = req.url.includes('/auth/login') || req.url.includes('/auth/registro');
+  const esPublica =
+    req.url.includes('/auth/login') ||
+    req.url.includes('/auth/registro') ||
+    req.url.includes('/auth/solicitudes');
   const token = auth.token();
   const protegida = esApi && !esPublica;
 

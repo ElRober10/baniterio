@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
-import { Observable, tap } from 'rxjs';
+import { Injectable, inject, signal } from '@angular/core';
+import { Observable, catchError, of, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { LoginBody, LoginDto, RegistroBody, SolicitudIngresoBody, UsuarioDto } from './auth.types';
 
@@ -32,6 +32,14 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly base = environment.apiBaseUrl;
 
+  /**
+   * Usuario de la sesión con su `rol` y sus `areas` (permisos del panel de
+   * administración). Se puebla al hacer `login()` o `yo()` y se limpia al
+   * `cerrarSesion()`. El guard y las pantallas de /admin lo consultan.
+   */
+  private readonly _usuarioActual = signal<UsuarioDto | null>(null);
+  readonly usuarioActual = this._usuarioActual.asReadonly();
+
   registro(body: RegistroBody): Observable<UsuarioDto> {
     return this.http.post<UsuarioDto>(`${this.base}/auth/registro`, body);
   }
@@ -44,7 +52,40 @@ export class AuthService {
   login(body: LoginBody): Observable<LoginDto> {
     return this.http
       .post<LoginDto>(`${this.base}/auth/login`, body)
-      .pipe(tap((res) => localStorage.setItem(CLAVE_TOKEN, res.token)));
+      .pipe(
+        tap((res) => {
+          localStorage.setItem(CLAVE_TOKEN, res.token);
+          this._usuarioActual.set(res.usuario);
+        }),
+      );
+  }
+
+  /**
+   * Pide el usuario de la sesión al backend (`GET /auth/yo`) y lo cachea en el
+   * signal. Lanza error (401) si el token no vale o el usuario está inactivo.
+   */
+  yo(): Observable<UsuarioDto> {
+    return this.http
+      .get<UsuarioDto>(`${this.base}/auth/yo`)
+      .pipe(tap((u) => this._usuarioActual.set(u)));
+  }
+
+  /**
+   * Devuelve el usuario de la sesión sin repetir la llamada si ya lo tenemos.
+   * Si falla la petición, resuelve a `null` en vez de propagar el error (útil
+   * para el guard, que ya redirige por su cuenta).
+   */
+  asegurarYo(): Observable<UsuarioDto | null> {
+    const actual = this._usuarioActual();
+    if (actual) {
+      return of(actual);
+    }
+    return this.yo().pipe(catchError(() => of(null)));
+  }
+
+  /** `true` si el usuario de la sesión tiene concedida esa área del panel. */
+  tieneArea(area: string): boolean {
+    return this._usuarioActual()?.areas?.includes(area) ?? false;
   }
 
   token(): string | null {
@@ -59,6 +100,7 @@ export class AuthService {
 
   cerrarSesion(): void {
     localStorage.removeItem(CLAVE_TOKEN);
+    this._usuarioActual.set(null);
   }
 
   /**
