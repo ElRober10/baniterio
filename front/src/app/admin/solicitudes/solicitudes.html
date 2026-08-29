@@ -8,7 +8,11 @@
     <p
       role="status"
       aria-live="polite"
-      class="mt-6 rounded-xl border border-brand-bright/30 bg-brand/15 px-4 py-3 text-sm text-gold-soft"
+      [class]="
+        tipoMensaje() === 'error'
+          ? 'mt-6 rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200'
+          : 'mt-6 rounded-xl border border-brand-bright/30 bg-brand/15 px-4 py-3 text-sm text-gold-soft'
+      "
     >
       {{ mensaje() }}
     </p>

@@ -41,6 +41,13 @@ describe('areaGuard', () => {
     expect((resultado as UrlTree).toString()).toBe('/login');
   });
 
+  it('con sesion pero sin usuario (asegurarYo -> null: 401 de /yo o red caida) redirige a /login', async () => {
+    usuario = null;
+    const resultado = await ejecutar(areaGuard('ADMIN_SOLICITUDES'));
+    expect(resultado).toBeInstanceOf(UrlTree);
+    expect((resultado as UrlTree).toString()).toBe('/login');
+  });
+
   it('con sesion pero sin el area redirige a /panel', async () => {
     usuario = { id: 1, nombre: 'A', apellidos: 'B', mote: null, esSuperadmin: false, rol: 'MIEMBRO', areas: [] };
     const resultado = await ejecutar(areaGuard('ADMIN_SOLICITUDES'));

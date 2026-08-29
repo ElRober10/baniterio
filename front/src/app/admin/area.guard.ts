@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
+import { Area } from './admin.types';
 
 /**
  * Guard de ruta parametrizado por área del panel de administración. Se usa como
@@ -9,12 +10,15 @@ import { AuthService } from '../auth/auth.service';
  *
  * - Sin sesión activa → a /login (como el authGuard).
  * - Con sesión: pregunta el usuario (cacheado) con `asegurarYo()` y comprueba
- *   que tenga concedida esa área. Si no, a /panel (la home del panel, a la que
- *   todo miembro puede entrar).
+ *   que tenga concedida esa área.
+ *   - `asegurarYo()` devuelve `null` solo cuando la petición falla (401 de /yo
+ *     porque el usuario está desactivado, o red caída) → mandamos a /login.
+ *   - Usuario real pero sin el área concedida (`areas: []`) → a /panel, la home
+ *     del panel a la que todo miembro puede entrar.
  *
  * Devolver un `UrlTree` = "no actives esta ruta, navega a esta otra".
  */
-export function areaGuard(area: string): CanActivateFn {
+export function areaGuard(area: Area): CanActivateFn {
   return () => {
     const auth = inject(AuthService);
     const router = inject(Router);
@@ -23,6 +27,10 @@ export function areaGuard(area: string): CanActivateFn {
     }
     return auth
       .asegurarYo()
-      .pipe(map((u) => (u?.areas?.includes(area) ? true : router.createUrlTree(['/panel']))));
+      .pipe(
+        map((u) =>
+          u?.areas?.includes(area) ? true : router.createUrlTree([u ? '/panel' : '/login']),
+        ),
+      );
   };
 }

@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
+import { SECCIONES } from './secciones';
 
 /**
  * Layout del panel privado de la peña (tras iniciar sesión). Solo se llega aquí
@@ -23,8 +24,8 @@ export class Panel {
   protected readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
-  /** Nombres de las secciones "próximamente" (solo para el nav; el detalle vive en PanelInicio). */
-  protected readonly seccionesPronto: string[] = ['Miembros', 'Eventos', 'Cuentas', 'Inventario', 'Ropa'];
+  /** Nombres de las secciones "próximamente" para el nav; el detalle vive en PanelInicio. */
+  protected readonly seccionesPronto = SECCIONES.map((s) => s.nombre);
 
   constructor() {
     this.auth.asegurarYo().subscribe();

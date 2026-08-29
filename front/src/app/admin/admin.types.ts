@@ -42,10 +42,17 @@ export type AprobarResultado = 'CUENTA_CREADA' | 'TELEFONO_AUTORIZADO';
 export type Rol = 'ADMIN' | 'MIEMBRO';
 
 /**
+ * Áreas del panel de administración que el front conoce. Es el tipo que exige
+ * `areaGuard(...)`: así `areaGuard('ADMIN_SOLICITUDS')` (con una errata) es un
+ * error de compilación, no un guard que nunca deja pasar.
+ */
+export type Area = 'ADMIN_SOLICITUDES' | 'ADMIN_PERMISOS';
+
+/**
  * Áreas conocidas del panel de administración y su etiqueta legible. La clave es
  * lo que viaja en `usuario.areas` y en el guard; el valor es lo que se pinta.
  */
-export const AREAS: Record<string, string> = {
+export const AREAS: Record<Area, string> = {
   ADMIN_SOLICITUDES: 'Solicitudes',
   ADMIN_PERMISOS: 'Permisos',
 };
