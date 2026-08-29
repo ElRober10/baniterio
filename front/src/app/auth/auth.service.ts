@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { LoginBody, LoginDto, RegistroBody, UsuarioDto } from './auth.types';
+import { LoginBody, LoginDto, RegistroBody, SolicitudIngresoBody, UsuarioDto } from './auth.types';
 
 /**
  * Servicio de autenticación del front. Único sitio que habla con los endpoints
@@ -34,6 +34,11 @@ export class AuthService {
 
   registro(body: RegistroBody): Observable<UsuarioDto> {
     return this.http.post<UsuarioDto>(`${this.base}/auth/registro`, body);
+  }
+
+  /** Solicitud de acceso (teléfono no autorizado). El backend responde 201 sin cuerpo. */
+  solicitarAcceso(body: SolicitudIngresoBody): Observable<void> {
+    return this.http.post<void>(`${this.base}/auth/solicitudes`, body);
   }
 
   login(body: LoginBody): Observable<LoginDto> {

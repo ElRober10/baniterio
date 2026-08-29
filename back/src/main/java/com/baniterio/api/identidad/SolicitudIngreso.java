@@ -59,6 +59,18 @@ public class SolicitudIngreso {
     @Column(length = 60)
     private String mote;
 
+    /** Por qué quiere entrar a la peña. */
+    @Column(nullable = false, columnDefinition = "text")
+    private String motivo;
+
+    /** Qué relación tiene con la peña. */
+    @Column(nullable = false, columnDefinition = "text")
+    private String relacion;
+
+    /** A quién conoce de la peña. */
+    @Column(nullable = false, columnDefinition = "text")
+    private String conocidos;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private EstadoSolicitud estado;

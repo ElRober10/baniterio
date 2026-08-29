@@ -2,7 +2,7 @@
   <div aria-hidden="true" class="pointer-events-none absolute left-1/2 top-1/2 h-128 w-lg -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand/20 blur-3xl"></div>
 
   <div class="relative w-full max-w-md">
-    <a class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted transition hover:text-ink" routerLink="/">
+    <a class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted transition hover:text-ink" routerLink="/registro">
       <span aria-hidden="true">←</span> Volver
     </a>
 
@@ -14,26 +14,17 @@
         <span class="font-metal text-gold">Bañiterio</span>
       </a>
 
-      <h1 class="font-display text-2xl font-bold">Únete a la peña</h1>
-      <p class="mt-2 text-sm leading-relaxed text-muted">Rellena tus datos para darte de alta.</p>
+      <h1 class="font-display text-2xl font-bold">Solicitar acceso</h1>
+      <p class="mt-2 text-sm leading-relaxed text-muted">
+        Tu teléfono no está en la lista de la peña. Cuéntanos quién eres y un administrador revisará tu solicitud.
+      </p>
 
       @switch (estado()) {
       @case ('ok') {
         <p class="mt-6 rounded-xl border border-brand-bright/30 bg-brand/15 px-4 py-3 text-sm text-gold-soft">
-          ¡Cuenta creada! Te llevamos al login…
+          Solicitud enviada. Un administrador la revisará y te avisará.
         </p>
-      }
-      @case ('no_autorizado') {
-        <p class="mt-6 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-300">
-          Teléfono no autorizado: tu número no está en la lista de la peña.
-        </p>
-        <button
-          type="button"
-          (click)="irASolicitarAcceso()"
-          class="mt-4 w-full rounded-xl bg-brand px-6 py-3 font-display font-bold text-gold shadow-[0_0_30px_-8px_rgba(248,211,73,0.5)] transition hover:bg-brand-bright"
-        >
-          Solicitar acceso a la peña
-        </button>
+        <a class="mt-6 inline-block text-sm font-medium text-brand-bright transition hover:text-gold" routerLink="/">Volver a la portada</a>
       }
       @default {
         <form class="mt-6 flex flex-col gap-4" [formGroup]="form" (ngSubmit)="enviar()">
@@ -66,15 +57,6 @@
           </div>
 
           <label class="flex flex-col gap-1.5 text-sm font-medium">
-            <span>Mote <span class="font-normal text-muted">(opcional)</span></span>
-            <input
-              type="text"
-              formControlName="mote"
-              class="rounded-xl border border-outline bg-surface/40 px-4 py-2.5 font-sans text-base text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/25"
-            />
-          </label>
-
-          <label class="flex flex-col gap-1.5 text-sm font-medium">
             Teléfono
             <input
               type="tel"
@@ -103,15 +85,38 @@
           </label>
 
           <label class="flex flex-col gap-1.5 text-sm font-medium">
-            Contraseña
-            <input
-              type="password"
-              formControlName="password"
-              autocomplete="new-password"
-              class="rounded-xl border border-outline bg-surface/40 px-4 py-2.5 font-sans text-base text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/25"
-            />
-            @if (form.controls.password.invalid && form.controls.password.touched) {
-              <span class="text-xs font-normal text-red-400">Mínimo 6 caracteres.</span>
+            ¿Por qué quieres entrar a la peña?
+            <textarea
+              formControlName="motivo"
+              rows="3"
+              class="resize-y rounded-xl border border-outline bg-surface/40 px-4 py-2.5 font-sans text-base text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/25"
+            ></textarea>
+            @if (form.controls.motivo.invalid && form.controls.motivo.touched) {
+              <span class="text-xs font-normal text-red-400">Cuéntanos un poco más (mínimo 10 caracteres).</span>
+            }
+          </label>
+
+          <label class="flex flex-col gap-1.5 text-sm font-medium">
+            ¿Qué relación tienes con la peña?
+            <textarea
+              formControlName="relacion"
+              rows="3"
+              class="resize-y rounded-xl border border-outline bg-surface/40 px-4 py-2.5 font-sans text-base text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/25"
+            ></textarea>
+            @if (form.controls.relacion.invalid && form.controls.relacion.touched) {
+              <span class="text-xs font-normal text-red-400">Cuéntanos un poco más (mínimo 10 caracteres).</span>
+            }
+          </label>
+
+          <label class="flex flex-col gap-1.5 text-sm font-medium">
+            ¿A quién conoces de la peña?
+            <textarea
+              formControlName="conocidos"
+              rows="3"
+              class="resize-y rounded-xl border border-outline bg-surface/40 px-4 py-2.5 font-sans text-base text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/25"
+            ></textarea>
+            @if (form.controls.conocidos.invalid && form.controls.conocidos.touched) {
+              <span class="text-xs font-normal text-red-400">Cuéntanos un poco más (mínimo 10 caracteres).</span>
             }
           </label>
 
@@ -126,16 +131,11 @@
             [disabled]="estado() === 'enviando'"
             class="mt-2 rounded-xl bg-brand px-6 py-3 font-display font-bold text-gold shadow-[0_0_30px_-8px_rgba(248,211,73,0.5)] transition hover:bg-brand-bright disabled:opacity-60"
           >
-            {{ estado() === 'enviando' ? 'Creando…' : 'Crear cuenta' }}
+            {{ estado() === 'enviando' ? 'Enviando…' : 'Enviar solicitud' }}
           </button>
         </form>
       }
       }
-
-      <p class="mt-8 text-center text-sm text-muted">
-        ¿Ya tienes cuenta?
-        <a class="font-medium text-brand-bright transition hover:text-gold" routerLink="/login">Entra aquí</a>
-      </p>
     </div>
   </div>
 </div>

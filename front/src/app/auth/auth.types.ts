@@ -21,6 +21,17 @@ export interface LoginBody {
   password: string;
 }
 
+/** Solicitud de acceso de alguien cuyo teléfono no está autorizado. */
+export interface SolicitudIngresoBody {
+  telefono: string;
+  email: string;
+  nombre: string;
+  apellidos: string;
+  motivo: string;
+  relacion: string;
+  conocidos: string;
+}
+
 export interface UsuarioDto {
   id: number;
   nombre: string;
@@ -38,4 +49,6 @@ export type CodigoError =
   | 'TELEFONO_NO_AUTORIZADO'
   | 'YA_REGISTRADO'
   | 'CREDENCIALES_INVALIDAS'
-  | 'VALIDACION';
+  | 'VALIDACION'
+  | 'SOLICITUD_YA_PENDIENTE'
+  | 'TELEFONO_YA_AUTORIZADO';

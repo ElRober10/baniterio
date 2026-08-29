@@ -3,8 +3,10 @@ package com.baniterio.api.auth;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
+import com.baniterio.api.identidad.EstadoSolicitud;
 import com.baniterio.api.identidad.Pena;
 import com.baniterio.api.identidad.PenaRepository;
+import com.baniterio.api.identidad.SolicitudIngresoRepository;
 import com.baniterio.api.identidad.TelefonoAutorizado;
 import com.baniterio.api.identidad.TelefonoAutorizadoRepository;
 import com.baniterio.api.identidad.Usuario;
@@ -48,6 +50,9 @@ class AuthControllerIT extends IntegrationTest {
 
     @Autowired
     UsuarioRepository usuarios;
+
+    @Autowired
+    SolicitudIngresoRepository solicitudes;
 
     private RestTestClient http;
 
@@ -330,5 +335,84 @@ class AuthControllerIT extends IntegrationTest {
         Usuario u = usuarios.findByTelefono(telefono).orElseThrow();
         u.setActivo(false);
         usuarios.save(u);
+    }
+
+    // --- Solicitud de ingreso (teléfono no autorizado pide acceso) ---
+
+    /** Número con formato válido que NO se da de alta como autorizado. */
+    private String telefonoSinAutorizar() {
+        return (ThreadLocalRandom.current().nextBoolean() ? "6" : "7")
+                + String.format("%08d", ThreadLocalRandom.current().nextInt(100_000_000));
+    }
+
+    private Map<String, String> solicitudValida(String telefono) {
+        return Map.of(
+                "telefono", telefono,
+                "email", "solicitante@x.com",
+                "nombre", "Marta",
+                "apellidos", "García",
+                "motivo", "Quiero entrar porque soy de la peña de toda la vida.",
+                "relacion", "Mi familia lleva en la peña tres generaciones.",
+                "conocidos", "Conozco a Roberto y a media peña.");
+    }
+
+    @Test
+    void solicitud_de_telefono_no_autorizado_se_crea_201() {
+        String telefono = telefonoSinAutorizar();
+
+        http.post().uri("/api/v1/auth/solicitudes")
+                .body(solicitudValida(telefono))
+                .exchange()
+                .expectStatus().isCreated();
+
+        assertThat(solicitudes.existsByTelefonoAndEstado(telefono, EstadoSolicitud.PENDIENTE)).isTrue();
+    }
+
+    @Test
+    void segunda_solicitud_del_mismo_telefono_devuelve_409() {
+        String telefono = telefonoSinAutorizar();
+        http.post().uri("/api/v1/auth/solicitudes").body(solicitudValida(telefono))
+                .exchange().expectStatus().isCreated();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = http.post().uri("/api/v1/auth/solicitudes")
+                .body(solicitudValida(telefono))
+                .exchange()
+                .expectStatus().isEqualTo(409)
+                .expectBody(Map.class)
+                .returnResult().getResponseBody();
+
+        assertThat(body.get("codigo")).isEqualTo("SOLICITUD_YA_PENDIENTE");
+    }
+
+    @Test
+    void solicitud_de_telefono_ya_autorizado_devuelve_409() {
+        String telefono = telefonoAutorizadoNuevo();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = http.post().uri("/api/v1/auth/solicitudes")
+                .body(solicitudValida(telefono))
+                .exchange()
+                .expectStatus().isEqualTo(409)
+                .expectBody(Map.class)
+                .returnResult().getResponseBody();
+
+        assertThat(body.get("codigo")).isEqualTo("TELEFONO_YA_AUTORIZADO");
+    }
+
+    @Test
+    void solicitud_con_motivo_demasiado_corto_devuelve_400() {
+        Map<String, String> req = new java.util.HashMap<>(solicitudValida(telefonoSinAutorizar()));
+        req.put("motivo", "corto");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = http.post().uri("/api/v1/auth/solicitudes")
+                .body(req)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody(Map.class)
+                .returnResult().getResponseBody();
+
+        assertThat(body.get("codigo")).isEqualTo("VALIDACION");
     }
 }
