@@ -89,8 +89,13 @@ fun App(deps: Dependencias) {
                 is Screen.Registro -> {
                     BackHandler { ir(Screen.Login) }
                     RegistroScreen(
-                        onRegistroCompletado = { ir(Screen.Panel) },
+                        repo = deps.repo,
+                        onRegistroCompletado = { ir(Screen.Login) },
                         onVolverALogin = { ir(Screen.Login) },
+                        onSolicitarAcceso = { datos ->
+                            datosSolicitud = datos
+                            ir(Screen.SolicitarAcceso)
+                        },
                     )
                 }
                 is Screen.SolicitarAcceso -> {}
