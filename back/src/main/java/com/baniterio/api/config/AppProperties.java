@@ -18,7 +18,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * {@code identidad().telefonoFundador()}, etc.
  */
 @ConfigurationProperties("app")
-public record AppProperties(Jwt jwt, Identidad identidad, Cors cors) {
+public record AppProperties(Jwt jwt, Identidad identidad, Cors cors, Email email) {
 
     public record Jwt(String secret, int expiracionDias) {
     }
@@ -27,5 +27,15 @@ public record AppProperties(Jwt jwt, Identidad identidad, Cors cors) {
     }
 
     public record Cors(List<String> allowedOrigins) {
+    }
+
+    /**
+     * Config del envío de correo. {@code modo} elige la implementación de
+     * {@code ServicioEmail} ({@code "log"} = solo escribe en el log, por defecto;
+     * {@code "smtp"} = envía de verdad). {@code from} es el remitente que se pone
+     * en los correos. {@code enlaceRegistro} es la URL del front donde la persona
+     * completa el registro / inicia sesión (se mete en las plantillas).
+     */
+    public record Email(String modo, String from, String enlaceRegistro) {
     }
 }
