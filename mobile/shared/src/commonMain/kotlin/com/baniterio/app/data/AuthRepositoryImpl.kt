@@ -16,11 +16,12 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
 
-class AuthRepositoryImpl(private val http: HttpClient) : AuthRepository {
+class AuthRepositoryImpl(
+    private val http: HttpClient,
+    private val sesion: SesionHolder,
+) : AuthRepository {
 
-    private var token: String? = null
-    private var _usuario: UsuarioResponse? = null
-    override val usuarioActual: UsuarioResponse? get() = _usuario
+    override val usuarioActual: UsuarioResponse? get() = sesion.usuario
 
     override suspend fun registro(r: RegistroRequest): ResultadoAuth<UsuarioResponse> =
         peticion {
@@ -39,8 +40,8 @@ class AuthRepositoryImpl(private val http: HttpClient) : AuthRepository {
         }
         return when (res) {
             is ResultadoAuth.Exito -> {
-                token = res.dato.token
-                _usuario = res.dato.usuario
+                sesion.token = res.dato.token
+                sesion.usuario = res.dato.usuario
                 ResultadoAuth.Exito(res.dato.usuario)
             }
             is ResultadoAuth.Error -> res
@@ -61,8 +62,7 @@ class AuthRepositoryImpl(private val http: HttpClient) : AuthRepository {
         }
 
     override fun logout() {
-        token = null
-        _usuario = null
+        sesion.limpiar()
     }
 
     /**

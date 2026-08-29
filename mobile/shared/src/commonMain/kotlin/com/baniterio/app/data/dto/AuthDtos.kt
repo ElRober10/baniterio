@@ -22,6 +22,8 @@ data class UsuarioResponse(
     val apellidos: String,
     val mote: String? = null,
     val esSuperadmin: Boolean,
+    val rol: String? = null,
+    val areas: List<String> = emptyList(),
 )
 
 @Serializable
@@ -36,6 +38,7 @@ data class SolicitudIngresoRequest(
     val motivo: String,
     val relacion: String,
     val conocidos: String,
+    val password: String? = null,
 )
 
 @Serializable
