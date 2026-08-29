@@ -28,7 +28,8 @@ import lombok.Setter;
  * <p>Tabla puente entre {@code usuario} y una de las áreas del panel. La
  * restricción única {@code (usuario_id, area)} impide conceder dos veces la
  * misma área al mismo usuario. {@code concedidoPor} es el admin que otorgó el
- * permiso (puede quedar {@code null} si ese usuario se borra).
+ * permiso; la columna es {@code NULLABLE} (puede no saberse quién lo concedió),
+ * pero no hay ninguna cascada: borrar ese usuario no la pone a {@code null}.
  */
 @Entity
 @Table(name = "permiso_area")

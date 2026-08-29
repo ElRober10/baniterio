@@ -44,6 +44,7 @@ Plataforma web y móvil para la gestión de las peñas de las fiestas del pueblo
    - `JWT_SECRET`: clave de firma del JWT. Hay un valor por defecto **solo para local**; con cualquier perfil activo distinto de `dev`/`test` la API se niega a arrancar si no lo defines.
    - `TELEFONO_FUNDADOR`: teléfono que se marca como superadmin al registrarse (por defecto `600000001`).
    - `DATABASE_URL` / `DATABASE_USERNAME` / `DATABASE_PASSWORD`: conexión a PostgreSQL.
+   - Correo (avisos de resolución de solicitudes): `MAIL_MODO` (`log` = solo traza, por defecto; `smtp` = envía de verdad), `MAIL_FROM` (remitente) y `MAIL_ENLACE_REGISTRO` (enlace al registro que va en el correo de aprobación sin contraseña). En modo `smtp` hacen falta además `SPRING_MAIL_HOST` / `SPRING_MAIL_PORT` / `SPRING_MAIL_USERNAME` / `SPRING_MAIL_PASSWORD` (con Gmail, una *app password*).
 
 3. Instalar dependencias y arrancar Angular:
 

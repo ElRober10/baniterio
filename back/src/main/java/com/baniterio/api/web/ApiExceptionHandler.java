@@ -16,6 +16,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
  * Traductor central de excepciones → respuestas HTTP JSON. Con
@@ -84,6 +85,11 @@ public class ApiExceptionHandler {
         return error(HttpStatus.CONFLICT, "SOLICITUD_YA_RESUELTA");
     }
 
+    @ExceptionHandler(com.baniterio.api.admin.MiembroNoEncontradoException.class)
+    ResponseEntity<Map<String, Object>> miembroNoEncontrado() {
+        return error(HttpStatus.NOT_FOUND, "MIEMBRO_NO_ENCONTRADO");
+    }
+
     @ExceptionHandler(com.baniterio.api.admin.UltimoAdminException.class)
     ResponseEntity<Map<String, Object>> ultimoAdmin() {
         return error(HttpStatus.CONFLICT, "ULTIMO_ADMIN");
@@ -100,13 +106,24 @@ public class ApiExceptionHandler {
     }
 
     /**
-     * Cuerpo JSON ilegible: mal formado, o con un valor que no encaja en el tipo
-     * esperado (p. ej. un string que no es ningún valor de un enum). Jackson lo
-     * lanza al deserializar, antes de llegar al {@code @Valid}.
+     * Entrada que no llega a validarse por tipo:
+     * <ul>
+     *   <li>{@code HttpMessageNotReadableException} — cuerpo JSON mal formado, o
+     *       con un valor que no encaja en el tipo esperado (p. ej. un string que
+     *       no es ningún valor de un enum). Jackson lo lanza al deserializar.
+     *   <li>{@code MethodArgumentTypeMismatchException} — un {@code @RequestParam}
+     *       (p. ej. {@code ?estado=pendiente} en minúscula) que no convierte al
+     *       tipo del parámetro.
+     * </ul>
+     * Devuelve la misma forma que la validación de bean
+     * ({@code {"codigo":"VALIDACION","errores":{}}}) para que el cliente no tenga
+     * que distinguir casos.
      */
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    ResponseEntity<Map<String, Object>> cuerpoIlegible() {
-        return error(HttpStatus.BAD_REQUEST, "VALIDACION");
+    @ExceptionHandler({HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class})
+    ResponseEntity<Map<String, Object>> entradaInvalida() {
+        return ResponseEntity.badRequest()
+                .body(Map.of("codigo", "VALIDACION", "errores", Map.of()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
