@@ -1,6 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
+import { AuthService } from '../../auth/auth.service';
+import { UsuarioDto } from '../../auth/auth.types';
 import { environment } from '../../../environments/environment';
 import { MiembroResumen } from '../admin.types';
 import { AdminPermisos } from './permisos';
@@ -29,10 +33,24 @@ describe('AdminPermisos', () => {
     areas: ['ADMIN_SOLICITUDES'],
   };
 
+  // AuthService falso: la pantalla lo usa para (a) deshabilitar la fila del propio
+  // usuario y (b) refrescar la sesión tras un cambio. `yo()` NO pega al backend —
+  // así los tests no tienen que contar una petición extra a /auth/yo.
+  const usuarioSesion = signal<UsuarioDto | null>(null);
+  const authFalso = {
+    usuarioActual: usuarioSesion,
+    yo: () => of(usuarioSesion()),
+  };
+
   beforeEach(async () => {
+    usuarioSesion.set(null);
     await TestBed.configureTestingModule({
       imports: [AdminPermisos],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: AuthService, useValue: authFalso },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(AdminPermisos);
@@ -183,6 +201,44 @@ describe('AdminPermisos', () => {
     fixture.detectChanges();
 
     expect(texto()).toContain('sin ningún administrador');
+  });
+
+  it('un cambio correcto confirma con "Cambio guardado." y el aviso sobrevive a la recarga', async () => {
+    await iniciarConLista([miembro]);
+
+    boton('Admin').click();
+    fixture.detectChanges();
+
+    httpMock
+      .expectOne(`${base}/admin/miembros/7/rol`)
+      .flush(null, { status: 204, statusText: 'No Content' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    httpMock.expectOne(listaUrl).flush([{ ...miembro, rol: 'ADMIN' }]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(texto()).toContain('Cambio guardado.');
+  });
+
+  it('la fila del propio usuario sale con todos los controles deshabilitados', async () => {
+    usuarioSesion.set({
+      id: 7,
+      nombre: 'Ada',
+      apellidos: 'Lovelace',
+      mote: null,
+      esSuperadmin: false,
+      rol: 'MIEMBRO',
+      areas: [],
+    });
+    await iniciarConLista([miembro]);
+
+    expect(texto()).toContain('No puedes cambiar tus propios permisos aquí.');
+    expect(boton('Admin').disabled).toBe(true);
+    expect(boton('Activo').disabled).toBe(true);
+    expect(checkbox('Solicitudes').disabled).toBe(true);
   });
 
   it('el superádmin sale con los controles deshabilitados', async () => {

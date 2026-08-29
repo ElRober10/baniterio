@@ -62,6 +62,20 @@ describe('SolicitarAcceso · password arrastrada', () => {
     req.flush(null, { status: 201, statusText: 'Created' });
   });
 
+  it('borra la contraseña de history.state (no debe quedar en disco) y conserva la identidad', () => {
+    crear({
+      nombre: 'Ada',
+      apellidos: 'Lovelace',
+      telefono: '600000000',
+      email: 'ada@example.com',
+      password: 'secreto123',
+    });
+
+    expect('password' in history.state).toBe(false);
+    expect(history.state.nombre).toBe('Ada');
+    expect(history.state.email).toBe('ada@example.com');
+  });
+
   it('sin password en el state, el cuerpo no lleva la clave password', () => {
     const componente = crear({
       nombre: 'Ada',

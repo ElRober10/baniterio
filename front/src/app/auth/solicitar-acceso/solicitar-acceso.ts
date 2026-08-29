@@ -63,6 +63,16 @@ export class SolicitarAcceso {
       history.state ??
       {}) as PrecargaRegistro;
     this.passwordArrastrada = previo.password ?? null;
+
+    // history.state se persiste a disco (restauración de sesión del navegador).
+    // La contraseña ya está en memoria (passwordArrastrada); la borramos de la
+    // entrada del historial para que no quede en disco. Los datos de identidad
+    // se conservan en `resto` para que un refresco siga precargando el formulario.
+    if (previo.password) {
+      const { password: _omitida, ...resto } = previo;
+      history.replaceState(resto, '');
+    }
+
     this.form.patchValue({
       nombre: previo.nombre ?? '',
       apellidos: previo.apellidos ?? '',
