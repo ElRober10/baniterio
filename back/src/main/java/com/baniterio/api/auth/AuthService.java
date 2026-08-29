@@ -51,6 +51,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final SolicitudIngresoRepository solicitudes;
     private final PenaRepository penas;
+    private final ServicioPermisos servicioPermisos;
     private final String telefonoFundador;
 
     /** Peña piloto. Con el alcance de una sola peña, se resuelve por slug. */
@@ -58,7 +59,8 @@ public class AuthService {
 
     public AuthService(TelefonoAutorizadoRepository telefonosAutorizados, UsuarioRepository usuarios,
                        MembresiaRepository membresias, PasswordEncoder passwordEncoder, AppProperties props,
-                       JwtService jwtService, SolicitudIngresoRepository solicitudes, PenaRepository penas) {
+                       JwtService jwtService, SolicitudIngresoRepository solicitudes, PenaRepository penas,
+                       ServicioPermisos servicioPermisos) {
         this.telefonosAutorizados = telefonosAutorizados;
         this.usuarios = usuarios;
         this.membresias = membresias;
@@ -66,6 +68,7 @@ public class AuthService {
         this.jwtService = jwtService;
         this.solicitudes = solicitudes;
         this.penas = penas;
+        this.servicioPermisos = servicioPermisos;
         this.telefonoFundador = props.identidad().telefonoFundador();
     }
 
@@ -115,7 +118,10 @@ public class AuthService {
                 .orElseThrow(CredencialesInvalidasException::new);
 
         String token = jwtService.generar(usuario.getId(), usuario.isEsSuperadmin());
-        return new LoginResponse(token, UsuarioResponse.de(usuario));
+        UsuarioResponse dto = UsuarioResponse.de(usuario,
+                servicioPermisos.rolDe(usuario.getId()),
+                servicioPermisos.areasDe(usuario.getId()));
+        return new LoginResponse(token, dto);
     }
 
     /**

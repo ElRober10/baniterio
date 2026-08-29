@@ -40,10 +40,13 @@ public class AuthController {
 
     private final UsuarioRepository usuarios;
     private final AuthService authService;
+    private final ServicioPermisos servicioPermisos;
 
-    public AuthController(UsuarioRepository usuarios, AuthService authService) {
+    public AuthController(UsuarioRepository usuarios, AuthService authService,
+                          ServicioPermisos servicioPermisos) {
         this.usuarios = usuarios;
         this.authService = authService;
+        this.servicioPermisos = servicioPermisos;
     }
 
     @PostMapping("/registro")
@@ -70,7 +73,9 @@ public class AuthController {
         // se comprueba en cada petición, no solo al iniciar sesión.
         return usuarios.findById(principal.id())
                 .filter(Usuario::isActivo)
-                .map(UsuarioResponse::de)
+                .map(u -> UsuarioResponse.de(u,
+                        servicioPermisos.rolDe(u.getId()),
+                        servicioPermisos.areasDe(u.getId())))
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.status(401).build());
     }
