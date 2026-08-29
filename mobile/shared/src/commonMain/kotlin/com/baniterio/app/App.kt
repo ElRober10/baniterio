@@ -75,6 +75,8 @@ fun App(deps: Dependencias) {
             when (screen) {
                 is Screen.Desbloqueo -> {}
                 is Screen.Login -> LoginScreen(
+                    repo = deps.repo,
+                    almacen = deps.almacen,
                     onLoginSuccess = { ir(Screen.Panel) },
                     onIrARegistro = { ir(Screen.Registro) },
                 )
