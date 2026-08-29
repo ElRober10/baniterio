@@ -23,6 +23,8 @@ interface PrecargaRegistro {
   apellidos?: string;
   telefono?: string;
   email?: string;
+  /** Contraseña tecleada en el registro; se arrastra pero NUNCA se muestra. */
+  password?: string;
 }
 
 @Component({
@@ -39,6 +41,13 @@ export class SolicitarAcceso {
   protected readonly estado = signal<Estado>('idle');
   protected readonly mensajeError = signal('');
 
+  /**
+   * Contraseña que llegó desde el registro por `history.state`. Se guarda aquí
+   * (no en el formulario, no se pinta) y solo se adjunta al cuerpo de la
+   * solicitud. `null` si se llegó directo a /solicitar-acceso o se recargó.
+   */
+  private readonly passwordArrastrada: string | null;
+
   protected readonly form = this.formBuilder.group({
     nombre: ['', [Validators.required]],
     apellidos: ['', [Validators.required]],
@@ -53,6 +62,7 @@ export class SolicitarAcceso {
     const previo = (this.router.getCurrentNavigation()?.extras.state ??
       history.state ??
       {}) as PrecargaRegistro;
+    this.passwordArrastrada = previo.password ?? null;
     this.form.patchValue({
       nombre: previo.nombre ?? '',
       apellidos: previo.apellidos ?? '',
@@ -79,6 +89,7 @@ export class SolicitarAcceso {
         motivo: v.motivo!,
         relacion: v.relacion!,
         conocidos: v.conocidos!,
+        ...(this.passwordArrastrada ? { password: this.passwordArrastrada } : {}),
       })
       .subscribe({
         next: () => this.estado.set('ok'),
