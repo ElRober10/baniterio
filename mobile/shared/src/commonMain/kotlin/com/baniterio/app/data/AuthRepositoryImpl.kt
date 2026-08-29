@@ -11,6 +11,7 @@ import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
@@ -48,11 +49,15 @@ class AuthRepositoryImpl(private val http: HttpClient) : AuthRepository {
 
     override suspend fun solicitarAcceso(r: SolicitudIngresoRequest): ResultadoAuth<Unit> =
         peticion {
-            http.post("$API_BASE_URL/auth/solicitudes") {
+            val respuesta = http.post("$API_BASE_URL/auth/solicitudes") {
                 contentType(ContentType.Application.Json)
                 setBody(r)
             }
-            Unit
+            // Se consume el cuerpo para que la conexión vuelva limpia al pool y se
+            // descarta: con expectSuccess=true un 4xx/5xx ya habría lanzado
+            // ResponseException antes de llegar aquí. El `let` vacío deja el bloque
+            // devolviendo Unit, que es la T de este ResultadoAuth.
+            respuesta.bodyAsText().let { }
         }
 
     override fun logout() {
@@ -69,7 +74,15 @@ class AuthRepositoryImpl(private val http: HttpClient) : AuthRepository {
         try {
             ResultadoAuth.Exito(bloque())
         } catch (e: ResponseException) {
-            val codigo = runCatching { e.response.body<ErrorResponse>().codigo }.getOrNull()
+            // try acotado, no runCatching: runCatching captura Throwable, incluida
+            // CancellationException, y se cargaría la concurrencia estructurada.
+            val codigo = try {
+                e.response.body<ErrorResponse>().codigo
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (ignorada: Exception) {
+                null
+            }
             val cod = CodigoErrorAuth.deCodigoBackend(codigo)
             ResultadoAuth.Error(cod, cod.mensaje)
         } catch (e: CancellationException) {

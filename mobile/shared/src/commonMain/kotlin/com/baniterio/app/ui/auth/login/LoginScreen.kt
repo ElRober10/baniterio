@@ -22,13 +22,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.baniterio.app.biometric.rememberBiometricAuthenticator
 import com.baniterio.app.data.AlmacenCredenciales
 import com.baniterio.app.data.AuthRepository
 import com.baniterio.app.data.ResultadoAuth
@@ -49,11 +50,15 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onIrARegistro: () -> Unit,
 ) {
-    var telefono by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    var telefono by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
     var estado by remember { mutableStateOf<EstadoLogin>(EstadoLogin.Editando) }
     var ofrecerBiometria by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    // Solo para consultar disponibilidad: aquí NO se lanza biometría (eso es
+    // DesbloqueoScreen). Si el dispositivo no tiene huella/Face ID registrada no
+    // tiene sentido ofrecer guardar las credenciales "para la próxima vez".
+    val biometria = rememberBiometricAuthenticator()
 
     val enviando = estado is EstadoLogin.Enviando
 
@@ -80,7 +85,10 @@ fun LoginScreen(
 
         OutlinedTextField(
             value = telefono,
-            onValueChange = { telefono = it },
+            onValueChange = {
+                telefono = it
+                if (estado is EstadoLogin.Error) estado = EstadoLogin.Editando
+            },
             label = { Text("Teléfono") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
             enabled = !enviando,
@@ -89,7 +97,10 @@ fun LoginScreen(
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = {
+                password = it
+                if (estado is EstadoLogin.Error) estado = EstadoLogin.Editando
+            },
             label = { Text("Contraseña") },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -105,8 +116,11 @@ fun LoginScreen(
                     scope.launch {
                         when (val r = repo.login(telefono, password)) {
                             is ResultadoAuth.Exito ->
-                                if (almacen.hayCredenciales) onLoginSuccess()
-                                else ofrecerBiometria = true
+                                if (almacen.hayCredenciales || !biometria.estaDisponible) {
+                                    onLoginSuccess()
+                                } else {
+                                    ofrecerBiometria = true
+                                }
                             is ResultadoAuth.Error -> estado = EstadoLogin.Error(r.mensaje)
                         }
                     }
@@ -127,7 +141,7 @@ fun LoginScreen(
             Spacer(Modifier.height(12.dp))
             Text(
                 text = estadoActual.mensaje,
-                color = Color(0xFFFF6B6B),
+                color = BaniterioColors.error,
                 style = MaterialTheme.typography.bodyMedium,
             )
         }

@@ -21,9 +21,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -51,13 +51,13 @@ fun SolicitarAccesoScreen(
     onEnviada: () -> Unit,
     onVolver: () -> Unit,
 ) {
-    var nombre by remember { mutableStateOf(precarga?.nombre ?: "") }
-    var apellidos by remember { mutableStateOf(precarga?.apellidos ?: "") }
-    var telefono by remember { mutableStateOf(precarga?.telefono ?: "") }
-    var email by remember { mutableStateOf(precarga?.email ?: "") }
-    var motivo by remember { mutableStateOf("") }
-    var relacion by remember { mutableStateOf("") }
-    var conocidos by remember { mutableStateOf("") }
+    var nombre by rememberSaveable { mutableStateOf(precarga?.nombre ?: "") }
+    var apellidos by rememberSaveable { mutableStateOf(precarga?.apellidos ?: "") }
+    var telefono by rememberSaveable { mutableStateOf(precarga?.telefono ?: "") }
+    var email by rememberSaveable { mutableStateOf(precarga?.email ?: "") }
+    var motivo by rememberSaveable { mutableStateOf("") }
+    var relacion by rememberSaveable { mutableStateOf("") }
+    var conocidos by rememberSaveable { mutableStateOf("") }
     var estado by remember { mutableStateOf<EstadoSolicitud>(EstadoSolicitud.Editando) }
     val scope = rememberCoroutineScope()
 
@@ -116,7 +116,10 @@ fun SolicitarAccesoScreen(
 
                 OutlinedTextField(
                     value = nombre,
-                    onValueChange = { nombre = it },
+                    onValueChange = {
+                        nombre = it
+                        if (estado is EstadoSolicitud.Error) estado = EstadoSolicitud.Editando
+                    },
                     label = { Text("Nombre") },
                     enabled = !enviando,
                     modifier = Modifier.fillMaxWidth(),
@@ -124,7 +127,10 @@ fun SolicitarAccesoScreen(
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
                     value = apellidos,
-                    onValueChange = { apellidos = it },
+                    onValueChange = {
+                        apellidos = it
+                        if (estado is EstadoSolicitud.Error) estado = EstadoSolicitud.Editando
+                    },
                     label = { Text("Apellidos") },
                     enabled = !enviando,
                     modifier = Modifier.fillMaxWidth(),
@@ -132,7 +138,10 @@ fun SolicitarAccesoScreen(
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
                     value = telefono,
-                    onValueChange = { telefono = it },
+                    onValueChange = {
+                        telefono = it
+                        if (estado is EstadoSolicitud.Error) estado = EstadoSolicitud.Editando
+                    },
                     label = { Text("Teléfono") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     enabled = !enviando,
@@ -141,7 +150,10 @@ fun SolicitarAccesoScreen(
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
                     value = email,
-                    onValueChange = { email = it },
+                    onValueChange = {
+                        email = it
+                        if (estado is EstadoSolicitud.Error) estado = EstadoSolicitud.Editando
+                    },
                     label = { Text("Email") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     enabled = !enviando,
@@ -150,7 +162,10 @@ fun SolicitarAccesoScreen(
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
                     value = motivo,
-                    onValueChange = { motivo = it },
+                    onValueChange = {
+                        motivo = it
+                        if (estado is EstadoSolicitud.Error) estado = EstadoSolicitud.Editando
+                    },
                     label = { Text("¿Por qué quieres entrar a la peña?") },
                     minLines = 3,
                     enabled = !enviando,
@@ -159,7 +174,10 @@ fun SolicitarAccesoScreen(
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
                     value = relacion,
-                    onValueChange = { relacion = it },
+                    onValueChange = {
+                        relacion = it
+                        if (estado is EstadoSolicitud.Error) estado = EstadoSolicitud.Editando
+                    },
                     label = { Text("¿Qué relación tienes con la peña?") },
                     minLines = 3,
                     enabled = !enviando,
@@ -168,7 +186,10 @@ fun SolicitarAccesoScreen(
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
                     value = conocidos,
-                    onValueChange = { conocidos = it },
+                    onValueChange = {
+                        conocidos = it
+                        if (estado is EstadoSolicitud.Error) estado = EstadoSolicitud.Editando
+                    },
                     label = { Text("¿A quién conoces de la peña?") },
                     minLines = 3,
                     enabled = !enviando,
@@ -217,7 +238,7 @@ fun SolicitarAccesoScreen(
                     Spacer(Modifier.height(12.dp))
                     Text(
                         text = mensajeError,
-                        color = Color(0xFFFF6B6B),
+                        color = BaniterioColors.error,
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
