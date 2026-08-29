@@ -30,6 +30,8 @@ import platform.Foundation.create
 import platform.Security.SecItemAdd
 import platform.Security.SecItemCopyMatching
 import platform.Security.SecItemDelete
+import platform.Security.kSecAttrAccessible
+import platform.Security.kSecAttrAccessibleWhenUnlockedThisDeviceOnly
 import platform.Security.kSecAttrAccount
 import platform.Security.kSecAttrService
 import platform.Security.kSecClass
@@ -71,7 +73,16 @@ actual class AlmacenCredenciales {
         borrarCuenta(cuenta)
         val datosCf = CFBridgingRetain(valor.aNSData())
         try {
-            conQuery(cuenta, listOf(kSecValueData to datosCf)) { query ->
+            conQuery(
+                cuenta,
+                listOf(
+                    kSecValueData to datosCf,
+                    // Sin esto el item usa kSecAttrAccessibleWhenUnlocked, que SÍ entra
+                    // en los backups de iCloud/iTunes: la contraseña saldría del
+                    // dispositivo. ThisDeviceOnly lo deja fuera del backup.
+                    kSecAttrAccessible to kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+                ),
+            ) { query ->
                 SecItemAdd(query, null)
             }
         } finally {
