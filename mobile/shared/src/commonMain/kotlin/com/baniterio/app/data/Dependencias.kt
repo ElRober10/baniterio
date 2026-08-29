@@ -15,8 +15,13 @@ class Dependencias(
  * (dependencia `implementation`, no expuesta transitivamente) no tenga que resolverse desde
  * los módulos de plataforma.
  */
-fun crearDependencias(almacen: AlmacenCredenciales): Dependencias =
-    Dependencias(
-        repo = AuthRepositoryImpl(crearHttpClient()),
+fun crearDependencias(almacen: AlmacenCredenciales): Dependencias {
+    // `http` y `sesion` se guardan en locales porque Task 2 (AdminRepositoryImpl)
+    // los reutiliza: mismo HttpClient y misma SesionHolder compartida.
+    val http = crearHttpClient()
+    val sesion = SesionHolder()
+    return Dependencias(
+        repo = AuthRepositoryImpl(http, sesion),
         almacen = almacen,
     )
+}
