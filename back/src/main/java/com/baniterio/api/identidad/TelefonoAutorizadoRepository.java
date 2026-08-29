@@ -14,6 +14,9 @@ public interface TelefonoAutorizadoRepository extends JpaRepository<TelefonoAuto
 
     Optional<TelefonoAutorizado> findByTelefonoAndUsadoFalse(String telefono);
 
+    /** Cualquier fila de ese teléfono (la columna es UNIQUE), usada o no. */
+    Optional<TelefonoAutorizado> findByTelefono(String telefono);
+
     List<TelefonoAutorizado> findByPenaId(Long penaId);
 
     boolean existsByTelefonoAndUsadoFalse(String telefono);

@@ -73,6 +73,16 @@ public class ApiExceptionHandler {
         return error(HttpStatus.CONFLICT, "YA_REGISTRADO");
     }
 
+    @ExceptionHandler(com.baniterio.api.admin.SinPermisoException.class)
+    ResponseEntity<Map<String, Object>> sinPermiso() {
+        return error(HttpStatus.FORBIDDEN, "SIN_PERMISO");
+    }
+
+    @ExceptionHandler(com.baniterio.api.admin.SolicitudYaResueltaException.class)
+    ResponseEntity<Map<String, Object>> solicitudYaResuelta() {
+        return error(HttpStatus.CONFLICT, "SOLICITUD_YA_RESUELTA");
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<Map<String, Object>> validacion(MethodArgumentNotValidException ex) {
         Map<String, String> errores = new HashMap<>();
