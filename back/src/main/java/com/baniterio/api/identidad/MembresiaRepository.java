@@ -12,5 +12,7 @@ public interface MembresiaRepository extends JpaRepository<Membresia, Long> {
 
     List<Membresia> findByPenaId(Long penaId);
 
+    List<Membresia> findByPenaIdAndRol(Long penaId, RolMembresia rol);
+
     Optional<Membresia> findByUsuarioIdAndPenaId(Long usuarioId, Long penaId);
 }

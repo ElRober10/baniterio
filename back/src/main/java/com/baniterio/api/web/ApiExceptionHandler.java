@@ -11,6 +11,7 @@ import com.baniterio.api.auth.TelefonoYaAutorizadoException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -81,6 +82,31 @@ public class ApiExceptionHandler {
     @ExceptionHandler(com.baniterio.api.admin.SolicitudYaResueltaException.class)
     ResponseEntity<Map<String, Object>> solicitudYaResuelta() {
         return error(HttpStatus.CONFLICT, "SOLICITUD_YA_RESUELTA");
+    }
+
+    @ExceptionHandler(com.baniterio.api.admin.UltimoAdminException.class)
+    ResponseEntity<Map<String, Object>> ultimoAdmin() {
+        return error(HttpStatus.CONFLICT, "ULTIMO_ADMIN");
+    }
+
+    @ExceptionHandler(com.baniterio.api.admin.SoloSuperadminException.class)
+    ResponseEntity<Map<String, Object>> soloSuperadmin() {
+        return error(HttpStatus.CONFLICT, "SOLO_EL_SUPERADMIN");
+    }
+
+    @ExceptionHandler(com.baniterio.api.admin.AutoModificacionException.class)
+    ResponseEntity<Map<String, Object>> autoModificacion(com.baniterio.api.admin.AutoModificacionException ex) {
+        return error(HttpStatus.CONFLICT, ex.getCodigo());
+    }
+
+    /**
+     * Cuerpo JSON ilegible: mal formado, o con un valor que no encaja en el tipo
+     * esperado (p. ej. un string que no es ningún valor de un enum). Jackson lo
+     * lanza al deserializar, antes de llegar al {@code @Valid}.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<Map<String, Object>> cuerpoIlegible() {
+        return error(HttpStatus.BAD_REQUEST, "VALIDACION");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
