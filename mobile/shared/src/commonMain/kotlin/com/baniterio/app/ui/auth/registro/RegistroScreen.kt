@@ -23,9 +23,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -57,12 +57,12 @@ fun RegistroScreen(
     onVolverALogin: () -> Unit,
     onSolicitarAcceso: (SolicitudPrecarga) -> Unit,
 ) {
-    var nombre by remember { mutableStateOf("") }
-    var apellidos by remember { mutableStateOf("") }
-    var mote by remember { mutableStateOf("") }
-    var telefono by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    var nombre by rememberSaveable { mutableStateOf("") }
+    var apellidos by rememberSaveable { mutableStateOf("") }
+    var mote by rememberSaveable { mutableStateOf("") }
+    var telefono by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
     var estado by remember { mutableStateOf<EstadoRegistro>(EstadoRegistro.Editando) }
     val scope = rememberCoroutineScope()
 
@@ -102,7 +102,7 @@ fun RegistroScreen(
                 Spacer(Modifier.height(16.dp))
                 Text(
                     text = "Teléfono no autorizado: tu número no está en la lista de la peña.",
-                    color = Color(0xFFFF6B6B),
+                    color = BaniterioColors.error,
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Spacer(Modifier.height(24.dp))
@@ -145,7 +145,10 @@ fun RegistroScreen(
 
                 OutlinedTextField(
                     value = nombre,
-                    onValueChange = { nombre = it },
+                    onValueChange = {
+                        nombre = it
+                        if (estado is EstadoRegistro.Error) estado = EstadoRegistro.Editando
+                    },
                     label = { Text("Nombre") },
                     enabled = !enviando,
                     modifier = Modifier.fillMaxWidth(),
@@ -153,7 +156,10 @@ fun RegistroScreen(
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
                     value = apellidos,
-                    onValueChange = { apellidos = it },
+                    onValueChange = {
+                        apellidos = it
+                        if (estado is EstadoRegistro.Error) estado = EstadoRegistro.Editando
+                    },
                     label = { Text("Apellidos") },
                     enabled = !enviando,
                     modifier = Modifier.fillMaxWidth(),
@@ -161,7 +167,10 @@ fun RegistroScreen(
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
                     value = mote,
-                    onValueChange = { mote = it },
+                    onValueChange = {
+                        mote = it
+                        if (estado is EstadoRegistro.Error) estado = EstadoRegistro.Editando
+                    },
                     label = { Text("Mote (opcional)") },
                     enabled = !enviando,
                     modifier = Modifier.fillMaxWidth(),
@@ -169,7 +178,10 @@ fun RegistroScreen(
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
                     value = telefono,
-                    onValueChange = { telefono = it },
+                    onValueChange = {
+                        telefono = it
+                        if (estado is EstadoRegistro.Error) estado = EstadoRegistro.Editando
+                    },
                     label = { Text("Teléfono") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     enabled = !enviando,
@@ -178,7 +190,10 @@ fun RegistroScreen(
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
                     value = email,
-                    onValueChange = { email = it },
+                    onValueChange = {
+                        email = it
+                        if (estado is EstadoRegistro.Error) estado = EstadoRegistro.Editando
+                    },
                     label = { Text("Email") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     enabled = !enviando,
@@ -187,7 +202,10 @@ fun RegistroScreen(
                 Spacer(Modifier.height(16.dp))
                 OutlinedTextField(
                     value = password,
-                    onValueChange = { password = it },
+                    onValueChange = {
+                        password = it
+                        if (estado is EstadoRegistro.Error) estado = EstadoRegistro.Editando
+                    },
                     label = { Text("Contraseña") },
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -240,7 +258,7 @@ fun RegistroScreen(
                     Spacer(Modifier.height(12.dp))
                     Text(
                         text = mensajeError,
-                        color = Color(0xFFFF6B6B),
+                        color = BaniterioColors.error,
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }

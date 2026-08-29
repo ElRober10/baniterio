@@ -21,7 +21,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.baniterio.app.biometric.rememberBiometricAuthenticator
@@ -48,7 +47,10 @@ fun DesbloqueoScreen(
     val biometria = rememberBiometricAuthenticator()
     val scope = rememberCoroutineScope()
 
-    var estado by remember { mutableStateOf<EstadoDesbloqueo>(EstadoDesbloqueo.Inicial) }
+    // Arranca en Autenticando (no Inicial) para que el botón esté deshabilitado ya en el
+    // primer frame: si no, había una ventana entre la primera composición y el
+    // LaunchedEffect en la que un toque rápido lanzaba una segunda biometría/login.
+    var estado by remember { mutableStateOf<EstadoDesbloqueo>(EstadoDesbloqueo.Autenticando) }
 
     val onDesbloqueadoActual by rememberUpdatedState(onDesbloqueado)
     val onUsarOtraCuentaActual by rememberUpdatedState(onUsarOtraCuenta)
@@ -120,7 +122,7 @@ fun DesbloqueoScreen(
             Spacer(Modifier.height(12.dp))
             Text(
                 text = estadoActual.mensaje,
-                color = Color(0xFFFF6B6B),
+                color = BaniterioColors.error,
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
