@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!--
+        allowBackup=false: las credenciales se guardan en EncryptedSharedPreferences,
+        cuya clave vive en el Keystore y NO se respalda. Con backup activo, una
+        restauración copiaría el fichero cifrado sin su clave -> GeneralSecurityException
+        al arrancar. Esto es pre-release; más adelante se puede volver a activar el
+        backup con unas dataExtractionRules que excluyan "baniterio_credenciales".
+    -->
     <application
-        android:allowBackup="true"
+        android:name=".BaniterioApp"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:networkSecurityConfig="@xml/network_security_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoActionBar">

@@ -5,9 +5,10 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -60,8 +61,28 @@ fun App(deps: Dependencias) {
     }
     val screen: Screen = claveAScreen(screenKey)
 
+    // Guardia de arranque en frío: tras morir el proceso, `screenKey` puede restaurar
+    // "Panel"/"Historia" pero la sesión (token + usuarioActual) vive solo en memoria y
+    // se ha perdido. Se redirige a Desbloqueo/Login. En una recomposición normal dentro
+    // de la sesión `usuarioActual` no es null, así que esto no hace nada.
+    LaunchedEffect(Unit) {
+        if (deps.repo.usuarioActual == null &&
+            (screen == Screen.Panel || screen == Screen.Historia)
+        ) {
+            screenKey = if (deps.almacen.hayCredenciales) CLAVE_DESBLOQUEO else CLAVE_LOGIN
+        }
+    }
+
     // Datos que Registro precarga en SolicitarAcceso cuando el teléfono no está autorizado.
-    var datosSolicitud by remember { mutableStateOf<SolicitudPrecarga?>(null) }
+    // rememberSaveable con Saver propio para que sobreviva a una rotación.
+    var datosSolicitud by rememberSaveable(
+        stateSaver = Saver<SolicitudPrecarga?, List<String>>(
+            save = { valor ->
+                valor?.let { listOf(it.nombre, it.apellidos, it.telefono, it.email) }
+            },
+            restore = { l -> SolicitudPrecarga(l[0], l[1], l[2], l[3]) },
+        ),
+    ) { mutableStateOf<SolicitudPrecarga?>(null) }
 
     fun ir(destino: Screen) {
         screenKey = destino.aClave()

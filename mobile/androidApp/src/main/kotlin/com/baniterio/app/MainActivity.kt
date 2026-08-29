@@ -3,20 +3,19 @@ package com.baniterio.app
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.remember
 import androidx.fragment.app.FragmentActivity
-import com.baniterio.app.data.AlmacenCredenciales
-import com.baniterio.app.data.crearDependencias
 
 class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
+        // El grafo vive en el Application (ámbito de proceso): sobrevive a las
+        // recreaciones de la Activity, así que la sesión en memoria no se pierde
+        // al rotar y no se filtra un HttpClient por rotación.
+        val deps = (application as BaniterioApp).deps
+
         setContent {
-            val deps = remember {
-                crearDependencias(AlmacenCredenciales(applicationContext))
-            }
             App(deps)
         }
     }
