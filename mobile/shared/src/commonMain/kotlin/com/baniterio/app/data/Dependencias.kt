@@ -8,6 +8,7 @@ package com.baniterio.app.data
 class Dependencias(
     val repo: AuthRepository,
     val almacen: AlmacenCredenciales,
+    val adminRepo: AdminRepository,
 )
 
 /**
@@ -23,5 +24,6 @@ fun crearDependencias(almacen: AlmacenCredenciales): Dependencias {
     return Dependencias(
         repo = AuthRepositoryImpl(http, sesion),
         almacen = almacen,
+        adminRepo = AdminRepositoryImpl(http, sesion),
     )
 }
