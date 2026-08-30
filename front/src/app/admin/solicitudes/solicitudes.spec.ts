@@ -16,6 +16,7 @@ describe('AdminSolicitudes', () => {
   let httpMock: HttpTestingController;
   const base = environment.apiBaseUrl;
   const listaUrl = `${base}/admin/solicitudes?estado=PENDIENTE`;
+  const pendientesUrl = `${base}/admin/pendientes`;
 
   const solicitud: SolicitudResumen = {
     id: 1,
@@ -93,11 +94,31 @@ describe('AdminSolicitudes', () => {
     await fixture.whenStable();
 
     httpMock.expectOne(listaUrl).flush([]);
+    httpMock.expectOne(pendientesUrl).flush({});
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
 
     expect(texto()).toContain('Cuenta creada y correo enviado.');
+  });
+
+  it('tras aprobar una solicitud se vuelve a pedir el recuento de pendientes', async () => {
+    await iniciarConLista([solicitud]);
+
+    boton('Aprobar').click();
+    fixture.detectChanges();
+
+    httpMock
+      .expectOne(`${base}/admin/solicitudes/${solicitud.id}/aprobar`)
+      .flush({ resultado: 'CUENTA_CREADA' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // recarga de la lista + recuento de la campanita
+    httpMock.expectOne(listaUrl).flush([]);
+    httpMock.expectOne(pendientesUrl).flush({});
+    fixture.detectChanges();
+    await fixture.whenStable();
   });
 
   it('SOLICITUD_YA_RESUELTA al aprobar avisa y recarga la lista', async () => {
@@ -147,6 +168,7 @@ describe('AdminSolicitudes', () => {
     await fixture.whenStable();
 
     httpMock.expectOne(listaUrl).flush([]);
+    httpMock.expectOne(pendientesUrl).flush({});
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -172,6 +194,7 @@ describe('AdminSolicitudes', () => {
     await fixture.whenStable();
 
     httpMock.expectOne(listaUrl).flush([]);
+    httpMock.expectOne(pendientesUrl).flush({});
     fixture.detectChanges();
     await fixture.whenStable();
   });
