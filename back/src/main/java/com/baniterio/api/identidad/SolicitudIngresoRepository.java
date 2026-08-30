@@ -13,4 +13,7 @@ public interface SolicitudIngresoRepository extends JpaRepository<SolicitudIngre
 
     /** ¿Ese teléfono ya tiene una solicitud sin resolver? (para no duplicar). */
     boolean existsByTelefonoAndEstado(String telefono, EstadoSolicitud estado);
+
+    /** Nº de solicitudes de una peña en un estado dado (para la campanita de pendientes). */
+    long countByPenaIdAndEstado(Long penaId, EstadoSolicitud estado);
 }
