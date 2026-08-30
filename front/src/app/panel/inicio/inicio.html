@@ -1,9 +1,9 @@
 <span class="font-sans text-sm font-medium tracking-wide text-brand-bright">Robledo del Mazo · Valle del Gévalo</span>
 <h1 class="mt-2 font-display text-3xl font-extrabold leading-tight">
-  ¡Bienvenido de vuelta a la <span class="font-metal text-gold">Bañiterio</span>!
+  ¡Bienvenido al <span class="font-metal text-gold">Bañiterio</span>!
 </h1>
 <p class="mt-3 max-w-2xl text-base leading-relaxed text-muted">
-  Este es tu panel. Desde aquí podrás llevar los miembros, los eventos, las cuentas, el inventario y la ropa de la peña — todavía estamos construyendo cada sección.
+  Aqui podras consultar todo lo relacionado con la peña <span class="font-metal text-gold">Bañiterio</span>, los miembros, los eventos, las cuentas, el inventario y la ropa de la peña...
 </p>
 
 <div class="mt-10 grid gap-5 sm:grid-cols-2">
@@ -15,5 +15,17 @@
       </div>
       <p class="mt-2 text-sm leading-relaxed text-muted">{{ seccion.descripcion }}</p>
     </div>
+  }
+
+  @if (auth.usuarioActual()?.areas?.length) {
+    <a
+      routerLink="/panel/administracion"
+      class="group relative overflow-hidden rounded-2xl border border-outline bg-panel p-6 transition hover:border-gold"
+    >
+      <h2 class="font-display text-lg font-bold transition group-hover:text-gold">Administración</h2>
+      <p class="mt-2 text-sm leading-relaxed text-muted">
+        Solicitudes de acceso y permisos de los miembros de la peña.
+      </p>
+    </a>
   }
 </div>

@@ -7,10 +7,12 @@ import { UsuarioDto } from '../auth/auth.types';
 import { Panel } from './panel';
 
 /**
- * Tests del layout `Panel`: el grupo "Administración" del nav solo aparece si el
- * usuario de la sesión tiene áreas, y cada enlace solo si tiene esa área concreta.
+ * Tests del layout `Panel`. El nav pinta "Inicio" + las secciones "próximamente";
+ * el enlace "Administración" (a `/panel/administracion`) va el último y solo si el
+ * usuario tiene alguna área concedida. Las sub-secciones (Solicitudes / Permisos)
+ * ya no cuelgan del nav: se eligen dentro del índice.
  */
-describe('Panel · visibilidad del nav de administración', () => {
+describe('Panel · nav lateral', () => {
   const usuarioSesion = signal<UsuarioDto | null>(null);
 
   const authFalso: Partial<AuthService> = {
@@ -21,12 +23,16 @@ describe('Panel · visibilidad del nav de administración', () => {
     cerrarSesion: () => {},
   };
 
-  function usuario(areas: string[]): UsuarioDto {
-    return { id: 1, nombre: 'Ada', apellidos: 'Lovelace', mote: null, esSuperadmin: false, rol: 'MIEMBRO', areas };
-  }
-
   function render(areas: string[]): string {
-    usuarioSesion.set(usuario(areas));
+    usuarioSesion.set({
+      id: 1,
+      nombre: 'Ada',
+      apellidos: 'Lovelace',
+      mote: null,
+      esSuperadmin: false,
+      rol: 'MIEMBRO',
+      areas,
+    });
     const fixture = TestBed.createComponent(Panel);
     fixture.detectChanges();
     return (fixture.nativeElement as HTMLElement).textContent ?? '';
@@ -40,21 +46,21 @@ describe('Panel · visibilidad del nav de administración', () => {
     });
   });
 
-  it('usuario sin áreas: no se pinta el grupo "Administración"', () => {
+  it('pinta "Inicio" y las secciones "próximamente"', () => {
     const texto = render([]);
-    expect(texto).not.toContain('Administración');
+    expect(texto).toContain('Inicio');
+    expect(texto).toContain('Miembros');
+    expect(texto).toContain('Eventos');
   });
 
-  it('usuario con ADMIN_SOLICITUDES: enlace "Solicitudes" presente, "Permisos" ausente', () => {
-    const texto = render(['ADMIN_SOLICITUDES']);
-    expect(texto).toContain('Administración');
-    expect(texto).toContain('Solicitudes');
-    expect(texto).not.toContain('Permisos');
+  it('usuario sin áreas: no aparece "Administración" en el nav', () => {
+    expect(render([])).not.toContain('Administración');
   });
 
-  it('usuario con las dos áreas: los dos enlaces de administración presentes', () => {
+  it('usuario con áreas: aparece "Administración" pero no las sub-secciones', () => {
     const texto = render(['ADMIN_SOLICITUDES', 'ADMIN_PERMISOS']);
-    expect(texto).toContain('Solicitudes');
-    expect(texto).toContain('Permisos');
+    expect(texto).toContain('Administración');
+    expect(texto).not.toContain('Solicitudes');
+    expect(texto).not.toContain('Permisos');
   });
 });

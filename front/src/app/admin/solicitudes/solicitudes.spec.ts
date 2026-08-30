@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { SolicitudResumen } from '../admin.types';
 import { AdminSolicitudes } from './solicitudes';
@@ -33,7 +34,7 @@ describe('AdminSolicitudes', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AdminSolicitudes],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(AdminSolicitudes);

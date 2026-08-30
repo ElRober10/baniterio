@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CodigoError } from '../../auth/auth.types';
+import { Volver } from '../../shared/volver/volver';
 import { AdminService } from '../admin.service';
 import { SolicitudResumen } from '../admin.types';
 
@@ -36,6 +37,7 @@ const MENSAJES: Partial<Record<CodigoError, string>> = {
  */
 @Component({
   selector: 'app-admin-solicitudes',
+  imports: [Volver],
   styleUrl: './solicitudes.css',
   templateUrl: './solicitudes.html',
 })

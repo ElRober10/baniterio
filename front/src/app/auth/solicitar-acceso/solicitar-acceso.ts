@@ -3,6 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth.service';
+import { Volver } from '../../shared/volver/volver';
 
 /**
  * Pantalla de "solicitar acceso a la peña". Se llega aquí desde el registro
@@ -28,7 +29,7 @@ interface PrecargaRegistro {
 }
 
 @Component({
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, Volver],
   selector: 'app-solicitar-acceso',
   styleUrl: './solicitar-acceso.css',
   templateUrl: './solicitar-acceso.html',

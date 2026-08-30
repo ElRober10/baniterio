@@ -6,26 +6,15 @@
     </a>
 
     <nav class="flex flex-1 flex-col gap-1 p-4 text-sm font-medium text-muted" aria-label="Navegación de la peña">
-      <a class="rounded-xl px-4 py-2.5 text-muted transition hover:text-ink" routerLink="/panel" routerLinkActive="bg-brand/15 text-ink" [routerLinkActiveOptions]="{ exact: true }">Inicio</a>
+      <a class="rounded-xl px-4 py-2.5 text-muted transition hover:text-gold" routerLink="/panel" routerLinkActive="bg-brand/15 text-ink" [routerLinkActiveOptions]="{ exact: true }">Inicio</a>
       @for (seccion of seccionesPronto; track seccion) {
         <span class="flex items-center justify-between rounded-xl px-4 py-2.5 text-muted/70">
           {{ seccion }}
           <span class="rounded-full bg-surface px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-muted">Pronto</span>
         </span>
       }
-
       @if (auth.usuarioActual()?.areas?.length) {
-        <div class="mt-2 border-t border-outline pt-2">
-          <span class="px-4 text-[0.65rem] font-semibold uppercase tracking-wide text-muted/60">Administración</span>
-          @if (auth.tieneArea('ADMIN_SOLICITUDES')) {
-            <a class="mt-1 block rounded-xl px-4 py-2.5 text-muted transition hover:text-ink"
-               routerLink="/panel/administracion/solicitudes" routerLinkActive="bg-brand/15 text-ink">Solicitudes</a>
-          }
-          @if (auth.tieneArea('ADMIN_PERMISOS')) {
-            <a class="mt-1 block rounded-xl px-4 py-2.5 text-muted transition hover:text-ink"
-               routerLink="/panel/administracion/permisos" routerLinkActive="bg-brand/15 text-ink">Permisos</a>
-          }
-        </div>
+        <a class="rounded-xl px-4 py-2.5 text-muted transition hover:text-gold" routerLink="/panel/administracion" routerLinkActive="bg-brand/15 text-ink">Administración</a>
       }
     </nav>
 
@@ -44,20 +33,12 @@
     </header>
 
     <nav class="flex gap-2 overflow-x-auto border-b border-outline bg-panel px-4 py-3 lg:hidden" aria-label="Navegación de la peña">
-      <a class="shrink-0 rounded-full px-4 py-1.5 text-sm font-medium text-muted transition hover:text-ink" routerLink="/panel" routerLinkActive="bg-brand/15 text-ink" [routerLinkActiveOptions]="{ exact: true }">Inicio</a>
+      <a class="shrink-0 rounded-full px-4 py-1.5 text-sm font-medium text-muted transition hover:text-gold" routerLink="/panel" routerLinkActive="bg-brand/15 text-ink" [routerLinkActiveOptions]="{ exact: true }">Inicio</a>
       @for (seccion of seccionesPronto; track seccion) {
         <span class="shrink-0 rounded-full px-4 py-1.5 text-sm font-medium text-muted/70">{{ seccion }}</span>
       }
-
       @if (auth.usuarioActual()?.areas?.length) {
-        @if (auth.tieneArea('ADMIN_SOLICITUDES')) {
-          <a class="shrink-0 rounded-full px-4 py-1.5 text-sm font-medium text-muted transition hover:text-ink"
-             routerLink="/panel/administracion/solicitudes" routerLinkActive="bg-brand/15 text-ink">Solicitudes</a>
-        }
-        @if (auth.tieneArea('ADMIN_PERMISOS')) {
-          <a class="shrink-0 rounded-full px-4 py-1.5 text-sm font-medium text-muted transition hover:text-ink"
-             routerLink="/panel/administracion/permisos" routerLinkActive="bg-brand/15 text-ink">Permisos</a>
-        }
+        <a class="shrink-0 rounded-full px-4 py-1.5 text-sm font-medium text-muted transition hover:text-gold" routerLink="/panel/administracion" routerLinkActive="bg-brand/15 text-ink">Administración</a>
       }
     </nav>
 

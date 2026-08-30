@@ -3,6 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth.service';
+import { Volver } from '../../shared/volver/volver';
 
 /**
  * Pantalla de registro (alta de cuenta). Componente standalone de Angular.
@@ -21,7 +22,7 @@ import { AuthService } from '../auth.service';
 type Estado = 'idle' | 'enviando' | 'ok' | 'no_autorizado' | 'error';
 
 @Component({
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, Volver],
   selector: 'app-registro',
   styleUrl: './registro.css',
   templateUrl: './registro.html',

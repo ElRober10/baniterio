@@ -3,6 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth.service';
+import { Volver } from '../../shared/volver/volver';
 
 /**
  * Pantalla de login. Componente standalone de Angular.
@@ -20,7 +21,7 @@ import { AuthService } from '../auth.service';
  *   navega a /panel (el token ya lo guardó AuthService).
  */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, Volver],
   selector: 'app-login',
   styleUrl: './login.css',
   templateUrl: './login.html',
