@@ -2,7 +2,9 @@ package com.baniterio.app.ui.admin
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,13 +36,17 @@ fun AdminIndexScreen(
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
     ) {
-        BaniterioWordmark()
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = "← Volver",
-            color = BaniterioColors.muted,
-            modifier = Modifier.clickable { onVolver() },
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            BaniterioWordmark()
+            Text(
+                text = "Volver",
+                color = BaniterioColors.brandBright,
+                modifier = Modifier.clickable { onVolver() },
+            )
+        }
         Spacer(Modifier.height(16.dp))
         Text(
             text = "Administración",
@@ -63,6 +69,12 @@ fun AdminIndexScreen(
                 onClick = { onAbrir(Screen.AdminPermisos) },
             )
             Spacer(Modifier.height(16.dp))
+        }
+        if (areas.none { it == "ADMIN_SOLICITUDES" || it == "ADMIN_PERMISOS" }) {
+            Text(
+                text = "No tienes ninguna sección de administración disponible.",
+                color = BaniterioColors.muted,
+            )
         }
     }
 }

@@ -139,8 +139,10 @@ fun App(deps: Dependencias) {
                     SolicitarAccesoScreen(
                         repo = deps.repo,
                         precarga = datosSolicitud,
-                        onEnviada = { ir(Screen.Login) },
-                        onVolver = { ir(Screen.Registro) },
+                        // Se limpia `datosSolicitud` (lleva la contraseña) del estado
+                        // guardado en cuanto se sale de esta pantalla.
+                        onEnviada = { datosSolicitud = null; ir(Screen.Login) },
+                        onVolver = { datosSolicitud = null; ir(Screen.Registro) },
                     )
                 }
                 is Screen.Panel -> PanelScreen(

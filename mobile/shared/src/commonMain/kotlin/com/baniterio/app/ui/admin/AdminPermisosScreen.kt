@@ -32,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.baniterio.app.data.AdminRepository
+import com.baniterio.app.data.CodigoErrorAdmin
 import com.baniterio.app.data.ResultadoAdmin
 import com.baniterio.app.data.dto.MiembroResumen
 import com.baniterio.app.theme.BaniterioColors
@@ -54,10 +55,17 @@ private sealed interface EstadoMiembros {
 fun AdminPermisosScreen(adminRepo: AdminRepository, miId: Long?, onVolver: () -> Unit) {
     var estado by remember { mutableStateOf<EstadoMiembros>(EstadoMiembros.Cargando) }
     var aviso by remember { mutableStateOf<String?>(null) }
+    // Fila (id de miembro) con una petición en vuelo: mientras tanto se
+    // deshabilitan TODOS los controles de esa fila para no calcular sobre datos
+    // rancios (el PUT /areas reemplaza el conjunto entero). Otras filas siguen
+    // activas.
+    var guardandoId by remember { mutableStateOf<Long?>(null) }
     val scope = rememberCoroutineScope()
 
-    suspend fun cargar() {
-        estado = EstadoMiembros.Cargando
+    // `mostrarCargando = false` desde los manejadores de acción para que la lista
+    // no parpadee a "Cargando…" ni se pierda el scroll al refrescar.
+    suspend fun cargar(mostrarCargando: Boolean = true) {
+        if (mostrarCargando) estado = EstadoMiembros.Cargando
         estado = when (val r = adminRepo.miembros()) {
             is ResultadoAdmin.Exito -> EstadoMiembros.Cargada(r.dato)
             is ResultadoAdmin.Error -> EstadoMiembros.Error(r.mensaje)
@@ -67,50 +75,69 @@ fun AdminPermisosScreen(adminRepo: AdminRepository, miId: Long?, onVolver: () ->
     LaunchedEffect(Unit) { cargar() }
 
     fun ponerRol(m: MiembroResumen, rol: String) {
+        guardandoId = m.id
         scope.launch {
-            when (val r = adminRepo.cambiarRol(m.id, rol)) {
-                is ResultadoAdmin.Exito -> {
-                    aviso = "Cambio guardado."
-                    cargar()
-                }
+            try {
+                when (val r = adminRepo.cambiarRol(m.id, rol)) {
+                    is ResultadoAdmin.Exito -> {
+                        aviso = "Cambio guardado."
+                        cargar(mostrarCargando = false)
+                    }
 
-                is ResultadoAdmin.Error -> {
-                    aviso = r.mensaje
-                    cargar()
+                    is ResultadoAdmin.Error -> {
+                        aviso = if (r.codigo == CodigoErrorAdmin.SIN_PERMISO) {
+                            "Solo un administrador puede nombrar administradores."
+                        } else {
+                            r.mensaje
+                        }
+                        cargar(mostrarCargando = false)
+                    }
                 }
+            } finally {
+                guardandoId = null
             }
         }
     }
 
     fun activar(m: MiembroResumen, activo: Boolean) {
+        guardandoId = m.id
         scope.launch {
-            when (val r = adminRepo.cambiarActivo(m.id, activo)) {
-                is ResultadoAdmin.Exito -> {
-                    aviso = "Cambio guardado."
-                    cargar()
-                }
+            try {
+                when (val r = adminRepo.cambiarActivo(m.id, activo)) {
+                    is ResultadoAdmin.Exito -> {
+                        aviso = "Cambio guardado."
+                        cargar(mostrarCargando = false)
+                    }
 
-                is ResultadoAdmin.Error -> {
-                    aviso = r.mensaje
-                    cargar()
+                    is ResultadoAdmin.Error -> {
+                        aviso = r.mensaje
+                        cargar(mostrarCargando = false)
+                    }
                 }
+            } finally {
+                guardandoId = null
             }
         }
     }
 
     fun alternarArea(m: MiembroResumen, area: String, incluir: Boolean) {
+        guardandoId = m.id
         scope.launch {
-            val nuevas = if (incluir) m.areas + area else m.areas - area
-            when (val r = adminRepo.cambiarAreas(m.id, nuevas)) {
-                is ResultadoAdmin.Exito -> {
-                    aviso = "Cambio guardado."
-                    cargar()
-                }
+            try {
+                val nuevas = if (incluir) m.areas + area else m.areas - area
+                when (val r = adminRepo.cambiarAreas(m.id, nuevas)) {
+                    is ResultadoAdmin.Exito -> {
+                        aviso = "Cambio guardado."
+                        cargar(mostrarCargando = false)
+                    }
 
-                is ResultadoAdmin.Error -> {
-                    aviso = r.mensaje
-                    cargar()
+                    is ResultadoAdmin.Error -> {
+                        aviso = r.mensaje
+                        cargar(mostrarCargando = false)
+                    }
                 }
+            } finally {
+                guardandoId = null
             }
         }
     }
@@ -173,6 +200,7 @@ fun AdminPermisosScreen(adminRepo: AdminRepository, miId: Long?, onVolver: () ->
                     TarjetaMiembro(
                         m = m,
                         esYo = m.id == miId,
+                        guardando = guardandoId == m.id,
                         onRol = { rol -> ponerRol(m, rol) },
                         onActivo = { activo -> activar(m, activo) },
                         onArea = { area, incluir -> alternarArea(m, area, incluir) },
@@ -188,6 +216,7 @@ fun AdminPermisosScreen(adminRepo: AdminRepository, miId: Long?, onVolver: () ->
 private fun TarjetaMiembro(
     m: MiembroResumen,
     esYo: Boolean,
+    guardando: Boolean,
     onRol: (String) -> Unit,
     onActivo: (Boolean) -> Unit,
     onArea: (String, Boolean) -> Unit,
@@ -238,13 +267,13 @@ private fun TarjetaMiembro(
                 selected = m.rol == "ADMIN",
                 onClick = { onRol("ADMIN") },
                 label = { Text("Admin") },
-                enabled = !m.esSuperadmin && !esYo,
+                enabled = !m.esSuperadmin && !esYo && !guardando,
             )
             FilterChip(
                 selected = m.rol == "MIEMBRO",
                 onClick = { onRol("MIEMBRO") },
                 label = { Text("Miembro") },
-                enabled = !m.esSuperadmin && !esYo,
+                enabled = !m.esSuperadmin && !esYo && !guardando,
             )
         }
 
@@ -254,7 +283,7 @@ private fun TarjetaMiembro(
             Switch(
                 checked = m.activo,
                 onCheckedChange = { onActivo(it) },
-                enabled = !m.esSuperadmin && !esYo,
+                enabled = !m.esSuperadmin && !esYo && !guardando,
             )
         }
 
@@ -270,7 +299,7 @@ private fun TarjetaMiembro(
                     Checkbox(
                         checked = clave in m.areas,
                         onCheckedChange = { onArea(clave, it) },
-                        enabled = !esYo,
+                        enabled = !esYo && !guardando,
                     )
                     Text(etiqueta, color = MaterialTheme.colorScheme.onBackground)
                 }

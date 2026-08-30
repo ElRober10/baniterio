@@ -31,7 +31,10 @@ class AdminRepositoryImpl(
 
     /** Adjunta la cabecera Bearer con el token en memoria de [SesionHolder]. */
     private fun HttpRequestBuilder.auth() {
-        header(HttpHeaders.Authorization, "Bearer ${sesion.token}")
+        // Sin token no se manda la cabecera: interpolar `null` produciría un
+        // literal "Bearer null" (pasa en el arranque en frío hacia una pantalla
+        // de admin, antes de que la guardia redirija).
+        sesion.token?.let { header(HttpHeaders.Authorization, "Bearer $it") }
     }
 
     override suspend fun solicitudes(estado: String): ResultadoAdmin<List<SolicitudResumen>> =

@@ -9,6 +9,12 @@ import com.baniterio.app.data.dto.UsuarioResponse
  * móvil re-loguea en cada arranque tras el desbloqueo biométrico.
  */
 class SesionHolder {
+    // `usuario` y `token` son `var` llanos, no `State` de Compose. `App.kt` lee
+    // `deps.repo.usuarioActual` en las ramas Panel/AdminIndex y hoy funciona solo
+    // porque `login()` es la única mutación y siempre precede a esa navegación.
+    // Si en el futuro algo muta `usuario` mientras el Panel está visible (p. ej.
+    // un refrescarYo()), este campo debe pasar a `mutableStateOf` o el nav no se
+    // recompondrá.
     var token: String? = null
     var usuario: UsuarioResponse? = null
 
