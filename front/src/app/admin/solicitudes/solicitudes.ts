@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CodigoError } from '../../auth/auth.types';
 import { Volver } from '../../shared/volver/volver';
+import { AdminAvisosService } from '../admin-avisos.service';
 import { AdminService } from '../admin.service';
 import { SolicitudResumen } from '../admin.types';
 
@@ -43,6 +44,7 @@ const MENSAJES: Partial<Record<CodigoError, string>> = {
 })
 export class AdminSolicitudes implements OnInit {
   private readonly adminService = inject(AdminService);
+  private readonly avisos = inject(AdminAvisosService);
 
   protected readonly solicitudes = signal<SolicitudResumen[]>([]);
   protected readonly estado = signal<'cargando' | 'lista' | 'error'>('cargando');
@@ -76,6 +78,7 @@ export class AdminSolicitudes implements OnInit {
         );
         this.tipoMensaje.set('info');
         this.cargar();
+        this.avisos.refrescar();
       },
       error: (e: HttpErrorResponse) => this.avisarError(e),
     });
@@ -97,6 +100,7 @@ export class AdminSolicitudes implements OnInit {
         this.mensaje.set('Solicitud rechazada. Se ha enviado el correo.');
         this.tipoMensaje.set('info');
         this.cargar();
+        this.avisos.refrescar();
       },
       error: (e: HttpErrorResponse) => this.avisarError(e),
     });
