@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthService } from '../../auth/auth.service';
 import { UsuarioDto } from '../../auth/auth.types';
@@ -49,6 +50,7 @@ describe('AdminPermisos', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        provideRouter([]),
         { provide: AuthService, useValue: authFalso },
       ],
     }).compileComponents();
@@ -72,6 +74,16 @@ describe('AdminPermisos', () => {
     return encontrado;
   }
 
+  /** Como `boton`, pero exige que el texto del botón sea exactamente la etiqueta. */
+  function botonExacto(etiqueta: string): HTMLButtonElement {
+    const botones = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
+    ) as HTMLButtonElement[];
+    const encontrado = botones.find((b) => (b.textContent ?? '').trim() === etiqueta);
+    if (!encontrado) throw new Error(`No hay botón exacto "${etiqueta}"`);
+    return encontrado;
+  }
+
   function checkbox(etiqueta: string): HTMLInputElement {
     const labels = Array.from(
       (fixture.nativeElement as HTMLElement).querySelectorAll('label'),
@@ -91,6 +103,14 @@ describe('AdminPermisos', () => {
     fixture.detectChanges();
   }
 
+  /** Pincha la cabecera de una fila (por el nombre) para desplegar sus controles. */
+  async function abrir(nombre: string): Promise<void> {
+    boton(nombre).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
   it('carga los miembros y los pinta', async () => {
     await iniciarConLista([miembro]);
 
@@ -99,8 +119,58 @@ describe('AdminPermisos', () => {
     expect(texto()).toContain('600000000');
   });
 
+  it('las filas salen contraídas: la cabecera muestra rol pero no los controles', async () => {
+    await iniciarConLista([miembro]);
+
+    expect(texto()).toContain('Miembro');
+    expect(texto()).not.toContain('Zonas del panel');
+    expect(
+      Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')).some((b) =>
+        (b.textContent ?? '').trim().includes('Activo'),
+      ),
+    ).toBe(false);
+  });
+
+  it('al pinchar una fila se despliega y aparecen los controles', async () => {
+    await iniciarConLista([miembro]);
+
+    await abrir('Ada Lovelace');
+
+    expect(texto()).toContain('Zonas del panel');
+    expect(boton('Activo')).toBeTruthy();
+  });
+
+  it('abrir otra fila cierra la anterior (acordeón)', async () => {
+    const otra: MiembroResumen = {
+      ...miembro,
+      id: 9,
+      nombre: 'Grace',
+      apellidos: 'Hopper',
+      mote: null,
+    };
+    await iniciarConLista([miembro, otra]);
+
+    await abrir('Ada Lovelace');
+    expect(texto()).toContain('Zonas del panel');
+
+    await abrir('Grace Hopper');
+    const paneles = (fixture.nativeElement as HTMLElement).querySelectorAll(
+      '[id^="permisos-detalle-"]',
+    );
+    expect(paneles.length).toBe(1);
+    expect(paneles[0].id).toBe('permisos-detalle-9');
+  });
+
+  it('el distintivo "Inactivo" se ve en la fila contraída', async () => {
+    await iniciarConLista([{ ...miembro, activo: false }]);
+
+    expect(texto()).toContain('Inactivo');
+    expect(texto()).not.toContain('Zonas del panel');
+  });
+
   it('ponerRol manda PUT {rol} y recarga la lista', async () => {
     await iniciarConLista([miembro]);
+    await abrir('Ada Lovelace');
 
     boton('Admin').click();
     fixture.detectChanges();
@@ -122,6 +192,7 @@ describe('AdminPermisos', () => {
 
   it('activar manda PUT {activo} y recarga la lista', async () => {
     await iniciarConLista([miembro]);
+    await abrir('Ada Lovelace');
 
     boton('Activo').click();
     fixture.detectChanges();
@@ -143,6 +214,7 @@ describe('AdminPermisos', () => {
 
   it('alternarArea añade el área al array y manda PUT {areas}', async () => {
     await iniciarConLista([miembro]);
+    await abrir('Ada Lovelace');
 
     const cb = checkbox('Permisos');
     expect(cb.checked).toBe(false);
@@ -164,6 +236,7 @@ describe('AdminPermisos', () => {
 
   it('alternarArea quita el área del array y manda PUT {areas}', async () => {
     await iniciarConLista([miembro]);
+    await abrir('Ada Lovelace');
 
     const cb = checkbox('Solicitudes');
     expect(cb.checked).toBe(true);
@@ -185,6 +258,7 @@ describe('AdminPermisos', () => {
 
   it('un error ULTIMO_ADMIN enseña el mensaje y recarga la lista', async () => {
     await iniciarConLista([{ ...miembro, rol: 'ADMIN' }]);
+    await abrir('Ada Lovelace');
 
     boton('Miembro').click();
     fixture.detectChanges();
@@ -205,6 +279,7 @@ describe('AdminPermisos', () => {
 
   it('un cambio correcto confirma con "Cambio guardado." y el aviso sobrevive a la recarga', async () => {
     await iniciarConLista([miembro]);
+    await abrir('Ada Lovelace');
 
     boton('Admin').click();
     fixture.detectChanges();
@@ -234,6 +309,7 @@ describe('AdminPermisos', () => {
       areas: [],
     });
     await iniciarConLista([miembro]);
+    await abrir('Ada Lovelace');
 
     expect(texto()).toContain('No puedes cambiar tus propios permisos aquí.');
     expect(boton('Admin').disabled).toBe(true);
@@ -241,12 +317,13 @@ describe('AdminPermisos', () => {
     expect(checkbox('Solicitudes').disabled).toBe(true);
   });
 
-  it('el superádmin sale con los controles deshabilitados', async () => {
+  it('el superádmin se muestra con rol "Superadmin" y los controles deshabilitados', async () => {
     await iniciarConLista([{ ...miembro, esSuperadmin: true, rol: 'ADMIN', areas: [] }]);
+    expect(texto()).toContain('Superadmin');
 
-    expect(texto()).toContain('Fundadora');
-    expect(boton('Admin').disabled).toBe(true);
-    expect(boton('Activo').disabled).toBe(true);
+    await abrir('Ada Lovelace');
+    expect(botonExacto('Admin').disabled).toBe(true);
+    expect(botonExacto('Activo').disabled).toBe(true);
     expect(checkbox('Solicitudes').disabled).toBe(true);
   });
 
