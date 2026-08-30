@@ -1,7 +1,9 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
 import { Volver } from '../../shared/volver/volver';
+import { AdminAvisosService } from '../admin-avisos.service';
+import { AvisoPendientes } from '../../shared/aviso-pendientes/aviso-pendientes';
 import { AREAS, Area } from '../admin.types';
 
 /** Una sección del panel de administración, con su área, su ruta y el texto que la describe. */
@@ -37,15 +39,20 @@ const SECCIONES_ADMIN: SeccionAdmin[] = [
  */
 @Component({
   selector: 'app-admin-indice',
-  imports: [RouterLink, Volver],
+  imports: [RouterLink, Volver, AvisoPendientes],
   templateUrl: './indice.html',
 })
-export class AdminIndice {
+export class AdminIndice implements OnInit {
   private readonly auth = inject(AuthService);
+  protected readonly avisos = inject(AdminAvisosService);
 
   /** Etiqueta legible de cada área (`AREAS['ADMIN_SOLICITUDES'] === 'Solicitudes'`). */
   protected readonly etiquetas = AREAS;
 
   /** Secciones que este usuario puede abrir, según sus áreas. */
   protected readonly disponibles = SECCIONES_ADMIN.filter((s) => this.auth.tieneArea(s.area));
+
+  ngOnInit(): void {
+    this.avisos.refrescar();
+  }
 }

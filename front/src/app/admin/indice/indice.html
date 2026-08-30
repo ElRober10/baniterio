@@ -19,9 +19,12 @@
           [routerLink]="seccion.ruta"
           class="group relative overflow-hidden rounded-2xl border border-outline bg-panel p-6 transition hover:border-gold"
         >
-          <h2 class="font-display text-lg font-bold transition group-hover:text-gold">
-            {{ etiquetas[seccion.area] }}
-          </h2>
+          <div class="flex items-center justify-between gap-2">
+            <h2 class="font-display text-lg font-bold transition group-hover:text-gold">
+              {{ etiquetas[seccion.area] }}
+            </h2>
+            <app-aviso-pendientes [cuenta]="avisos.pendientes()[seccion.area] ?? 0" />
+          </div>
           <p class="mt-2 text-sm leading-relaxed text-muted">{{ seccion.descripcion }}</p>
         </a>
       }
