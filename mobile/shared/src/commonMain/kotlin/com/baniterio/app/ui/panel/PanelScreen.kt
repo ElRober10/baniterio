@@ -18,13 +18,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.baniterio.app.model.Seccion
 import com.baniterio.app.model.seccionesPanel
 import com.baniterio.app.nav.Screen
 import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.theme.BaniterioWordmark
+import com.baniterio.app.theme.baniterioFonts
 
 @Composable
 fun PanelScreen(
@@ -54,14 +58,17 @@ fun PanelScreen(
         }
         item {
             Text(
-                text = "¡Bienvenido de vuelta a la Bañiterio!",
+                text = textoConMarca("¡Bienvenido al ", "!"),
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onBackground,
             )
         }
         item {
             Text(
-                text = "Desde aquí podrás llevar la historia, los miembros, los eventos, las cuentas, el inventario y la ropa de la peña.",
+                text = textoConMarca(
+                    "Aqui podras consultar todo lo relacionado con la peña ",
+                    ", los miembros, los eventos, las cuentas, el inventario y la ropa de la peña...",
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = BaniterioColors.muted,
             )
@@ -70,6 +77,19 @@ fun PanelScreen(
             TarjetaSeccion(seccion = seccion, onClick = { seccion.destino?.let(onAbrirSeccion) })
         }
     }
+}
+
+/**
+ * Texto con la palabra "Bañiterio" resaltada en dorado y en la tipografía Metal
+ * Mania, igual que en el front web (`<span class="font-metal text-gold">`).
+ */
+@Composable
+private fun textoConMarca(prefijo: String, sufijo: String) = buildAnnotatedString {
+    append(prefijo)
+    withStyle(SpanStyle(fontFamily = baniterioFonts().metal, color = BaniterioColors.gold)) {
+        append("Bañiterio")
+    }
+    append(sufijo)
 }
 
 @Composable
