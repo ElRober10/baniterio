@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { AuthService } from '../../auth/auth.service';
 import { CodigoError } from '../../auth/auth.types';
+import { Volver } from '../../shared/volver/volver';
 import { AdminService } from '../admin.service';
 import { AREAS, MiembroResumen, Rol } from '../admin.types';
 
@@ -44,9 +45,15 @@ const MENSAJES: Partial<Record<CodigoError, string>> = {
  * La fila del propio usuario sale con todos los controles deshabilitados: el
  * backend ya bloquea auto-degradarse / auto-desactivarse, y así cerramos también
  * el hueco de las áreas ("no te puedes dejar fuera del panel tú mismo").
+ *
+ * Cada fila se pinta contraída (nombre + teléfono + rol, y "Inactivo" si aplica).
+ * `abierto` guarda el id de la única fila desplegada —acordeón—: al abrir otra se
+ * cierra la anterior. La recarga tras una acción no toca `abierto`, así el panel
+ * que estabas usando sigue abierto al volver.
  */
 @Component({
   selector: 'app-admin-permisos',
+  imports: [Volver],
   styleUrl: './permisos.css',
   templateUrl: './permisos.html',
 })
@@ -62,8 +69,22 @@ export class AdminPermisos implements OnInit {
   /** `[clave, etiqueta][]` de las áreas conocidas, para pintar los checkboxes. */
   protected readonly areasConocidas = Object.entries(AREAS);
 
+  /** Id del miembro con el panel desplegado, o `null` si están todos contraídos. */
+  protected readonly abierto = signal<number | null>(null);
+
   ngOnInit(): void {
     this.cargar(true);
+  }
+
+  /** Despliega la fila indicada y cierra cualquier otra; si ya estaba abierta, la cierra. */
+  protected alternar(id: number): void {
+    this.abierto.set(this.abierto() === id ? null : id);
+  }
+
+  /** Rol legible para la cabecera: el superadmin manda sobre el rol de la peña. */
+  protected etiquetaRol(m: MiembroResumen): string {
+    if (m.esSuperadmin) return 'Superadmin';
+    return m.rol === 'ADMIN' ? 'Admin' : 'Miembro';
   }
 
   /**

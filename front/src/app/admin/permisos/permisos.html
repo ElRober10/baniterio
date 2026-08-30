@@ -1,4 +1,8 @@
 <section class="mx-auto w-full max-w-3xl">
+  <div class="mb-6">
+    <app-volver destino="/panel/administracion" />
+  </div>
+
   <h1 class="font-display text-2xl font-extrabold leading-tight">Permisos de la peña</h1>
   <p class="mt-2 text-sm leading-relaxed text-muted">
     Cada miembro: su rol, si está activo y a qué zonas del panel puede entrar.
@@ -41,112 +45,146 @@
             No hay miembros en la peña.
           </p>
         } @else {
-          <ul class="flex flex-col gap-5">
+          <ul class="flex flex-col gap-3">
             @for (m of miembros(); track m.id) {
-              <li class="rounded-2xl border border-outline bg-panel p-6">
-                <div class="flex flex-wrap items-center gap-2">
-                  <h2 class="font-display text-lg font-bold">{{ m.nombre }} {{ m.apellidos }}</h2>
-                  @if (m.mote) {
-                    <span class="text-sm italic text-muted">«{{ m.mote }}»</span>
-                  }
-                  <span
-                    class="rounded-full bg-surface px-2.5 py-1 text-xs font-semibold tracking-wide text-muted"
+              <li class="overflow-hidden rounded-2xl border border-outline bg-panel">
+                <h2>
+                  <button
+                    type="button"
+                    [attr.aria-expanded]="abierto() === m.id"
+                    [attr.aria-controls]="'permisos-detalle-' + m.id"
+                    (click)="alternar(m.id)"
+                    class="flex w-full flex-wrap items-center gap-2 p-5 text-left transition hover:bg-surface/40"
                   >
-                    {{ m.telefono }}
-                  </span>
-                  @if (m.esSuperadmin) {
+                    <span class="font-display text-lg font-bold"
+                      >{{ m.nombre }} {{ m.apellidos }}</span
+                    >
+                    @if (m.mote) {
+                      <span class="text-sm italic text-muted">«{{ m.mote }}»</span>
+                    }
+                    <span
+                      class="rounded-full bg-surface px-2.5 py-1 text-xs font-semibold tracking-wide text-muted"
+                    >
+                      {{ m.telefono }}
+                    </span>
                     <span
                       class="rounded-full border border-brand-bright/30 bg-brand/15 px-2.5 py-1 text-xs font-semibold tracking-wide text-gold-soft"
                     >
-                      Fundadora · acceso total
+                      {{ etiquetaRol(m) }}
                     </span>
-                  }
-                </div>
-
-                @if (m.id === auth.usuarioActual()?.id) {
-                  <p class="mt-2 text-xs text-muted">No puedes cambiar tus propios permisos aquí.</p>
-                }
-
-                <div class="mt-5 flex flex-col gap-4">
-                  <div class="flex flex-wrap items-center gap-3">
-                    <span class="text-xs font-semibold uppercase tracking-wide text-brand-bright"
-                      >Rol</span
-                    >
-                    <div class="inline-flex overflow-hidden rounded-xl border border-outline">
-                      <button
-                        type="button"
-                        [disabled]="m.esSuperadmin || m.id === auth.usuarioActual()?.id"
-                        (click)="ponerRol(m, 'ADMIN')"
-                        [class]="
-                          m.rol === 'ADMIN'
-                            ? 'bg-brand px-4 py-2 text-sm font-bold text-gold'
-                            : 'bg-surface px-4 py-2 text-sm font-medium text-muted transition hover:text-ink disabled:opacity-50'
-                        "
+                    @if (!m.activo) {
+                      <span
+                        class="rounded-full border border-red-400/40 bg-red-400/10 px-2.5 py-1 text-xs font-semibold tracking-wide text-red-300"
                       >
-                        Admin
-                      </button>
-                      <button
-                        type="button"
-                        [disabled]="m.esSuperadmin || m.id === auth.usuarioActual()?.id"
-                        (click)="ponerRol(m, 'MIEMBRO')"
-                        [class]="
-                          m.rol === 'MIEMBRO'
-                            ? 'bg-brand px-4 py-2 text-sm font-bold text-gold'
-                            : 'bg-surface px-4 py-2 text-sm font-medium text-muted transition hover:text-ink disabled:opacity-50'
-                        "
-                      >
-                        Miembro
-                      </button>
-                    </div>
-                  </div>
-
-                  <div class="flex flex-wrap items-center gap-3">
-                    <span class="text-xs font-semibold uppercase tracking-wide text-brand-bright"
-                      >Alta</span
-                    >
-                    <button
-                      type="button"
-                      [disabled]="m.esSuperadmin || m.id === auth.usuarioActual()?.id"
-                      (click)="activar(m, !m.activo)"
-                      [class]="
-                        m.activo
-                          ? 'rounded-xl border border-outline bg-surface px-4 py-2 text-sm font-medium text-ink transition hover:border-red-400/50 hover:text-red-300 disabled:opacity-50'
-                          : 'rounded-xl border border-red-400/40 bg-red-400/10 px-4 py-2 text-sm font-medium text-red-300 transition hover:border-gold hover:text-gold disabled:opacity-50'
-                      "
-                    >
-                      {{ m.activo ? 'Activo' : 'Inactivo' }}
-                    </button>
-                  </div>
-
-                  <div class="flex flex-col gap-2">
-                    <span class="text-xs font-semibold uppercase tracking-wide text-brand-bright"
-                      >Zonas del panel</span
-                    >
-                    <div class="flex flex-wrap gap-4">
-                      @for (par of areasConocidas; track par[0]) {
-                        <label class="inline-flex items-center gap-2 text-sm text-ink">
-                          <input
-                            type="checkbox"
-                            class="h-4 w-4 rounded border-outline accent-brand-bright disabled:opacity-50"
-                            [checked]="
-                              m.areas.includes(par[0]) || m.rol === 'ADMIN' || m.esSuperadmin
-                            "
-                            [disabled]="
-                              m.rol === 'ADMIN' ||
-                              m.esSuperadmin ||
-                              m.id === auth.usuarioActual()?.id
-                            "
-                            (change)="alternarArea(m, par[0], $any($event.target).checked)"
-                          />
-                          {{ par[1] }}
-                        </label>
-                      }
-                    </div>
-                    @if (m.rol === 'ADMIN' || m.esSuperadmin) {
-                      <p class="text-xs text-muted">Acceso total por rol.</p>
+                        Inactivo
+                      </span>
                     }
+                    <span
+                      aria-hidden="true"
+                      class="ml-auto text-muted transition-transform"
+                      [class.rotate-180]="abierto() === m.id"
+                    >
+                      ▾
+                    </span>
+                  </button>
+                </h2>
+
+                @if (abierto() === m.id) {
+                  <div
+                    [id]="'permisos-detalle-' + m.id"
+                    class="border-t border-outline px-5 pb-6 pt-5"
+                  >
+                    @if (m.id === auth.usuarioActual()?.id) {
+                      <p class="mb-4 text-xs text-muted">
+                        No puedes cambiar tus propios permisos aquí.
+                      </p>
+                    }
+
+                    <div class="flex flex-col gap-4">
+                      <div class="flex flex-wrap items-center gap-3">
+                        <span
+                          class="text-xs font-semibold uppercase tracking-wide text-brand-bright"
+                          >Rol</span
+                        >
+                        <div class="inline-flex overflow-hidden rounded-xl border border-outline">
+                          <button
+                            type="button"
+                            [disabled]="m.esSuperadmin || m.id === auth.usuarioActual()?.id"
+                            (click)="ponerRol(m, 'ADMIN')"
+                            [class]="
+                              m.rol === 'ADMIN'
+                                ? 'bg-brand px-4 py-2 text-sm font-bold text-gold'
+                                : 'bg-surface px-4 py-2 text-sm font-medium text-muted transition hover:text-ink disabled:opacity-50'
+                            "
+                          >
+                            Admin
+                          </button>
+                          <button
+                            type="button"
+                            [disabled]="m.esSuperadmin || m.id === auth.usuarioActual()?.id"
+                            (click)="ponerRol(m, 'MIEMBRO')"
+                            [class]="
+                              m.rol === 'MIEMBRO'
+                                ? 'bg-brand px-4 py-2 text-sm font-bold text-gold'
+                                : 'bg-surface px-4 py-2 text-sm font-medium text-muted transition hover:text-ink disabled:opacity-50'
+                            "
+                          >
+                            Miembro
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="flex flex-wrap items-center gap-3">
+                        <span
+                          class="text-xs font-semibold uppercase tracking-wide text-brand-bright"
+                          >Alta</span
+                        >
+                        <button
+                          type="button"
+                          [disabled]="m.esSuperadmin || m.id === auth.usuarioActual()?.id"
+                          (click)="activar(m, !m.activo)"
+                          [class]="
+                            m.activo
+                              ? 'rounded-xl border border-outline bg-surface px-4 py-2 text-sm font-medium text-ink transition hover:border-red-400/50 hover:text-red-300 disabled:opacity-50'
+                              : 'rounded-xl border border-red-400/40 bg-red-400/10 px-4 py-2 text-sm font-medium text-red-300 transition hover:border-gold hover:text-gold disabled:opacity-50'
+                          "
+                        >
+                          {{ m.activo ? 'Activo' : 'Inactivo' }}
+                        </button>
+                      </div>
+
+                      <div class="flex flex-col gap-2">
+                        <span
+                          class="text-xs font-semibold uppercase tracking-wide text-brand-bright"
+                          >Zonas del panel</span
+                        >
+                        <div class="flex flex-wrap gap-4">
+                          @for (par of areasConocidas; track par[0]) {
+                            <label class="inline-flex items-center gap-2 text-sm text-ink">
+                              <input
+                                type="checkbox"
+                                class="h-4 w-4 rounded border-outline accent-brand-bright disabled:opacity-50"
+                                [checked]="
+                                  m.areas.includes(par[0]) || m.rol === 'ADMIN' || m.esSuperadmin
+                                "
+                                [disabled]="
+                                  m.rol === 'ADMIN' ||
+                                  m.esSuperadmin ||
+                                  m.id === auth.usuarioActual()?.id
+                                "
+                                (change)="alternarArea(m, par[0], $any($event.target).checked)"
+                              />
+                              {{ par[1] }}
+                            </label>
+                          }
+                        </div>
+                        @if (m.rol === 'ADMIN' || m.esSuperadmin) {
+                          <p class="text-xs text-muted">Acceso total por rol.</p>
+                        }
+                      </div>
+                    </div>
                   </div>
-                </div>
+                }
               </li>
             }
           </ul>
