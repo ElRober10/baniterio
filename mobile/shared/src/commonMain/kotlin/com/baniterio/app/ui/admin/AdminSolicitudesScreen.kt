@@ -52,11 +52,14 @@ fun AdminSolicitudesScreen(adminRepo: AdminRepository, onVolver: () -> Unit) {
     var estado by remember { mutableStateOf<EstadoLista>(EstadoLista.Cargando) }
     var aviso by remember { mutableStateOf<String?>(null) }
     var rechazandoId by remember { mutableStateOf<Long?>(null) }
+    var rechazando by remember { mutableStateOf(false) }
     var motivoRechazo by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
-    suspend fun cargar() {
-        estado = EstadoLista.Cargando
+    // `mostrarCargando = false` desde los manejadores de acción para que la lista
+    // actual no parpadee a "Cargando…" ni se pierda el scroll al refrescar.
+    suspend fun cargar(mostrarCargando: Boolean = true) {
+        if (mostrarCargando) estado = EstadoLista.Cargando
         estado = when (val r = adminRepo.solicitudes()) {
             is ResultadoAdmin.Exito -> EstadoLista.Cargada(r.dato)
             is ResultadoAdmin.Error -> EstadoLista.Error(r.mensaje)
@@ -74,30 +77,35 @@ fun AdminSolicitudesScreen(adminRepo: AdminRepository, onVolver: () -> Unit) {
                     } else {
                         "Teléfono autorizado y correo enviado."
                     }
-                    cargar()
+                    cargar(mostrarCargando = false)
                 }
 
                 is ResultadoAdmin.Error -> {
                     aviso = r.mensaje
-                    if (r.codigo == CodigoErrorAdmin.SOLICITUD_YA_RESUELTA) cargar()
+                    if (r.codigo == CodigoErrorAdmin.SOLICITUD_YA_RESUELTA) cargar(mostrarCargando = false)
                 }
             }
         }
     }
 
     fun confirmarRechazo(id: Long) {
+        rechazando = true
         scope.launch {
-            when (val r = adminRepo.rechazar(id, motivoRechazo.ifBlank { null })) {
-                is ResultadoAdmin.Exito -> {
-                    rechazandoId = null
-                    aviso = "Solicitud rechazada."
-                    cargar()
-                }
+            try {
+                when (val r = adminRepo.rechazar(id, motivoRechazo.ifBlank { null })) {
+                    is ResultadoAdmin.Exito -> {
+                        rechazandoId = null
+                        aviso = "Solicitud rechazada."
+                        cargar(mostrarCargando = false)
+                    }
 
-                is ResultadoAdmin.Error -> {
-                    aviso = r.mensaje
-                    rechazandoId = null
+                    is ResultadoAdmin.Error -> {
+                        aviso = r.mensaje
+                        rechazandoId = null
+                    }
                 }
+            } finally {
+                rechazando = false
             }
         }
     }
@@ -191,7 +199,10 @@ fun AdminSolicitudesScreen(adminRepo: AdminRepository, onVolver: () -> Unit) {
                 )
             },
             confirmButton = {
-                TextButton(onClick = { confirmarRechazo(idRechazo) }) {
+                TextButton(
+                    onClick = { confirmarRechazo(idRechazo) },
+                    enabled = !rechazando,
+                ) {
                     Text("Rechazar")
                 }
             },
