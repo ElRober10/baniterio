@@ -126,14 +126,15 @@ public class AdminService {
     @Transactional(readOnly = true)
     public Map<AreaProtegida, Long> pendientesPorArea(Long usuarioId) {
         Set<AreaProtegida> mias = servicioPermisos.areasDe(usuarioId);
+        Long penaId = penaId();
         Map<AreaProtegida, Long> resultado = new EnumMap<>(AreaProtegida.class);
         for (ContadorPendientes contador : contadores) {
             if (!mias.contains(contador.area())) {
                 continue;
             }
-            long n = contador.contar();
+            long n = contador.contar(penaId);
             if (n > 0) {
-                resultado.put(contador.area(), n);
+                resultado.merge(contador.area(), n, Long::sum);
             }
         }
         return resultado;

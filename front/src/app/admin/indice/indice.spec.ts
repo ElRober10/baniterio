@@ -1,8 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
+import { UsuarioDto } from '../../auth/auth.types';
 import { environment } from '../../../environments/environment';
 import { PendientesPorArea } from '../admin.types';
 import { AdminIndice } from './indice';
@@ -14,8 +16,20 @@ import { AdminIndice } from './indice';
  */
 describe('AdminIndice · tarjetas por área', () => {
   let areas: string[] = [];
+  // Sesión activa: `AdminAvisosService` inyecta `AuthService` y vacía la
+  // campanita cuando `usuarioActual()` es falsy, así que el fake debe exponerlo.
+  const usuarioSesion = signal<UsuarioDto | null>({
+    id: 1,
+    nombre: 'Ada',
+    apellidos: 'Lovelace',
+    mote: null,
+    esSuperadmin: false,
+    rol: 'MIEMBRO',
+    areas: [],
+  });
   const authFalso: Partial<AuthService> = {
     tieneArea: (area: string) => areas.includes(area),
+    usuarioActual: usuarioSesion,
   };
   const pendientesUrl = `${environment.apiBaseUrl}/admin/pendientes`;
 
@@ -60,6 +74,7 @@ describe('AdminIndice · tarjetas por área', () => {
 
   it('la tarjeta de un área con pendientes muestra el número; la de 0 no', () => {
     const el = render(['ADMIN_SOLICITUDES', 'ADMIN_PERMISOS'], { ADMIN_SOLICITUDES: 4 });
+    expect(el.textContent).toContain('Permisos');
     const status = el.querySelectorAll('[role="status"]');
     expect(status.length).toBe(1);
     expect(status[0].textContent).toContain('4');

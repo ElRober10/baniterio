@@ -58,17 +58,18 @@ class SolicitudesPendientesContadorIT extends IntegrationTest {
 
     @Test
     void contar_sube_al_crear_una_pendiente_y_baja_al_aprobarla() {
-        long antes = contador.contar();
+        Long penaId = penas.findBySlug("baniterio").orElseThrow().getId();
+        long antes = contador.contar(penaId);
 
         Long id = crearSolicitudPendiente();
-        assertThat(contador.contar()).isEqualTo(antes + 1);
+        assertThat(contador.contar(penaId)).isEqualTo(antes + 1);
 
         String admin = tokenAdmin();
         http.post().uri("/api/v1/admin/solicitudes/" + id + "/aprobar")
                 .header("Authorization", "Bearer " + admin)
                 .exchange().expectStatus().isOk();
 
-        assertThat(contador.contar()).isEqualTo(antes);
+        assertThat(contador.contar(penaId)).isEqualTo(antes);
     }
 
     private String telefonoLibre() {

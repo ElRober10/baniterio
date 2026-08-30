@@ -2,13 +2,17 @@ package com.baniterio.api.admin;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import com.baniterio.api.auth.ServicioPermisos;
 import com.baniterio.api.identidad.AreaProtegida;
+import com.baniterio.api.identidad.Pena;
+import com.baniterio.api.identidad.PenaRepository;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -20,16 +24,21 @@ import static org.mockito.Mockito.when;
 class AdminServiceTest {
 
     private final ServicioPermisos servicioPermisos = mock(ServicioPermisos.class);
+    private final PenaRepository penas = mock(PenaRepository.class);
+
+    {
+        when(penas.findBySlug("baniterio")).thenReturn(Optional.of(Pena.builder().id(1L).build()));
+    }
 
     private ContadorPendientes contador(AreaProtegida area, long n) {
         ContadorPendientes c = mock(ContadorPendientes.class);
         when(c.area()).thenReturn(area);
-        when(c.contar()).thenReturn(n);
+        when(c.contar(anyLong())).thenReturn(n);
         return c;
     }
 
     private AdminService servicioCon(List<ContadorPendientes> contadores) {
-        return new AdminService(null, null, null, null, null, null, servicioPermisos, null, contadores);
+        return new AdminService(null, null, null, null, penas, null, servicioPermisos, null, contadores);
     }
 
     @Test
