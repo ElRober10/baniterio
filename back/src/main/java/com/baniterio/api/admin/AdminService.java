@@ -2,8 +2,11 @@ package com.baniterio.api.admin;
 
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import com.baniterio.api.admin.dto.AprobarResponse;
 import com.baniterio.api.admin.dto.MiembroResumen;
@@ -69,12 +72,14 @@ public class AdminService {
     private final PermisoAreaRepository permisos;
     private final ServicioPermisos servicioPermisos;
     private final ApplicationEventPublisher publisher;
+    private final List<ContadorPendientes> contadores;
 
     public AdminService(SolicitudIngresoRepository solicitudes, UsuarioRepository usuarios,
                         MembresiaRepository membresias, TelefonoAutorizadoRepository telefonos,
                         PenaRepository penas, PermisoAreaRepository permisos,
                         ServicioPermisos servicioPermisos,
-                        ApplicationEventPublisher publisher) {
+                        ApplicationEventPublisher publisher,
+                        List<ContadorPendientes> contadores) {
         this.solicitudes = solicitudes;
         this.usuarios = usuarios;
         this.membresias = membresias;
@@ -83,6 +88,7 @@ public class AdminService {
         this.permisos = permisos;
         this.servicioPermisos = servicioPermisos;
         this.publisher = publisher;
+        this.contadores = contadores;
     }
 
     /** Id de la peña piloto. Si falta la siembra (V6), es un fallo de arranque legítimo (500). */
@@ -110,6 +116,27 @@ public class AdminService {
                         s.getTelefono(), s.getEmail(), s.getMotivo(), s.getRelacion(), s.getConocidos(),
                         s.getPasswordHash() != null, s.getEstado().name(), s.getCreatedAt()))
                 .toList();
+    }
+
+    /**
+     * Cuántas cosas sin atender tiene el usuario en cada área del panel a la que
+     * puede acceder. Solo aparecen las áreas con al menos un pendiente. Mapa
+     * vacío si el usuario no tiene ninguna área o no hay nada que atender.
+     */
+    @Transactional(readOnly = true)
+    public Map<AreaProtegida, Long> pendientesPorArea(Long usuarioId) {
+        Set<AreaProtegida> mias = servicioPermisos.areasDe(usuarioId);
+        Map<AreaProtegida, Long> resultado = new EnumMap<>(AreaProtegida.class);
+        for (ContadorPendientes contador : contadores) {
+            if (!mias.contains(contador.area())) {
+                continue;
+            }
+            long n = contador.contar();
+            if (n > 0) {
+                resultado.put(contador.area(), n);
+            }
+        }
+        return resultado;
     }
 
     @Transactional
