@@ -56,3 +56,10 @@ export const AREAS: Record<Area, string> = {
   ADMIN_SOLICITUDES: 'Solicitudes',
   ADMIN_PERMISOS: 'Permisos',
 };
+
+/**
+ * Cuántas cosas sin atender tiene el usuario en cada área del panel. La clave es
+ * la misma que viaja en `usuario.areas`; falta = 0. Lo devuelve
+ * `GET /api/v1/admin/pendientes`.
+ */
+export type PendientesPorArea = Partial<Record<Area, number>>;
