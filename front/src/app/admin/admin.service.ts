@@ -5,10 +5,15 @@ import { environment } from '../../environments/environment';
 import { AprobarResultado, MiembroResumen, Rol, SolicitudResumen } from './admin.types';
 
 /**
- * Único sitio del front que habla con los endpoints /api/v1/admin/* (panel de
- * administración). Un método por endpoint; los componentes de /panel/administracion
- * se suscriben. No maneja errores: los deja propagar para que cada pantalla
- * decida qué mensaje enseñar según el `codigo` que traiga el backend.
+ * Acciones del panel de administración contra /api/v1/admin/* (listar y resolver
+ * solicitudes, gestionar miembros). Un método por endpoint; los componentes de
+ * /panel/administracion se suscriben. No maneja errores: los deja propagar para
+ * que cada pantalla decida qué mensaje enseñar según el `codigo` que traiga el
+ * backend.
+ *
+ * <p>El recuento de la campanita (`GET /admin/pendientes`) NO pasa por aquí: lo
+ * pide `AdminAvisosService` directamente, porque es estado compartido con signal
+ * y no una acción puntual de pantalla.
  */
 @Injectable({ providedIn: 'root' })
 export class AdminService {
@@ -17,7 +22,9 @@ export class AdminService {
 
   /** Solicitudes de ingreso filtradas por estado (por defecto, las pendientes). */
   listarSolicitudes(estado = 'PENDIENTE'): Observable<SolicitudResumen[]> {
-    return this.http.get<SolicitudResumen[]>(`${this.base}/admin/solicitudes`, { params: { estado } });
+    return this.http.get<SolicitudResumen[]>(`${this.base}/admin/solicitudes`, {
+      params: { estado },
+    });
   }
 
   /** Aprueba una solicitud. El backend responde qué hizo (crear cuenta o solo autorizar el teléfono). */

@@ -79,6 +79,7 @@ describe('PanelInicio · tarjeta de administración', () => {
 
     const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(texto).toContain('Administración');
+    expect(texto).toContain('Miembros');
     const status = (fixture.nativeElement as HTMLElement).querySelector('[role="status"]');
     expect(status?.textContent).toContain('2');
   });

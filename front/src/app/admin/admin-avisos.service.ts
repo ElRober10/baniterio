@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { AuthService } from '../auth/auth.service';
 import { environment } from '../../environments/environment';
 import { PendientesPorArea } from './admin.types';
 
@@ -15,9 +16,21 @@ import { PendientesPorArea } from './admin.types';
 @Injectable({ providedIn: 'root' })
 export class AdminAvisosService {
   private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthService);
   private readonly base = environment.apiBaseUrl;
 
   private readonly _pendientes = signal<PendientesPorArea>({});
+
+  constructor() {
+    // Al cerrar sesión, vacía la campanita: si otra persona entra en la misma
+    // pestaña no debe ver el recuento de la sesión anterior hasta el próximo
+    // `refrescar()`.
+    effect(() => {
+      if (!this.auth.usuarioActual()) {
+        this._pendientes.set({});
+      }
+    });
+  }
 
   /** Pendientes por área. Área ausente = 0. */
   readonly pendientes = this._pendientes.asReadonly();

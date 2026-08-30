@@ -31,6 +31,11 @@ import static org.springframework.http.HttpHeaders.AUTHORIZATION;
  * de que un endpoint admin nuevo se olvide de llamar a {@code exigirArea}.
  * Los cuerpos de los {@code PUT} se envían válidos a propósito: si no, saltaría
  * la validación de bean (400) antes de llegar a la comprobación de permiso.
+ *
+ * <p><b>Excepción deliberada:</b> {@code GET /api/v1/admin/pendientes} NO está en
+ * {@code RUTAS} y no lleva {@code exigirArea}: se autofiltra a las áreas del
+ * usuario y devuelve {@code 200 {}} a quien no tiene ninguna. Su contrato se
+ * prueba en {@link AdminPendientesIT}.
  */
 class AdminAutorizacionIT extends IntegrationTest {
 
