@@ -1,6 +1,7 @@
 package com.baniterio.api.admin;
 
 import java.util.List;
+import java.util.Map;
 
 import com.baniterio.api.admin.dto.ActivoRequest;
 import com.baniterio.api.admin.dto.AprobarResponse;
@@ -109,5 +110,17 @@ public class AdminController {
             @Valid @RequestBody AreasRequest req) {
         exigirArea(principal, AreaProtegida.ADMIN_PERMISOS);
         adminService.reemplazarAreas(id, principal.id(), req.areas());
+    }
+
+    /**
+     * Cuántas cosas sin atender tiene quien pregunta en cada área del panel.
+     * Se autofiltra a sus áreas (no lleva {@code exigirArea}): sin áreas → {}.
+     */
+    @GetMapping("/pendientes")
+    public Map<AreaProtegida, Long> pendientes(@AuthenticationPrincipal UsuarioPrincipal principal) {
+        if (principal == null) {
+            return Map.of();
+        }
+        return adminService.pendientesPorArea(principal.id());
     }
 }
