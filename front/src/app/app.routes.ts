@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { areaGuard } from './admin/area.guard';
+import { AdminIndice } from './admin/indice/indice';
 import { AdminPermisos } from './admin/permisos/permisos';
 import { AdminSolicitudes } from './admin/solicitudes/solicitudes';
 import { authGuard, invitadoGuard } from './auth/auth.guard';
@@ -23,6 +24,9 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: '', component: PanelInicio },
+      // Índice de administración: sin guard (cualquier miembro lo abre); solo
+      // pinta las secciones para las que tiene área.
+      { path: 'administracion', component: AdminIndice },
       // administracion/* → protegidas además por areaGuard (permiso concreto del panel).
       {
         path: 'administracion/solicitudes',

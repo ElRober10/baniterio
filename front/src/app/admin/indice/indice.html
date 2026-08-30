@@ -1,0 +1,30 @@
+<section class="mx-auto w-full max-w-5xl">
+  <div class="mb-6">
+    <app-volver destino="/panel" />
+  </div>
+
+  <h1 class="font-display text-2xl font-extrabold leading-tight">Administración</h1>
+  <p class="mt-2 text-sm leading-relaxed text-muted">
+    Herramientas de gestión de la peña. Solo ves las secciones para las que tienes permiso.
+  </p>
+
+  @if (disponibles.length === 0) {
+    <p class="mt-8 rounded-2xl border border-outline bg-panel p-6 text-sm text-muted">
+      No tienes ninguna sección de administración disponible.
+    </p>
+  } @else {
+    <div class="mt-8 grid gap-5 sm:grid-cols-2">
+      @for (seccion of disponibles; track seccion.area) {
+        <a
+          [routerLink]="seccion.ruta"
+          class="group relative overflow-hidden rounded-2xl border border-outline bg-panel p-6 transition hover:border-gold"
+        >
+          <h2 class="font-display text-lg font-bold transition group-hover:text-gold">
+            {{ etiquetas[seccion.area] }}
+          </h2>
+          <p class="mt-2 text-sm leading-relaxed text-muted">{{ seccion.descripcion }}</p>
+        </a>
+      }
+    </div>
+  }
+</section>
