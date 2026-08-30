@@ -63,6 +63,10 @@ public interface ContadorPendientes {
 }
 ```
 
+> **Nota post-revisión (2026-08-31):** la firma final es `long contar(Long penaId)`.
+> `AdminService.pendientesPorArea` resuelve el `penaId` una vez y lo pasa a cada
+> contador, para no repetir la resolución por slug en cada implementación.
+
 **Implementación hoy** (`back/.../admin/SolicitudesPendientesContador.java`,
 `@Component`):
 - `area()` → `AreaProtegida.ADMIN_SOLICITUDES`.
