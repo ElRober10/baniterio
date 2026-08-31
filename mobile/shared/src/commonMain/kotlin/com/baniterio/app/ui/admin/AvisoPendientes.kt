@@ -15,8 +15,8 @@ import com.baniterio.app.theme.BaniterioColors
 /**
  * Insignia "tienes N cosas sin atender". Presentacional: quien la usa le pasa la
  * [cuenta]. Con 0 o menos no pinta nada — el aviso solo existe cuando hay
- * trabajo. Más de 99 se muestra como "99+". Es el equivalente de
- * `<app-aviso-pendientes>` del front web.
+ * trabajo. Más de 99 se muestra como "99+". Globo dorado sólido con texto
+ * oscuro para que salte a la vista, igual que `<app-aviso-pendientes>` en web.
  */
 @Composable
 fun AvisoPendientes(cuenta: Int, modifier: Modifier = Modifier) {
@@ -24,11 +24,11 @@ fun AvisoPendientes(cuenta: Int, modifier: Modifier = Modifier) {
     Text(
         text = if (cuenta > 99) "99+" else cuenta.toString(),
         style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.Bold,
-        color = BaniterioColors.gold,
+        fontWeight = FontWeight.ExtraBold,
+        color = BaniterioColors.brand,
         modifier = modifier
             .clip(CircleShape)
-            .background(BaniterioColors.brand)
+            .background(BaniterioColors.gold)
             .padding(horizontal = 8.dp, vertical = 2.dp),
     )
 }

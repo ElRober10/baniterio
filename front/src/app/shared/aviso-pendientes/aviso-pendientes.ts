@@ -4,8 +4,11 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
  * Campanita con un número: "tienes N cosas sin atender". Presentacional puro —
  * el número se lo pasa quien lo usa (`[cuenta]`). Con `cuenta` 0 (o menos) no
  * pinta nada: el aviso solo existe cuando hay trabajo. Se usa en la tarjeta
- * "Administración" de la home del panel (con el total) y en cada tarjeta del
- * índice de administración (con el pendiente de esa área).
+ * "Administración" de la home del panel y en el nav lateral (con el total) y en
+ * cada tarjeta del índice de administración (con el pendiente de esa área).
+ *
+ * Globo dorado sólido con halo: pensado para que "salte a la vista" sobre el
+ * fondo oscuro de marca.
  */
 @Component({
   selector: 'app-aviso-pendientes',
@@ -15,7 +18,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
       <span
         role="status"
         [attr.aria-label]="cuenta() + ' pendientes'"
-        class="inline-flex items-center gap-1 rounded-full bg-brand/20 px-2 py-0.5 text-xs font-bold text-gold-soft"
+        class="inline-flex items-center gap-1 rounded-full bg-gold px-2 py-0.5 text-xs font-extrabold text-brand shadow-[0_0_10px_rgba(248,211,73,0.55)]"
       >
         <svg viewBox="0 0 16 16" class="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
           <path
