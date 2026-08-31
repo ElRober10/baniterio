@@ -1,6 +1,9 @@
 package com.baniterio.app
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
 import com.baniterio.app.data.AlmacenCredenciales
 import com.baniterio.app.data.Dependencias
 import com.baniterio.app.data.crearDependencias
@@ -17,5 +20,20 @@ import com.baniterio.app.data.crearDependencias
 class BaniterioApp : Application() {
     val deps: Dependencias by lazy {
         crearDependencias(AlmacenCredenciales(this))
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        // El canal "avisos" agrupa las notificaciones push de la peña. Existe
+        // desde API 26 (Build.VERSION_CODES.O); en 24/25 no hay canales y las
+        // notificaciones se pintan igual sin él.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val canal = NotificationChannel(
+                "avisos",
+                "Avisos de la peña",
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply { description = "Solicitudes y cosas por atender" }
+            getSystemService(NotificationManager::class.java).createNotificationChannel(canal)
+        }
     }
 }
