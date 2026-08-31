@@ -8,6 +8,7 @@ import com.baniterio.api.identidad.PlataformaDispositivo;
 import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -44,8 +45,17 @@ public class DispositivoService {
                 .ifPresent(d -> dispositivos.deleteByToken(token));
     }
 
-    /** Borra tokens que el proveedor de push ha marcado como muertos. */
-    @Transactional
+    /**
+     * Borra tokens que el proveedor de push ha marcado como muertos.
+     *
+     * <p>{@code REQUIRES_NEW}: esto se llama desde el callback {@code AFTER_COMMIT}
+     * de {@code ManejadorAvisoPush}, cuando la transacción que publicó el evento
+     * ya ha confirmado pero su sincronización sigue activa. Un {@code @Transactional}
+     * por defecto ({@code REQUIRED}) se uniría a esa transacción muerta y el
+     * {@code deleteByTokenIn} no llegaría a confirmarse. Con su propia transacción,
+     * la poda se persiste siempre.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void podar(Collection<String> tokens) {
         if (!tokens.isEmpty()) {
             dispositivos.deleteByTokenIn(tokens);

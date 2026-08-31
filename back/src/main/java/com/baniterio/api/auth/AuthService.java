@@ -18,6 +18,9 @@ import com.baniterio.api.identidad.TelefonoAutorizado;
 import com.baniterio.api.identidad.TelefonoAutorizadoRepository;
 import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
+import com.baniterio.api.push.Audiencia;
+import com.baniterio.api.push.AvisoPushEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,6 +55,7 @@ public class AuthService {
     private final SolicitudIngresoRepository solicitudes;
     private final PenaRepository penas;
     private final ServicioPermisos servicioPermisos;
+    private final ApplicationEventPublisher eventos;
     private final String telefonoFundador;
 
     /** Peña piloto. Con el alcance de una sola peña, se resuelve por slug. */
@@ -60,7 +64,7 @@ public class AuthService {
     public AuthService(TelefonoAutorizadoRepository telefonosAutorizados, UsuarioRepository usuarios,
                        MembresiaRepository membresias, PasswordEncoder passwordEncoder, AppProperties props,
                        JwtService jwtService, SolicitudIngresoRepository solicitudes, PenaRepository penas,
-                       ServicioPermisos servicioPermisos) {
+                       ServicioPermisos servicioPermisos, ApplicationEventPublisher eventos) {
         this.telefonosAutorizados = telefonosAutorizados;
         this.usuarios = usuarios;
         this.membresias = membresias;
@@ -69,6 +73,7 @@ public class AuthService {
         this.solicitudes = solicitudes;
         this.penas = penas;
         this.servicioPermisos = servicioPermisos;
+        this.eventos = eventos;
         this.telefonoFundador = props.identidad().telefonoFundador();
     }
 
@@ -155,6 +160,11 @@ public class AuthService {
         if (StringUtils.hasText(req.password())) {
             solicitud.setPasswordHash(passwordEncoder.encode(req.password()));
         }
-        return solicitudes.save(solicitud);
+        SolicitudIngreso guardada = solicitudes.save(solicitud);
+        eventos.publishEvent(new AvisoPushEvent(
+                new Audiencia.Administradores(),
+                "Nueva solicitud de acceso",
+                req.nombre() + " " + req.apellidos() + " quiere entrar en la peña"));
+        return guardada;
     }
 }
