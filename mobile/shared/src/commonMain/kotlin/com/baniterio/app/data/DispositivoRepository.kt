@@ -7,5 +7,11 @@ package com.baniterio.app.data
  */
 interface DispositivoRepository {
     suspend fun registrar(token: String, plataforma: String): Boolean
-    suspend fun eliminar(token: String): Boolean
+
+    /**
+     * [bearer] permite pasar el JWT explícitamente cuando la sesión ya se ha
+     * limpiado (baja de token al cerrar sesión): se captura de forma síncrona
+     * antes de `logout()` y se pasa aquí. Si es `null`, se usa el de la sesión.
+     */
+    suspend fun eliminar(token: String, bearer: String? = null): Boolean
 }

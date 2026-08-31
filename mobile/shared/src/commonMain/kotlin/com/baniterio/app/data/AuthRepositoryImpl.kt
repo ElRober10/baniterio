@@ -23,6 +23,8 @@ class AuthRepositoryImpl(
 
     override val usuarioActual: UsuarioResponse? get() = sesion.usuario
 
+    override val tokenSesion: String? get() = sesion.token
+
     override suspend fun registro(r: RegistroRequest): ResultadoAuth<UsuarioResponse> =
         peticion {
             http.post("$API_BASE_URL/auth/registro") {

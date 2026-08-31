@@ -18,9 +18,12 @@ class DispositivoRepositoryImpl(
     private val sesion: SesionHolder,
 ) : DispositivoRepository {
 
-    /** Adjunta la cabecera Bearer con el token en memoria de [SesionHolder]. */
-    private fun HttpRequestBuilder.auth() {
-        sesion.token?.let { header(HttpHeaders.Authorization, "Bearer $it") }
+    /**
+     * Adjunta la cabecera Bearer. Usa [bearer] si se pasa (JWT capturado antes
+     * de `logout()`); si no, el token en memoria de [SesionHolder].
+     */
+    private fun HttpRequestBuilder.auth(bearer: String? = null) {
+        (bearer ?: sesion.token)?.let { header(HttpHeaders.Authorization, "Bearer $it") }
     }
 
     override suspend fun registrar(token: String, plataforma: String): Boolean = intentar {
@@ -31,8 +34,8 @@ class DispositivoRepositoryImpl(
         }
     }
 
-    override suspend fun eliminar(token: String): Boolean = intentar {
-        http.delete("$API_BASE_URL/dispositivos/$token") { auth() }
+    override suspend fun eliminar(token: String, bearer: String?): Boolean = intentar {
+        http.delete("$API_BASE_URL/dispositivos/$token") { auth(bearer) }
     }
 
     /**
