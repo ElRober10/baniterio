@@ -9,6 +9,7 @@ class Dependencias(
     val repo: AuthRepository,
     val almacen: AlmacenCredenciales,
     val adminRepo: AdminRepository,
+    val dispositivoRepo: DispositivoRepository,
 )
 
 /**
@@ -25,5 +26,6 @@ fun crearDependencias(almacen: AlmacenCredenciales): Dependencias {
         repo = AuthRepositoryImpl(http, sesion),
         almacen = almacen,
         adminRepo = AdminRepositoryImpl(http, sesion),
+        dispositivoRepo = DispositivoRepositoryImpl(http, sesion),
     )
 }
