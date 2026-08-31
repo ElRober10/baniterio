@@ -64,7 +64,11 @@ private fun claveAScreen(clave: String): Screen = when (clave) {
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun App(deps: Dependencias) {
+fun App(
+    deps: Dependencias,
+    alIniciarSesion: () -> Unit = {},
+    alCerrarSesion: () -> Unit = {},
+) {
     // Se guarda solo la clave (String), no el Screen en sí, porque un sealed class llano
     // no es directamente Saveable en todas las plataformas. Así sobrevive a un cambio de
     // configuración (p. ej. rotar el dispositivo) sin volver a Login.
@@ -113,13 +117,13 @@ fun App(deps: Dependencias) {
                 is Screen.Desbloqueo -> DesbloqueoScreen(
                     repo = deps.repo,
                     almacen = deps.almacen,
-                    onDesbloqueado = { ir(Screen.Panel) },
+                    onDesbloqueado = { alIniciarSesion(); ir(Screen.Panel) },
                     onUsarOtraCuenta = { ir(Screen.Login) },
                 )
                 is Screen.Login -> LoginScreen(
                     repo = deps.repo,
                     almacen = deps.almacen,
-                    onLoginSuccess = { ir(Screen.Panel) },
+                    onLoginSuccess = { alIniciarSesion(); ir(Screen.Panel) },
                     onIrARegistro = { ir(Screen.Registro) },
                 )
                 is Screen.Registro -> {
@@ -148,6 +152,7 @@ fun App(deps: Dependencias) {
                 is Screen.Panel -> PanelScreen(
                     onAbrirSeccion = { destino -> ir(destino) },
                     onCerrarSesion = {
+                        alCerrarSesion()
                         deps.repo.logout()
                         deps.almacen.borrar()
                         ir(Screen.Login)
