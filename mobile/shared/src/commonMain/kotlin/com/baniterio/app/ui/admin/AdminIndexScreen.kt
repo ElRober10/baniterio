@@ -16,10 +16,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.baniterio.app.data.AdminRepository
+import com.baniterio.app.data.ResultadoAdmin
 import com.baniterio.app.nav.Screen
 import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.theme.BaniterioWordmark
@@ -27,9 +34,21 @@ import com.baniterio.app.theme.BaniterioWordmark
 @Composable
 fun AdminIndexScreen(
     areas: List<String>,
+    adminRepo: AdminRepository,
     onAbrir: (Screen) -> Unit,
     onVolver: () -> Unit,
 ) {
+    // Pendientes por área para la campanita de cada tarjeta. Se pide al entrar;
+    // al volver del detalle (p. ej. tras resolver una solicitud) esta pantalla
+    // se recompone y el LaunchedEffect vuelve a pedirlo, así el número está fresco.
+    var pendientes by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+    LaunchedEffect(Unit) {
+        when (val r = adminRepo.pendientesPorArea()) {
+            is ResultadoAdmin.Exito -> pendientes = r.dato
+            is ResultadoAdmin.Error -> Unit // la campanita es secundaria: si falla, no se muestra número
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -58,6 +77,7 @@ fun AdminIndexScreen(
             TarjetaAdmin(
                 nombre = "Solicitudes",
                 descripcion = "Revisa y resuelve las peticiones de acceso a la peña.",
+                cuenta = pendientes["ADMIN_SOLICITUDES"] ?: 0,
                 onClick = { onAbrir(Screen.AdminSolicitudes) },
             )
             Spacer(Modifier.height(16.dp))
@@ -66,6 +86,7 @@ fun AdminIndexScreen(
             TarjetaAdmin(
                 nombre = "Permisos",
                 descripcion = "Rol y accesos de cada miembro.",
+                cuenta = pendientes["ADMIN_PERMISOS"] ?: 0,
                 onClick = { onAbrir(Screen.AdminPermisos) },
             )
             Spacer(Modifier.height(16.dp))
@@ -80,7 +101,12 @@ fun AdminIndexScreen(
 }
 
 @Composable
-private fun TarjetaAdmin(nombre: String, descripcion: String, onClick: () -> Unit) {
+private fun TarjetaAdmin(
+    nombre: String,
+    descripcion: String,
+    cuenta: Int,
+    onClick: () -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -89,12 +115,18 @@ private fun TarjetaAdmin(nombre: String, descripcion: String, onClick: () -> Uni
             .clickable(onClick = onClick)
             .padding(20.dp),
     ) {
-        Text(
-            text = nombre,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-            fontWeight = FontWeight.Bold,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = nombre,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                fontWeight = FontWeight.Bold,
+            )
+            AvisoPendientes(cuenta)
+        }
         Spacer(Modifier.height(6.dp))
         Text(
             text = descripcion,
