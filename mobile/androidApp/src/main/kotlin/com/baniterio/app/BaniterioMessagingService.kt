@@ -6,6 +6,8 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 /**
@@ -17,7 +19,9 @@ import kotlinx.coroutines.launch
 class BaniterioMessagingService : FirebaseMessagingService() {
 
     private val deps get() = (application as BaniterioApp).deps
-    private val scope = CoroutineScope(Dispatchers.IO)
+    // SupervisorJob: un fallo de una llamada no cancela las demás. Se cancela en
+    // onDestroy para no dejar corrutinas vivas tras destruirse el servicio.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onNewToken(token: String) {
         if (deps.repo.usuarioActual != null) {
@@ -36,5 +40,10 @@ class BaniterioMessagingService : FirebaseMessagingService() {
             .build()
         getSystemService(NotificationManager::class.java)
             .notify(message.messageId?.hashCode() ?: 0, aviso)
+    }
+
+    override fun onDestroy() {
+        scope.cancel()
+        super.onDestroy()
     }
 }
