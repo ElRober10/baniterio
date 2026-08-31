@@ -7,7 +7,6 @@ import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 /**
@@ -19,8 +18,11 @@ import kotlinx.coroutines.launch
 class BaniterioMessagingService : FirebaseMessagingService() {
 
     private val deps get() = (application as BaniterioApp).deps
-    // SupervisorJob: un fallo de una llamada no cancela las demás. Se cancela en
-    // onDestroy para no dejar corrutinas vivas tras destruirse el servicio.
+    // SupervisorJob: un fallo de una llamada no cancela las demás. El scope NO se
+    // ata al ciclo de vida del servicio a propósito: FirebaseMessagingService
+    // llama a stopSelf() nada más volver onNewToken, así que cancelarlo en
+    // onDestroy mataría el registro del token a mitad de POST. El trabajo es
+    // acotado (dos suspend cortas) y no retiene nada al terminar.
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onNewToken(token: String) {
@@ -30,20 +32,16 @@ class BaniterioMessagingService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
-        // TODO(menor): usar un icono propio en vez de ic_dialog_info (marcador).
+        // TODO(menor): icono monocromo dedicado; ic_launcher es un apaño para que
+        // las notificaciones de segundo plano no salgan con un cuadrado en blanco.
         val n = message.notification ?: return
         val aviso = NotificationCompat.Builder(this, "avisos")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(com.baniterio.app.R.mipmap.ic_launcher)
             .setContentTitle(n.title)
             .setContentText(n.body)
             .setAutoCancel(true)
             .build()
         getSystemService(NotificationManager::class.java)
             .notify(message.messageId?.hashCode() ?: 0, aviso)
-    }
-
-    override fun onDestroy() {
-        scope.cancel()
-        super.onDestroy()
     }
 }

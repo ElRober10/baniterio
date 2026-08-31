@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
+import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.launch
 
@@ -29,11 +30,20 @@ class MainActivity : FragmentActivity() {
         // al rotar y no se filtra un HttpClient por rotación.
         val deps = (application as BaniterioApp).deps
 
+        // Ejecuta [bloque] con el token FCM actual, o no hace nada si el push no
+        // está configurado (sin google-services.json, FirebaseApp.getInstance()
+        // lanzaría IllegalStateException). Así "Entrar"/"Cerrar sesión" no crashea
+        // en el estado del repo tras el merge, antes de crear el proyecto Firebase.
+        fun conTokenFcm(bloque: (String) -> Unit) {
+            if (FirebaseApp.getApps(this).isEmpty()) return
+            runCatching { FirebaseMessaging.getInstance().token.addOnSuccessListener(bloque) }
+        }
+
         // Al iniciar sesión: registra el token FCM de este dispositivo. Aquí la
         // sesión ya tiene JWT y no se limpia, así que `registrar` usa el de
         // SesionHolder sin más.
         fun sincronizarToken() {
-            FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+            conTokenFcm { token ->
                 lifecycleScope.launch { deps.dispositivoRepo.registrar(token, "ANDROID") }
             }
         }
@@ -45,7 +55,7 @@ class MainActivity : FragmentActivity() {
         // que el DELETE salga autenticado con el token válido de antes del logout.
         fun borrarToken() {
             val jwt = deps.repo.tokenSesion
-            FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+            conTokenFcm { token ->
                 lifecycleScope.launch { deps.dispositivoRepo.eliminar(token, jwt) }
             }
         }

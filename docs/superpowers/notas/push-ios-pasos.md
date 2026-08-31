@@ -32,6 +32,11 @@ Prerrequisitos: Mac con Xcode, cuenta Apple Developer, iPhone físico.
    patrón de `deps` que `MainViewController.kt`).
 9. Implementar `alIniciarSesion` / `alCerrarSesion` al construir `App(...)` en
    `MainViewController()` — obtener el token de `Messaging.messaging().token`.
+   Al implementar `alCerrarSesion` en iOS, capturar el JWT de sesión de forma
+   síncrona ANTES del logout y pasarlo como `bearer` a
+   `dispositivoRepo.eliminar(token, bearer)` — igual que el fix de Android en
+   `MainActivity`, porque el fetch del token FCM es asíncrono y el logout ya habrá
+   borrado el token de sesión cuando la llamada corra.
 
 ## Verificar
 10. Ejecutar en iPhone físico, iniciar sesión como admin, mandar una solicitud

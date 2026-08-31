@@ -1,11 +1,14 @@
 package com.baniterio.api.push;
 
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.stream.IntStream;
 
 import com.google.firebase.messaging.BatchResponse;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.MessagingErrorCode;
+import com.google.firebase.messaging.MulticastMessage;
+import com.google.firebase.messaging.Notification;
 import com.google.firebase.messaging.SendResponse;
 import org.junit.jupiter.api.Test;
 
@@ -70,5 +73,55 @@ class PushFirebaseTest {
         PushFirebase push = new PushFirebase(envio);
 
         assertThat(push.enviar(List.of("a"), "T", "C")).isEmpty();
+    }
+
+    @Test
+    void el_token_muerto_devuelto_es_el_del_lote_correcto() {
+        // 501 tokens -> dos lotes (500 + 1). El primero va todo OK; el segundo
+        // devuelve un único fallo. El token muerto tiene que ser "t500" (offset
+        // del segundo lote), no "t0": fija la aritmética de lote.get(j).
+        List<String> tokens = IntStream.rangeClosed(0, 500).mapToObj(i -> "t" + i).toList();
+        List<SendResponse> okPrimerLote = IntStream.range(0, 500).mapToObj(i -> ok()).toList();
+        List<SendResponse> falloSegundoLote = List.of(fallo(MessagingErrorCode.UNREGISTERED));
+        int[] llamadas = {0};
+        EnvioMulticast envio = m -> {
+            BatchResponse r = mock(BatchResponse.class);
+            when(r.getResponses()).thenReturn(llamadas[0]++ == 0 ? okPrimerLote : falloSegundoLote);
+            return r;
+        };
+        PushFirebase push = new PushFirebase(envio);
+
+        assertThat(push.enviar(tokens, "T", "C")).containsExactly("t500");
+    }
+
+    @Test
+    void construye_el_mensaje_con_titulo_y_cuerpo() throws Exception {
+        MulticastMessage[] capturado = new MulticastMessage[1];
+        // La lista se construye ANTES del when(): stubbear ok() dentro del
+        // thenReturn() dejaría el mock exterior a medio configurar.
+        List<SendResponse> respuestas = List.of(ok());
+        EnvioMulticast envio = m -> {
+            capturado[0] = m;
+            BatchResponse r = mock(BatchResponse.class);
+            when(r.getResponses()).thenReturn(respuestas);
+            return r;
+        };
+        PushFirebase push = new PushFirebase(envio);
+
+        push.enviar(List.of("tok"), "T", "C");
+
+        // MulticastMessage/Notification no exponen title/body en público: se leen
+        // por reflexión de los campos privados del SDK de Firebase.
+        assertThat(capturado[0]).isNotNull();
+        Field campoNotif = MulticastMessage.class.getDeclaredField("notification");
+        campoNotif.setAccessible(true);
+        Notification notif = (Notification) campoNotif.get(capturado[0]);
+        assertThat(notif).isNotNull();
+        Field campoTitulo = Notification.class.getDeclaredField("title");
+        Field campoCuerpo = Notification.class.getDeclaredField("body");
+        campoTitulo.setAccessible(true);
+        campoCuerpo.setAccessible(true);
+        assertThat(campoTitulo.get(notif)).isEqualTo("T");
+        assertThat(campoCuerpo.get(notif)).isEqualTo("C");
     }
 }

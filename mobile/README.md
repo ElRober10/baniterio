@@ -91,6 +91,21 @@ Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
 - Android tests: `./gradlew :shared:testAndroidHostTest`
 - iOS tests: `./gradlew :shared:iosSimulatorArm64Test`
 
+#### Workaround `windows-1252` en `gradle.properties`
+
+`mobile/gradle.properties` fija a propósito
+`org.gradle.jvmargs=... -Dfile.encoding=windows-1252` (en vez de UTF-8). El motivo:
+la ruta del repo lleva "ñ" (Bañiterio). En Windows, el daemon de Gradle escribe el
+`@argfile` del worker de test con su `file.encoding`, pero el lanzador del worker lo
+decodifica con `sun.jnu.encoding` (= codepage del SO = `windows-1252`, no ajustable
+por `-D`). Con UTF-8 la "ñ" no round-trippea (se lee como "Ã±"), la ruta del
+proyecto en el classpath deja de existir y `:shared:testAndroidHostTest` revienta
+con `ClassNotFoundException`. Forzando la escritura a `windows-1252` coincide con la
+lectura del worker.
+
+Es específico de Windows: para un CI no-Windows habría que quitarlo o condicionarlo.
+Mover el repo a una ruta ASCII (sin "ñ") también elimina la necesidad del ajuste.
+
 ---
 
 Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
