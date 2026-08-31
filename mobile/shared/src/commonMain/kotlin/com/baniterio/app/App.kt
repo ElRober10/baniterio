@@ -153,6 +153,7 @@ fun App(deps: Dependencias) {
                         ir(Screen.Login)
                     },
                     tieneAdmin = deps.repo.usuarioActual?.areas?.isNotEmpty() == true,
+                    adminRepo = deps.adminRepo,
                 )
                 is Screen.Historia -> {
                     BackHandler { ir(Screen.Panel) }
@@ -164,6 +165,7 @@ fun App(deps: Dependencias) {
                     BackHandler { ir(Screen.Panel) }
                     AdminIndexScreen(
                         areas = deps.repo.usuarioActual?.areas ?: emptyList(),
+                        adminRepo = deps.adminRepo,
                         onAbrir = { ir(it) },
                         onVolver = { ir(Screen.Panel) },
                     )

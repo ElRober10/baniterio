@@ -44,6 +44,13 @@ private val AREAS = listOf(
     "ADMIN_PERMISOS" to "Permisos",
 )
 
+/** Rol legible para la cabecera: el superadmin manda sobre el rol de la peña. */
+private fun etiquetaRol(m: MiembroResumen): String = when {
+    m.esSuperadmin -> "Superadmin"
+    m.rol == "ADMIN" -> "Admin"
+    else -> "Miembro"
+}
+
 private sealed interface EstadoMiembros {
     data object Cargando : EstadoMiembros
     data class Cargada(val items: List<MiembroResumen>) : EstadoMiembros
@@ -60,6 +67,8 @@ fun AdminPermisosScreen(adminRepo: AdminRepository, miId: Long?, onVolver: () ->
     // rancios (el PUT /areas reemplaza el conjunto entero). Otras filas siguen
     // activas.
     var guardandoId by remember { mutableStateOf<Long?>(null) }
+    // Fila desplegada (acordeón: solo una a la vez). `null` = todas contraídas.
+    var abiertoId by remember { mutableStateOf<Long?>(null) }
     val scope = rememberCoroutineScope()
 
     // `mostrarCargando = false` desde los manejadores de acción para que la lista
@@ -201,6 +210,8 @@ fun AdminPermisosScreen(adminRepo: AdminRepository, miId: Long?, onVolver: () ->
                         m = m,
                         esYo = m.id == miId,
                         guardando = guardandoId == m.id,
+                        abierto = abiertoId == m.id,
+                        onToggle = { abiertoId = if (abiertoId == m.id) null else m.id },
                         onRol = { rol -> ponerRol(m, rol) },
                         onActivo = { activo -> activar(m, activo) },
                         onArea = { area, incluir -> alternarArea(m, area, incluir) },
@@ -217,6 +228,8 @@ private fun TarjetaMiembro(
     m: MiembroResumen,
     esYo: Boolean,
     guardando: Boolean,
+    abierto: Boolean,
+    onToggle: () -> Unit,
     onRol: (String) -> Unit,
     onActivo: (Boolean) -> Unit,
     onArea: (String, Boolean) -> Unit,
@@ -225,83 +238,121 @@ private fun TarjetaMiembro(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(BaniterioColors.panel)
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .background(BaniterioColors.panel),
     ) {
-        Text(
-            text = "${m.nombre} ${m.apellidos}",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        m.mote?.let {
-            Text(
-                text = "($it)",
-                color = BaniterioColors.muted,
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
-        Text(
-            text = m.telefono,
-            color = BaniterioColors.muted,
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        if (m.esSuperadmin) {
-            Text(
-                text = "Fundadora · acceso total",
-                color = BaniterioColors.gold,
-                style = MaterialTheme.typography.labelLarge,
-            )
-        }
-        if (esYo) {
-            Text(
-                text = "No puedes cambiar tus propios permisos aquí.",
-                color = BaniterioColors.muted,
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(
-                selected = m.rol == "ADMIN",
-                onClick = { onRol("ADMIN") },
-                label = { Text("Admin") },
-                enabled = !m.esSuperadmin && !esYo && !guardando,
-            )
-            FilterChip(
-                selected = m.rol == "MIEMBRO",
-                onClick = { onRol("MIEMBRO") },
-                label = { Text("Miembro") },
-                enabled = !m.esSuperadmin && !esYo && !guardando,
-            )
-        }
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Activo", color = BaniterioColors.muted)
-            Spacer(Modifier.weight(1f))
-            Switch(
-                checked = m.activo,
-                onCheckedChange = { onActivo(it) },
-                enabled = !m.esSuperadmin && !esYo && !guardando,
-            )
-        }
-
-        if (m.rol == "ADMIN" || m.esSuperadmin) {
-            Text(
-                text = "Acceso a todas las áreas por rol",
-                color = BaniterioColors.muted,
-                style = MaterialTheme.typography.bodySmall,
-            )
-        } else {
-            AREAS.forEach { (clave, etiqueta) ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = clave in m.areas,
-                        onCheckedChange = { onArea(clave, it) },
-                        enabled = !esYo && !guardando,
+        // Cabecera siempre visible: nombre, teléfono, rol y (si aplica) "Inactivo".
+        // Al pulsarla se despliega o se contrae el cuerpo.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onToggle() }
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = "${m.nombre} ${m.apellidos}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(
+                        text = m.telefono,
+                        color = BaniterioColors.muted,
+                        style = MaterialTheme.typography.bodySmall,
                     )
-                    Text(etiqueta, color = MaterialTheme.colorScheme.onBackground)
+                    Text(
+                        text = etiquetaRol(m),
+                        color = BaniterioColors.gold,
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                    if (!m.activo) {
+                        Text(
+                            text = "Inactivo",
+                            color = BaniterioColors.error,
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    }
+                }
+            }
+            Text(
+                text = if (abierto) "▾" else "▸",
+                color = BaniterioColors.muted,
+            )
+        }
+
+        if (abierto) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                m.mote?.let {
+                    Text(
+                        text = "($it)",
+                        color = BaniterioColors.muted,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                if (esYo) {
+                    Text(
+                        text = "No puedes cambiar tus propios permisos aquí.",
+                        color = BaniterioColors.muted,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = m.rol == "ADMIN",
+                        onClick = { onRol("ADMIN") },
+                        label = { Text("Admin") },
+                        enabled = !m.esSuperadmin && !esYo && !guardando,
+                    )
+                    FilterChip(
+                        selected = m.rol == "MIEMBRO",
+                        onClick = { onRol("MIEMBRO") },
+                        label = { Text("Miembro") },
+                        enabled = !m.esSuperadmin && !esYo && !guardando,
+                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Activo", color = BaniterioColors.muted)
+                    Spacer(Modifier.weight(1f))
+                    Switch(
+                        checked = m.activo,
+                        onCheckedChange = { onActivo(it) },
+                        enabled = !m.esSuperadmin && !esYo && !guardando,
+                    )
+                }
+
+                if (m.rol == "ADMIN" || m.esSuperadmin) {
+                    Text(
+                        text = "Acceso a todas las áreas por rol",
+                        color = BaniterioColors.muted,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                } else {
+                    AREAS.forEach { (clave, etiqueta) ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = clave in m.areas,
+                                onCheckedChange = { onArea(clave, it) },
+                                enabled = !esYo && !guardando,
+                            )
+                            Text(etiqueta, color = MaterialTheme.colorScheme.onBackground)
+                        }
+                    }
                 }
             }
         }

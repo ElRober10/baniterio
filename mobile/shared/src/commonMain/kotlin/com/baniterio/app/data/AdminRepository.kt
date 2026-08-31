@@ -24,4 +24,11 @@ interface AdminRepository {
     suspend fun cambiarRol(id: Long, rol: String): ResultadoAdmin<Unit>
     suspend fun cambiarActivo(id: Long, activo: Boolean): ResultadoAdmin<Unit>
     suspend fun cambiarAreas(id: Long, areas: List<String>): ResultadoAdmin<Unit>
+
+    /**
+     * Cuántas cosas sin atender tiene el usuario en cada área del panel a la que
+     * puede acceder. La clave es el área (`ADMIN_SOLICITUDES`, …); solo vienen las
+     * áreas con al menos un pendiente. Mapa vacío si no hay nada o no tiene áreas.
+     */
+    suspend fun pendientesPorArea(): ResultadoAdmin<Map<String, Int>>
 }

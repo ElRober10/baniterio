@@ -93,6 +93,12 @@ class AdminRepositoryImpl(
             }.bodyAsText().let { }
         }
 
+    override suspend fun pendientesPorArea(): ResultadoAdmin<Map<String, Int>> =
+        peticion {
+            http.get("$API_BASE_URL/admin/pendientes") { auth() }
+                .body<Map<String, Int>>()
+        }
+
     /**
      * Ejecuta [bloque]; traduce las excepciones de Ktor a ResultadoAdmin.Error.
      * Un ResponseException (4xx/5xx) → se lee `codigo` del cuerpo con

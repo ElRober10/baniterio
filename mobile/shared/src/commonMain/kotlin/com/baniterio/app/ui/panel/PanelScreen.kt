@@ -16,6 +16,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.SpanStyle
@@ -23,19 +28,35 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.baniterio.app.data.AdminRepository
+import com.baniterio.app.data.ResultadoAdmin
 import com.baniterio.app.model.Seccion
 import com.baniterio.app.model.seccionesPanel
 import com.baniterio.app.nav.Screen
 import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.theme.BaniterioWordmark
 import com.baniterio.app.theme.baniterioFonts
+import com.baniterio.app.ui.admin.AvisoPendientes
 
 @Composable
 fun PanelScreen(
     onAbrirSeccion: (Screen) -> Unit,
     onCerrarSesion: () -> Unit,
     tieneAdmin: Boolean,
+    adminRepo: AdminRepository,
 ) {
+    // Total de cosas sin atender, para la campanita de la tarjeta "Administración".
+    // Solo se pide si el usuario tiene alguna área; al volver al panel esta pantalla
+    // se recompone y se vuelve a pedir, así el número refleja lo ya resuelto.
+    var totalPendientes by remember { mutableStateOf(0) }
+    LaunchedEffect(tieneAdmin) {
+        if (!tieneAdmin) return@LaunchedEffect
+        when (val r = adminRepo.pendientesPorArea()) {
+            is ResultadoAdmin.Exito -> totalPendientes = r.dato.values.sum()
+            is ResultadoAdmin.Error -> Unit
+        }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -74,7 +95,11 @@ fun PanelScreen(
             )
         }
         items(seccionesPanel(tieneAdmin)) { seccion ->
-            TarjetaSeccion(seccion = seccion, onClick = { seccion.destino?.let(onAbrirSeccion) })
+            TarjetaSeccion(
+                seccion = seccion,
+                cuenta = if (seccion.destino == Screen.AdminIndex) totalPendientes else 0,
+                onClick = { seccion.destino?.let(onAbrirSeccion) },
+            )
         }
     }
 }
@@ -93,7 +118,7 @@ private fun textoConMarca(prefijo: String, sufijo: String) = buildAnnotatedStrin
 }
 
 @Composable
-private fun TarjetaSeccion(seccion: Seccion, onClick: () -> Unit) {
+private fun TarjetaSeccion(seccion: Seccion, cuenta: Int, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -118,6 +143,8 @@ private fun TarjetaSeccion(seccion: Seccion, onClick: () -> Unit) {
                     style = MaterialTheme.typography.labelLarge,
                     color = BaniterioColors.muted,
                 )
+            } else {
+                AvisoPendientes(cuenta)
             }
         }
         Spacer(Modifier.height(6.dp))
