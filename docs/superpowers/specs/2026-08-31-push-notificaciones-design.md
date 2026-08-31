@@ -283,9 +283,8 @@ cuando la solicitud está persistida.
 
 - `BaniterioMessagingService : FirebaseMessagingService` en
   `mobile/androidApp/src/main/kotlin/com/baniterio/app/`:
-  - `onNewToken(token)`: guarda el token en `deps.almacen` (nuevo campo) y, si
-    `deps.repo.usuarioActual != null`, lanza una corrutina que llama a
-    `deps.dispositivoRepo.registrar(token, "ANDROID")`.
+  - `onNewToken(token)`: si `deps.repo.usuarioActual != null`, lanza una
+    corrutina que llama a `deps.dispositivoRepo.registrar(token, "ANDROID")`.
   - `onMessageReceived(msg)`: solo llega con la app en primer plano (los
     mensajes *notification* con la app en segundo plano los pinta el sistema).
     Construye una `NotificationCompat` en un canal `"avisos"` y la muestra.
@@ -319,18 +318,24 @@ DTO en `data/dto/DispositivoDtos.kt`:
 
 ### 10. Ciclo de vida del token
 
-- `AlmacenCredenciales` (expect/actual) gana:
-  `fun guardarTokenPush(token: String)`, `fun leerTokenPush(): String?`,
-  `fun borrarTokenPush()`. Android: en las mismas EncryptedSharedPreferences.
-  iOS (pendiente): Keychain.
-- **Tras login con éxito** (en `App.kt`, `onLoginSuccess` de `LoginScreen`, y
-  `onDesbloqueado` de `DesbloqueoScreen`): pedir a la plataforma el token FCM
-  actual y llamar a `deps.dispositivoRepo.registrar(...)`. El "pedir el token a
-  la plataforma" se hace con un `expect fun tokenPushActual(): String?`
-  (`actual` Android: `FirebaseMessaging.getInstance().token.await()`; `actual`
-  iOS pendiente). Como es `suspend`-friendly, envolver en corrutina.
-- **Al cerrar sesión** (`onCerrarSesion` en `App.kt`): antes de `logout()`,
-  `deps.almacen.leerTokenPush()?.let { deps.dispositivoRepo.eliminar(it) }`.
+No se cachea el token push. Se pide a FCM cuando hace falta (al registrar y al
+borrar); es una llamada local y barata.
+
+- `App.kt` gana dos callbacks opcionales con valor por defecto vacío, para no
+  afectar a iOS (todavía sin implementar) ni a los tests:
+  `alIniciarSesion: () -> Unit = {}` y `alCerrarSesion: () -> Unit = {}`.
+- **Tras iniciar sesión** (`onLoginSuccess` de `LoginScreen` y `onDesbloqueado`
+  de `DesbloqueoScreen`, ambos en `App.kt`) → `alIniciarSesion()`. La
+  plataforma (Android) obtiene el token FCM actual
+  (`FirebaseMessaging.getInstance().token`) y llama a
+  `deps.dispositivoRepo.registrar(token, "ANDROID")` en una corrutina.
+- **Al cerrar sesión** (`onCerrarSesion` en `App.kt`) → `alCerrarSesion()`
+  ANTES de `deps.repo.logout()` (que borra el token JWT que necesita la
+  llamada). La plataforma obtiene el token FCM y llama a
+  `deps.dispositivoRepo.eliminar(token)`.
+- **`onNewToken`** (el token cambió estando ya con sesión): el
+  `BaniterioMessagingService` comprueba `deps.repo.usuarioActual != null` y, si
+  hay sesión, registra el token nuevo.
 
 ### 11. Tests Android
 
@@ -361,9 +366,8 @@ Queda todo escrito en el plan pero no se ejecuta hasta tener Xcode:
   `Messaging.messaging().delegate` → en `messaging(_:didReceiveRegistrationToken:)`
   puentear a un método del framework Kotlin que llame a
   `dispositivoRepo.registrar(token, "IOS")`.
-- `AlmacenCredenciales.ios.kt`: implementar los `guardar/leer/borrarTokenPush`
-  contra Keychain.
-- `tokenPushActual()` actual iOS.
+- Implementar los callbacks `alIniciarSesion` / `alCerrarSesion` desde el lado
+  iOS (obtener el token de `Messaging.messaging().token` y registrar/borrar).
 - Verificación en iPhone físico.
 
 ---
