@@ -12,5 +12,6 @@ object BaniterioColors {
     val surface = Color(0xFF120F2E)
     val panel = Color(0xFF1C1745)
     val outline = Color(0xFF332C6E)
+    val brandDark = Color(0xFF241E73)
     val error = Color(0xFFFF6B6B)
 }
