@@ -17,7 +17,8 @@ class PlantillasCorreoTest {
             null, null, null,
             new AppProperties.Email("log", "Bañiterio <no-reply@baniterio.local>",
                     "http://localhost:4200/registro"),
-            null));
+            null,
+            new AppProperties.Media("./target/media-test")));
 
     @Test
     void aprobacion_cuenta_creada_incluye_el_nombre_y_habla_de_iniciar_sesion() {

@@ -23,3 +23,6 @@ back/config/*
 
 # Playwright MCP (capturas y logs de sesiones de prueba)
 .playwright-mcp/
+
+# Fotos de perfil subidas (volumen de media local)
+media-baniterio/

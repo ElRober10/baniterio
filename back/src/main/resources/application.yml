@@ -15,6 +15,10 @@ spring:
       ddl-auto: validate            # Hibernate NO crea/altera tablas; solo comprueba que las entidades cuadran con el esquema que hizo Flyway
   flyway:
     enabled: true                   # aplica las migraciones db/migration/V*.sql al arrancar
+  servlet:
+    multipart:                      # límites de subida de ficheros (fotos de perfil)
+      max-file-size: 10MB
+      max-request-size: 12MB
 
 server:
   port: ${SERVER_PORT:8080}
@@ -39,3 +43,5 @@ app:
   push:
     modo: ${PUSH_MODO:log}                    # log = solo traza · fcm = envía por Firebase
     credenciales-json: ${PUSH_CREDENCIALES:}  # ruta al service-account.json (solo modo fcm)
+  media:
+    dir: ${MEDIA_DIR:./media-baniterio}       # carpeta de fotos de perfil subidas (volumen persistente en prod)

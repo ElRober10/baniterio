@@ -18,7 +18,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * {@code identidad().telefonoFundador()}, etc.
  */
 @ConfigurationProperties("app")
-public record AppProperties(Jwt jwt, Identidad identidad, Cors cors, Email email, Push push) {
+public record AppProperties(Jwt jwt, Identidad identidad, Cors cors, Email email, Push push, Media media) {
 
     public record Jwt(String secret, int expiracionDias) {
     }
@@ -46,5 +46,13 @@ public record AppProperties(Jwt jwt, Identidad identidad, Cors cors, Email email
      * la ruta al fichero de cuenta de servicio de Firebase (solo modo fcm).
      */
     public record Push(String modo, String credencialesJson) {
+    }
+
+    /**
+     * Carpeta donde el backend guarda las fotos de perfil subidas (los avatares
+     * por defecto van dentro del jar). En producción debe apuntar a un volumen
+     * persistente.
+     */
+    public record Media(String dir) {
     }
 }
