@@ -28,6 +28,8 @@ import com.baniterio.api.perfil.dto.PerfilResponse.VinculoPendiente;
 import com.baniterio.api.perfil.dto.SubirFotoResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 /**
@@ -87,6 +89,13 @@ public class PerfilService {
                 .findBySolicitanteIdAndEstadoNot(usuarioId, EstadoVinculo.RECHAZADO)
                 .map(v -> new ParejaEnPerfil(v.getId(), v.getParejaNombre(), v.getParejaTelefono(),
                         v.getEstado().name()))
+                // El lado que acepta no es el solicitante: un vínculo ACEPTADO donde
+                // soy la pareja registrada también sale como "mi pareja" (con los
+                // datos del solicitante, que es la persona real).
+                .or(() -> vinculos.findByParejaUsuarioIdAndEstadoNot(usuarioId, EstadoVinculo.RECHAZADO)
+                        .filter(v -> v.getEstado() == EstadoVinculo.ACEPTADO)
+                        .map(v -> new ParejaEnPerfil(v.getId(), v.getSolicitante().getNombre(),
+                                v.getSolicitante().getTelefono(), v.getEstado().name())))
                 .orElse(null);
 
         VinculoPendiente pendiente = vinculos
@@ -152,9 +161,10 @@ public class PerfilService {
         perfiles.save(perfil);
 
         if (fotoABorrar != null) {
-            // TODO(Task 7): mover borrarFoto a afterCommit (si la tx revierte tras
-            // este punto, hoy se pierde el fichero anterior sin haber persistido el cambio).
-            almacen.borrarFoto(fotoABorrar);
+            // El borrado del fichero anterior espera a que la transacción confirme:
+            // la reconciliación de pareja/hijos de más abajo puede lanzar (p. ej. 409)
+            // y revertir, y en ese caso el fichero NO debe haberse borrado ya.
+            borrarFotoTrasCommit(fotoABorrar);
         }
 
         vinculoParejaService.aplicarDesdePerfil(usuarioId, req.tienePareja(),
@@ -162,6 +172,21 @@ public class PerfilService {
         hijosReconciliador.aplicar(usuarioId, req.hijos() == null ? List.of() : req.hijos());
 
         return miPerfil(usuarioId);
+    }
+
+    /** {@code POST /perfil/pareja/aceptar}: confirmo un vínculo {@code PENDIENTE} dirigido a mí. */
+    public void aceptarPareja(Long usuarioId) {
+        vinculoParejaService.aceptar(usuarioId);
+    }
+
+    /** {@code POST /perfil/pareja/rechazar}: rechazo un vínculo {@code PENDIENTE} dirigido a mí. */
+    public void rechazarPareja(Long usuarioId) {
+        vinculoParejaService.rechazar(usuarioId);
+    }
+
+    /** {@code DELETE /perfil/pareja}: deshago mi vínculo vivo (como solicitante o como pareja). */
+    public void romperPareja(Long usuarioId) {
+        vinculoParejaService.romper(usuarioId);
     }
 
     /**
@@ -178,13 +203,26 @@ public class PerfilService {
         return new SubirFotoResponse(almacen.guardarFoto(jpeg));
     }
 
+    /**
+     * Registra el borrado del fichero de foto para después del commit. Si la
+     * transacción revierte, el callback no se ejecuta y el fichero se conserva.
+     */
+    private void borrarFotoTrasCommit(String ref) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                almacen.borrarFoto(ref);
+            }
+        });
+    }
+
     private void validarImagen(ImagenPerfil tipo, String ref) {
         if (tipo == ImagenPerfil.AVATAR) {
             if (!catalogo.existe(ref)) {
                 throw new AvatarInexistenteException();
             }
         } else {
-            if (!REF_FOTO.matcher(ref).matches() || almacen.leerFoto(ref).isEmpty()) {
+            if (!REF_FOTO.matcher(ref).matches() || !almacen.existeFoto(ref)) {
                 throw new ImagenRefInvalidaException();
             }
         }

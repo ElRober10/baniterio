@@ -22,6 +22,9 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import com.baniterio.api.perfil.AvatarInexistenteException;
 import com.baniterio.api.perfil.ImagenNoSoportadaException;
 import com.baniterio.api.perfil.ImagenRefInvalidaException;
+import com.baniterio.api.perfil.TelefonoParejaInvalidoException;
+import com.baniterio.api.perfil.VinculoConflictoException;
+import com.baniterio.api.perfil.VinculoNoEncontradoException;
 
 /**
  * Traductor central de excepciones → respuestas HTTP JSON. Con
@@ -139,6 +142,21 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ImagenRefInvalidaException.class)
     ResponseEntity<Map<String, Object>> imagenRefInvalida() {
         return error(HttpStatus.BAD_REQUEST, "IMAGEN_REF_INVALIDA");
+    }
+
+    @ExceptionHandler(VinculoConflictoException.class)
+    ResponseEntity<Map<String, Object>> vinculoConflicto(VinculoConflictoException ex) {
+        return error(HttpStatus.CONFLICT, ex.getCodigo());
+    }
+
+    @ExceptionHandler(VinculoNoEncontradoException.class)
+    ResponseEntity<Map<String, Object>> vinculoNoEncontrado() {
+        return error(HttpStatus.NOT_FOUND, "VINCULO_NO_ENCONTRADO");
+    }
+
+    @ExceptionHandler(TelefonoParejaInvalidoException.class)
+    ResponseEntity<Map<String, Object>> telefonoParejaInvalido() {
+        return error(HttpStatus.BAD_REQUEST, "TELEFONO_PAREJA_INVALIDO");
     }
 
     @ExceptionHandler(ImagenNoSoportadaException.class)

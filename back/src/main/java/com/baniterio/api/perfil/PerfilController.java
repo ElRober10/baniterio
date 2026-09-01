@@ -11,13 +11,16 @@ import com.baniterio.api.perfil.dto.GuardarPerfilRequest;
 import com.baniterio.api.perfil.dto.PerfilResponse;
 import com.baniterio.api.perfil.dto.SubirFotoResponse;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -66,5 +69,26 @@ public class PerfilController {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    /** Confirmo el vínculo de pareja que otra persona declaró conmigo. */
+    @PostMapping("/pareja/aceptar")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void aceptarPareja(@AuthenticationPrincipal UsuarioPrincipal principal) {
+        perfilService.aceptarPareja(principal.id());
+    }
+
+    /** Rechazo el vínculo de pareja que otra persona declaró conmigo. */
+    @PostMapping("/pareja/rechazar")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void rechazarPareja(@AuthenticationPrincipal UsuarioPrincipal principal) {
+        perfilService.rechazarPareja(principal.id());
+    }
+
+    /** Deshago mi vínculo de pareja vivo (cualquiera de los dos lados puede). */
+    @DeleteMapping("/pareja")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void romperPareja(@AuthenticationPrincipal UsuarioPrincipal principal) {
+        perfilService.romperPareja(principal.id());
     }
 }
