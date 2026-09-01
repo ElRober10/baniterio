@@ -292,6 +292,59 @@ class PerfilControllerIT extends IntegrationTest {
     }
 
     @Test
+    void put_perfil_con_foto_ref_malformada_da_400() {
+        Miembro m = crearMiembro();
+        Map<String, Object> req = putBase();
+        req.put("imagenTipo", "FOTO");
+        req.put("imagenRef", "no-es-uuid.jpg");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = put(m.token(), req)
+                .expectStatus().isBadRequest()
+                .expectBody(Map.class)
+                .returnResult().getResponseBody();
+        assertThat(body.get("codigo")).isEqualTo("IMAGEN_REF_INVALIDA");
+    }
+
+    @Test
+    void put_perfil_con_foto_ref_inexistente_da_400() {
+        Miembro m = crearMiembro();
+        Map<String, Object> req = putBase();
+        req.put("imagenTipo", "FOTO");
+        req.put("imagenRef", java.util.UUID.randomUUID() + ".jpg");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = put(m.token(), req)
+                .expectStatus().isBadRequest()
+                .expectBody(Map.class)
+                .returnResult().getResponseBody();
+        assertThat(body.get("codigo")).isEqualTo("IMAGEN_REF_INVALIDA");
+    }
+
+    @Test
+    void subir_foto_con_tipo_no_soportado_da_415() {
+        Miembro m = crearMiembro();
+        MultiValueMap<String, Object> form = new LinkedMultiValueMap<>();
+        form.add("archivo", new ByteArrayResource("no soy una imagen".getBytes()) {
+            @Override
+            public String getFilename() {
+                return "notas.txt";
+            }
+        });
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = http.post().uri("/api/v1/perfil/foto")
+                .header(AUTHORIZATION, "Bearer " + m.token())
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(form)
+                .exchange()
+                .expectStatus().isEqualTo(415)
+                .expectBody(Map.class)
+                .returnResult().getResponseBody();
+        assertThat(body.get("codigo")).isEqualTo("IMAGEN_NO_SOPORTADA");
+    }
+
+    @Test
     void get_perfil_avatares_devuelve_el_catalogo() {
         Miembro m = crearMiembro();
 
