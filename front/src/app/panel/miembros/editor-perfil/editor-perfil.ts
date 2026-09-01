@@ -160,11 +160,15 @@ export class EditorPerfil implements OnInit, OnDestroy {
 
   protected guardar(): void {
     this.form.markAllAsTouched();
+    this.intentoSinImagen.set(!this.imagenElegida());
     if (this.form.invalid || !this.imagenElegida()) {
-      this.intentoSinImagen.set(!this.imagenElegida());
+      if (this.form.invalid) {
+        this.mensajeError.set('Revisa los campos obligatorios (nombre y apellidos).');
+      }
       return;
     }
 
+    this.mensajeError.set('');
     this.estado.set('guardando');
     if (this.modoImagen() === 'FOTO' && this.fotoPendiente()) {
       this.perfilService.subirFoto(this.fotoPendiente()!).subscribe({
