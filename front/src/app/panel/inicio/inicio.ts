@@ -7,8 +7,10 @@ import { SECCIONES } from '../secciones';
 
 /**
  * Contenido de bienvenida del panel: se pinta dentro del `<router-outlet>` de
- * `Panel` en la ruta `/panel` (hija `''`). Pinta las secciones "próximamente" de
- * la peña, cuya lista vive en `panel/secciones.ts` (compartida con el nav).
+ * `Panel` en la ruta `/panel` (hija `''`). Pinta una tarjeta clicable
+ * "Miembros" (siempre visible, lleva a `/panel/miembros`) y las secciones
+ * "próximamente" de la peña, cuya lista vive en `panel/secciones.ts`
+ * (compartida con el nav).
  *
  * Si el usuario tiene alguna área de administración concedida, se añade además
  * una tarjeta clicable "Administración" que lleva al índice `/panel/administracion`,

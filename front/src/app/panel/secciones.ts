@@ -10,7 +10,6 @@ export interface Seccion {
 }
 
 export const SECCIONES: Seccion[] = [
-  { nombre: 'Miembros', descripcion: 'Socios de la peña y sus datos de contacto.' },
   {
     nombre: 'Eventos',
     descripcion: 'Calendario y organización de las quedadas y fiestas de la peña.',
