@@ -56,6 +56,11 @@ public class AlmacenImagenes {
         }
     }
 
+    /** ¿Existe ya ese fichero de foto? (barato: no lee el contenido). */
+    public boolean existeFoto(String archivo) {
+        return Files.isRegularFile(fotos.resolve(archivo));
+    }
+
     public Optional<byte[]> leerFoto(String archivo) {
         Path p = fotos.resolve(archivo);
         if (!Files.isRegularFile(p)) {
