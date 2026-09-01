@@ -1,5 +1,15 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  OnDestroy,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -82,6 +92,24 @@ export class EditorPerfil implements OnInit, OnDestroy {
   protected readonly fotoPendiente = signal<File | null>(null);
   protected readonly previsualizacionFoto = signal<string | null>(null);
   protected readonly parejaEstado = signal<string | null>(null);
+  /** El diálogo con la rejilla de avatares (se abre desde el botón "Elegir avatar"). */
+  protected readonly dialogoAvatarAbierto = signal(false);
+  private readonly dialogoAvatar = viewChild<ElementRef<HTMLDialogElement>>('dialogoAvatar');
+
+  /**
+   * Sincroniza el `<dialog>` nativo con el signal: `showModal()` da foco
+   * atrapado, cierre con Escape y fondo oscuro gratis. El `(close)` de la
+   * plantilla devuelve el signal a `false` cuando el usuario pulsa Escape.
+   */
+  private readonly sincronizarDialogo = effect(() => {
+    const dlg = this.dialogoAvatar()?.nativeElement;
+    if (!dlg || typeof dlg.showModal !== 'function') return;
+    if (this.dialogoAvatarAbierto()) {
+      if (!dlg.open) dlg.showModal();
+    } else if (dlg.open) {
+      dlg.close();
+    }
+  });
 
   /** Hay una imagen lista para guardar: un avatar elegido, o una foto (nueva o ya subida). */
   protected readonly imagenElegida = computed(() =>
@@ -96,6 +124,13 @@ export class EditorPerfil implements OnInit, OnDestroy {
     if (previa) return previa;
     const ref = this.imagenRefFotoActual();
     return ref ? urlMedia(`/api/v1/media/fotos/${ref}`) : null;
+  });
+
+  /** Lo que se pinta en la carta: la foto en modo FOTO, o el avatar elegido en modo AVATAR. */
+  protected readonly urlTarjeta = computed(() => {
+    if (this.modoImagen() === 'FOTO') return this.urlFotoMostrada();
+    const ref = this.imagenRefAvatar();
+    return ref ? urlMedia(`/api/v1/media/avatares/${ref}.png`) : null;
   });
 
   protected readonly form = this.formBuilder.group({
@@ -133,10 +168,21 @@ export class EditorPerfil implements OnInit, OnDestroy {
     this.modoImagen.set('AVATAR');
     this.imagenRefAvatar.set(id);
     this.intentoSinImagen.set(false);
+    this.dialogoAvatarAbierto.set(false);
   }
 
-  protected cambiarModo(modo: 'FOTO' | 'AVATAR'): void {
-    this.modoImagen.set(modo);
+  protected abrirDialogoAvatar(): void {
+    this.dialogoAvatarAbierto.set(true);
+  }
+
+  protected cerrarDialogoAvatar(): void {
+    this.dialogoAvatarAbierto.set(false);
+  }
+
+  /** Iniciales para el hueco de la carta mientras no hay imagen elegida. */
+  protected iniciales(): string {
+    const { nombre, apellidos } = this.form.getRawValue();
+    return ((nombre?.[0] ?? '') + (apellidos?.[0] ?? '')).toUpperCase() || '—';
   }
 
   protected onFotoElegida(evento: Event): void {

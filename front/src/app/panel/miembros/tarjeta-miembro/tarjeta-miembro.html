@@ -1,52 +1,51 @@
-<article class="flex flex-col gap-4 rounded-2xl border border-outline bg-panel p-6">
-  <div class="flex items-start gap-4">
+<article class="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-outline bg-panel">
+  <!-- La cara de la carta: foto o avatar, como el cromo de un álbum -->
+  <div class="relative aspect-4/5 w-full bg-surface">
     @if (urlImagen()) {
-      <img
-        [src]="urlImagen()"
-        alt=""
-        class="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-outline"
-      />
+      <img [src]="urlImagen()" alt="" class="absolute inset-0 h-full w-full object-cover" />
     } @else {
       <span
         aria-hidden="true"
-        class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-surface font-display text-lg font-bold text-muted ring-2 ring-outline"
+        class="absolute inset-0 flex items-center justify-center font-display text-4xl font-bold text-outline"
       >
         {{ iniciales() }}
       </span>
     }
+    <span class="pointer-events-none absolute inset-2.5 rounded-xl border border-gold/20"></span>
+  </div>
 
-    <div class="min-w-0 flex-1">
-      <h2 class="font-display text-lg font-bold leading-tight">
-        {{ tarjeta().nombre }} {{ tarjeta().apellidos }}
-      </h2>
-      @if (tarjeta().mote) {
-        <p class="text-sm italic text-muted">«{{ tarjeta().mote }}»</p>
+  <!-- Cuerpo -->
+  <div class="flex flex-1 flex-col gap-2 p-4">
+    <div class="flex items-start justify-between gap-2">
+      <div class="min-w-0">
+        <h2 class="font-display text-base font-bold leading-tight">
+          {{ tarjeta().nombre }} {{ tarjeta().apellidos }}
+        </h2>
+        @if (tarjeta().mote) {
+          <p class="truncate text-sm italic text-muted">«{{ tarjeta().mote }}»</p>
+        }
+      </div>
+      @if (esLaMia()) {
+        <a
+          routerLink="/panel/miembros/editar"
+          class="shrink-0 rounded-lg border border-outline bg-surface px-2.5 py-1 text-xs font-medium text-ink transition hover:border-gold hover:text-gold"
+        >
+          Editar
+        </a>
       }
     </div>
 
-    @if (esLaMia()) {
-      <a
-        routerLink="/panel/miembros/editar"
-        class="shrink-0 rounded-xl border border-outline bg-surface px-3 py-1.5 text-xs font-medium text-ink transition hover:border-gold hover:text-gold"
-      >
-        Editar
-      </a>
+    @if (tarjeta().sobreMi) {
+      <p class="text-sm leading-relaxed text-muted">{{ tarjeta().sobreMi }}</p>
     }
+
+    <div class="mt-auto flex flex-col gap-1 pt-1 text-sm">
+      @if (tarjeta().parejaNombre) {
+        <p><span class="font-semibold text-brand-bright">Pareja:</span> {{ tarjeta().parejaNombre }}</p>
+      }
+      @if (tarjeta().hijos.length) {
+        <p><span class="font-semibold text-brand-bright">Hijos:</span> {{ tarjeta().hijos.join(', ') }}</p>
+      }
+    </div>
   </div>
-
-  @if (tarjeta().sobreMi) {
-    <p class="text-sm leading-relaxed text-muted">{{ tarjeta().sobreMi }}</p>
-  }
-
-  @if (tarjeta().parejaNombre) {
-    <p class="text-sm text-ink">
-      <span class="font-semibold text-brand-bright">Pareja:</span> {{ tarjeta().parejaNombre }}
-    </p>
-  }
-
-  @if (tarjeta().hijos.length) {
-    <p class="text-sm text-ink">
-      <span class="font-semibold text-brand-bright">Hijos:</span> {{ tarjeta().hijos.join(', ') }}
-    </p>
-  }
 </article>

@@ -86,6 +86,16 @@ describe('EditorPerfil', () => {
     campo('apellidos').dispatchEvent(new Event('input'));
   }
 
+  /**
+   * Elige un avatar. La rejilla vive dentro de un `<dialog>` (jsdom no
+   * implementa `showModal`), así que se llama directamente al método del
+   * componente en vez de pinchar en el DOM.
+   */
+  function elegirAvatar(id = '01_chico'): void {
+    (fixture.componentInstance as unknown as { elegirAvatar(id: string): void }).elegirAvatar(id);
+    fixture.detectChanges();
+  }
+
   it('carga el perfil y el catálogo, y precarga el formulario', async () => {
     await iniciar({ ...perfilVacio, mote: 'Condesa', sobreMi: 'Hola' });
 
@@ -107,9 +117,7 @@ describe('EditorPerfil', () => {
 
   it('guardar con el nombre vacío avisa y no manda el PUT', async () => {
     await iniciar(perfilVacio);
-    (
-      Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button[aria-pressed]'))[0] as HTMLButtonElement
-    ).click();
+    elegirAvatar();
     (campo('nombre') as HTMLInputElement).value = '';
     campo('nombre').dispatchEvent(new Event('input'));
     fixture.detectChanges();
@@ -125,10 +133,7 @@ describe('EditorPerfil', () => {
     await iniciar(perfilVacio);
     rellenarDatosMinimos();
 
-    (
-      Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button[aria-pressed]'))[0] as HTMLButtonElement
-    ).click();
-    fixture.detectChanges();
+    elegirAvatar();
 
     boton('Guardar').click();
     fixture.detectChanges();
@@ -144,10 +149,7 @@ describe('EditorPerfil', () => {
   it('un perfil sin pareja nunca manda tienePareja:true sin que el usuario lo marque', async () => {
     await iniciar(perfilVacio);
     rellenarDatosMinimos();
-    (
-      Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button[aria-pressed]'))[0] as HTMLButtonElement
-    ).click();
-    fixture.detectChanges();
+    elegirAvatar();
 
     boton('Guardar').click();
     fixture.detectChanges();
@@ -162,8 +164,6 @@ describe('EditorPerfil', () => {
   it('con foto nueva elegida, guardar sube la foto y luego manda el PUT con esa ref', async () => {
     await iniciar(perfilVacio);
     rellenarDatosMinimos();
-    boton('Subir foto').click();
-    fixture.detectChanges();
 
     const archivo = new File(['contenido'], 'foto.png', { type: 'image/png' });
     (fixture.componentInstance as unknown as { onFotoElegida(e: Event): void }).onFotoElegida({
