@@ -15,6 +15,7 @@ import { TarjetaMiembroResponse } from '../perfil.types';
   imports: [RouterLink],
   templateUrl: './tarjeta-miembro.html',
   styleUrl: './tarjeta-miembro.css',
+  host: { class: 'block h-full' },
 })
 export class TarjetaMiembro {
   readonly tarjeta = input.required<TarjetaMiembroResponse>();
