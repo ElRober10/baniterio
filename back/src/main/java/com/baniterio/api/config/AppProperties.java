@@ -18,7 +18,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * {@code identidad().telefonoFundador()}, etc.
  */
 @ConfigurationProperties("app")
-public record AppProperties(Jwt jwt, Identidad identidad, Cors cors, Email email) {
+public record AppProperties(Jwt jwt, Identidad identidad, Cors cors, Email email, Push push) {
 
     public record Jwt(String secret, int expiracionDias) {
     }
@@ -37,5 +37,14 @@ public record AppProperties(Jwt jwt, Identidad identidad, Cors cors, Email email
      * completa el registro / inicia sesión (se mete en las plantillas).
      */
     public record Email(String modo, String from, String enlaceRegistro) {
+    }
+
+    /**
+     * Config del envío de notificaciones push. {@code modo}: {@code "log"}
+     * (por defecto, solo traza en el log — no requiere credenciales) o
+     * {@code "fcm"} (envía de verdad vía Firebase). {@code credencialesJson} es
+     * la ruta al fichero de cuenta de servicio de Firebase (solo modo fcm).
+     */
+    public record Push(String modo, String credencialesJson) {
     }
 }

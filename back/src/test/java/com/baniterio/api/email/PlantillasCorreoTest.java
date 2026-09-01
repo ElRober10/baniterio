@@ -16,7 +16,8 @@ class PlantillasCorreoTest {
     private final PlantillasCorreo plantillas = new PlantillasCorreo(new AppProperties(
             null, null, null,
             new AppProperties.Email("log", "Bañiterio <no-reply@baniterio.local>",
-                    "http://localhost:4200/registro")));
+                    "http://localhost:4200/registro"),
+            null));
 
     @Test
     void aprobacion_cuenta_creada_incluye_el_nombre_y_habla_de_iniciar_sesion() {
