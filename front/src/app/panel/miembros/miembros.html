@@ -1,4 +1,4 @@
-<section class="mx-auto w-full max-w-3xl">
+<section class="mx-auto w-full max-w-5xl">
   <h1 class="font-display text-2xl font-extrabold leading-tight">Miembros de la peña</h1>
   <p class="mt-2 text-sm leading-relaxed text-muted">
     Tu tarjeta primero, luego la de tu pareja y tus hijos, y el resto por orden alfabético.
@@ -59,9 +59,9 @@
         </div>
       }
       @case ('lista') {
-        <ul class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <ul class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           @for (t of tarjetas(); track t.id) {
-            <li class="flex">
+            <li class="contents">
               <app-tarjeta-miembro [tarjeta]="t" [esLaMia]="esLaMia(t)" />
             </li>
           }
