@@ -1,0 +1,52 @@
+<article class="flex flex-col gap-4 rounded-2xl border border-outline bg-panel p-6">
+  <div class="flex items-start gap-4">
+    @if (urlImagen()) {
+      <img
+        [src]="urlImagen()"
+        alt=""
+        class="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-outline"
+      />
+    } @else {
+      <span
+        aria-hidden="true"
+        class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-surface font-display text-lg font-bold text-muted ring-2 ring-outline"
+      >
+        {{ iniciales() }}
+      </span>
+    }
+
+    <div class="min-w-0 flex-1">
+      <h2 class="font-display text-lg font-bold leading-tight">
+        {{ tarjeta().nombre }} {{ tarjeta().apellidos }}
+      </h2>
+      @if (tarjeta().mote) {
+        <p class="text-sm italic text-muted">«{{ tarjeta().mote }}»</p>
+      }
+    </div>
+
+    @if (esLaMia()) {
+      <a
+        routerLink="/panel/miembros/editar"
+        class="shrink-0 rounded-xl border border-outline bg-surface px-3 py-1.5 text-xs font-medium text-ink transition hover:border-gold hover:text-gold"
+      >
+        Editar
+      </a>
+    }
+  </div>
+
+  @if (tarjeta().sobreMi) {
+    <p class="text-sm leading-relaxed text-muted">{{ tarjeta().sobreMi }}</p>
+  }
+
+  @if (tarjeta().parejaNombre) {
+    <p class="text-sm text-ink">
+      <span class="font-semibold text-brand-bright">Pareja:</span> {{ tarjeta().parejaNombre }}
+    </p>
+  }
+
+  @if (tarjeta().hijos.length) {
+    <p class="text-sm text-ink">
+      <span class="font-semibold text-brand-bright">Hijos:</span> {{ tarjeta().hijos.join(', ') }}
+    </p>
+  }
+</article>
