@@ -36,3 +36,6 @@ app:
     modo: ${MAIL_MODO:log}
     from: ${MAIL_FROM:Bañiterio <no-reply@baniterio.local>}
     enlace-registro: ${MAIL_ENLACE_REGISTRO:http://localhost:4200/registro}
+  push:
+    modo: ${PUSH_MODO:log}                    # log = solo traza · fcm = envía por Firebase
+    credenciales-json: ${PUSH_CREDENCIALES:}  # ruta al service-account.json (solo modo fcm)
