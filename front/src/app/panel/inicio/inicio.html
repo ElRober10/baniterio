@@ -11,6 +11,16 @@
 </p>
 
 <div class="mt-10 grid gap-5 sm:grid-cols-2">
+  <a
+    routerLink="/panel/miembros"
+    class="group relative overflow-hidden rounded-2xl border border-outline bg-panel p-6 transition hover:border-gold"
+  >
+    <h2 class="font-display text-lg font-bold transition group-hover:text-gold">Miembros</h2>
+    <p class="mt-2 text-sm leading-relaxed text-muted">
+      Socios de la peña: sus tarjetas, y la tuya para editarla.
+    </p>
+  </a>
+
   @for (seccion of secciones; track seccion.nombre) {
     <div class="relative overflow-hidden rounded-2xl border border-outline bg-panel p-6">
       <div class="flex items-center justify-between">

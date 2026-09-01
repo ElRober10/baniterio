@@ -8,10 +8,11 @@ import { UsuarioDto } from '../auth/auth.types';
 import { Panel } from './panel';
 
 /**
- * Tests del layout `Panel`. El nav pinta "Inicio" + las secciones "próximamente";
- * el enlace "Administración" (a `/panel/administracion`) va el último y solo si el
- * usuario tiene alguna área concedida, con la campanita del total de pendientes.
- * Las sub-secciones (Solicitudes / Permisos) ya no cuelgan del nav.
+ * Tests del layout `Panel`. El nav pinta "Inicio", "Miembros" (enlace real, a
+ * `/panel/miembros`) y las secciones "próximamente"; el enlace "Administración"
+ * (a `/panel/administracion`) va el último y solo si el usuario tiene alguna
+ * área concedida, con la campanita del total de pendientes. Las sub-secciones
+ * (Solicitudes / Permisos) ya no cuelgan del nav.
  */
 describe('Panel · nav lateral', () => {
   const usuarioSesion = signal<UsuarioDto | null>(null);
@@ -67,6 +68,13 @@ describe('Panel · nav lateral', () => {
     expect(texto).toContain('Inicio');
     expect(texto).toContain('Miembros');
     expect(texto).toContain('Eventos');
+  });
+
+  it('"Miembros" es un enlace real a /panel/miembros, no una sección "Pronto"', () => {
+    const el = render([]);
+    const enlace = el.querySelector('a[href="/panel/miembros"]');
+    expect(enlace).toBeTruthy();
+    expect((enlace?.textContent ?? '').trim()).toBe('Miembros');
   });
 
   it('usuario sin áreas: no aparece "Administración" ni se pide el recuento', () => {
