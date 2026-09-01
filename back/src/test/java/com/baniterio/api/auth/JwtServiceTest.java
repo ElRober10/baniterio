@@ -36,7 +36,8 @@ class JwtServiceTest {
     }
 
     private static JwtService servicio(String secreto, int dias, Environment env) {
-        return new JwtService(new AppProperties(new AppProperties.Jwt(secreto, dias), null, null, null, null), env);
+        return new JwtService(new AppProperties(new AppProperties.Jwt(secreto, dias), null, null, null, null,
+                new AppProperties.Media("./target/media-test")), env);
     }
 
     private final JwtService jwt = servicio(SECRET, 7, sinPerfiles());
