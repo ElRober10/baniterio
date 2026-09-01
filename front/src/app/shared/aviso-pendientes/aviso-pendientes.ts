@@ -37,25 +37,26 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
   `,
   styles: `
     .globo {
-      animation: latido-halo 4s ease-in-out infinite;
+      animation: latido-halo 3s ease-in-out infinite;
     }
     .campana {
       transform-origin: 50% 15%;
-      animation: campaneo 4s ease-in-out infinite;
+      animation: campaneo 3s ease-in-out infinite;
     }
     @keyframes campaneo {
-      /* balanceo corto al arrancar la tanda, luego quieta el resto del ciclo */
-      0% { transform: rotate(0); }
-      3% { transform: rotate(-12deg); }
-      9% { transform: rotate(10deg); }
-      15% { transform: rotate(-7deg); }
-      21% { transform: rotate(4deg); }
-      27% { transform: rotate(0); }
-      100% { transform: rotate(0); }
+      /* balanceo corto al arrancar la tanda, luego quieta el resto del ciclo;
+         durante el balanceo la campana crece un poco para llamar más la atención */
+      0% { transform: rotate(0) scale(1); }
+      4% { transform: rotate(-12deg) scale(1.15); }
+      12% { transform: rotate(10deg) scale(1.15); }
+      20% { transform: rotate(-7deg) scale(1.12); }
+      28% { transform: rotate(4deg) scale(1.06); }
+      36% { transform: rotate(0) scale(1); }
+      100% { transform: rotate(0) scale(1); }
     }
     @keyframes latido-halo {
-      0%, 27%, 100% { box-shadow: 0 0 10px rgba(248, 211, 73, 0.55); }
-      12% { box-shadow: 0 0 16px rgba(248, 211, 73, 0.85); }
+      0%, 36%, 100% { box-shadow: 0 0 10px rgba(248, 211, 73, 0.55); }
+      16% { box-shadow: 0 0 16px rgba(248, 211, 73, 0.85); }
     }
     @media (prefers-reduced-motion: reduce) {
       .globo,
