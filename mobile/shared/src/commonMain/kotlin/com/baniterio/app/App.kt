@@ -14,6 +14,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
+import coil3.ImageLoader
+import coil3.compose.setSingletonImageLoaderFactory
+import coil3.network.ktor3.KtorNetworkFetcherFactory
 import com.baniterio.app.data.Dependencias
 import com.baniterio.app.nav.Screen
 import com.baniterio.app.nav.SolicitudPrecarga
@@ -24,6 +27,9 @@ import com.baniterio.app.ui.admin.AdminSolicitudesScreen
 import com.baniterio.app.ui.historia.HistoriaScreen
 import com.baniterio.app.ui.auth.desbloqueo.DesbloqueoScreen
 import com.baniterio.app.ui.auth.login.LoginScreen
+import com.baniterio.app.ui.miembros.CargandoSesionScreen
+import com.baniterio.app.ui.miembros.EditorPerfilScreen
+import com.baniterio.app.ui.miembros.MiembrosScreen
 import com.baniterio.app.ui.panel.PanelScreen
 import com.baniterio.app.ui.auth.registro.RegistroScreen
 import com.baniterio.app.ui.auth.solicitaracceso.SolicitarAccesoScreen
@@ -32,8 +38,11 @@ private const val CLAVE_DESBLOQUEO = "Desbloqueo"
 private const val CLAVE_LOGIN = "Login"
 private const val CLAVE_REGISTRO = "Registro"
 private const val CLAVE_SOLICITAR = "SolicitarAcceso"
+private const val CLAVE_CARGANDO_SESION = "CargandoSesion"
 private const val CLAVE_PANEL = "Panel"
 private const val CLAVE_HISTORIA = "Historia"
+private const val CLAVE_MIEMBROS = "Miembros"
+private const val CLAVE_EDITOR_PERFIL = "EditorPerfil"
 private const val CLAVE_ADMIN_INDEX = "AdminIndex"
 private const val CLAVE_ADMIN_SOLICITUDES = "AdminSolicitudes"
 private const val CLAVE_ADMIN_PERMISOS = "AdminPermisos"
@@ -43,8 +52,11 @@ private fun Screen.aClave(): String = when (this) {
     Screen.Login -> CLAVE_LOGIN
     Screen.Registro -> CLAVE_REGISTRO
     Screen.SolicitarAcceso -> CLAVE_SOLICITAR
+    Screen.CargandoSesion -> CLAVE_CARGANDO_SESION
     Screen.Panel -> CLAVE_PANEL
     Screen.Historia -> CLAVE_HISTORIA
+    Screen.Miembros -> CLAVE_MIEMBROS
+    Screen.EditorPerfil -> CLAVE_EDITOR_PERFIL
     Screen.AdminIndex -> CLAVE_ADMIN_INDEX
     Screen.AdminSolicitudes -> CLAVE_ADMIN_SOLICITUDES
     Screen.AdminPermisos -> CLAVE_ADMIN_PERMISOS
@@ -54,8 +66,11 @@ private fun claveAScreen(clave: String): Screen = when (clave) {
     CLAVE_DESBLOQUEO -> Screen.Desbloqueo
     CLAVE_REGISTRO -> Screen.Registro
     CLAVE_SOLICITAR -> Screen.SolicitarAcceso
+    CLAVE_CARGANDO_SESION -> Screen.CargandoSesion
     CLAVE_PANEL -> Screen.Panel
     CLAVE_HISTORIA -> Screen.Historia
+    CLAVE_MIEMBROS -> Screen.Miembros
+    CLAVE_EDITOR_PERFIL -> Screen.EditorPerfil
     CLAVE_ADMIN_INDEX -> Screen.AdminIndex
     CLAVE_ADMIN_SOLICITUDES -> Screen.AdminSolicitudes
     CLAVE_ADMIN_PERMISOS -> Screen.AdminPermisos
@@ -83,7 +98,8 @@ fun App(
     // de la sesión `usuarioActual` no es null, así que esto no hace nada.
     LaunchedEffect(Unit) {
         if (deps.repo.usuarioActual == null &&
-            (screen == Screen.Panel || screen == Screen.Historia ||
+            (screen == Screen.CargandoSesion || screen == Screen.Panel || screen == Screen.Historia ||
+                screen == Screen.Miembros || screen == Screen.EditorPerfil ||
                 screen == Screen.AdminIndex || screen == Screen.AdminSolicitudes ||
                 screen == Screen.AdminPermisos)
         ) {
@@ -102,8 +118,21 @@ fun App(
         ),
     ) { mutableStateOf<SolicitudPrecarga?>(null) }
 
+    // El editor de perfil sirve para dos casos: el alta obligatoria del primer
+    // login (sin "atrás", trae aquí `CargandoSesion`) y "Editar" desde la propia
+    // tarjeta. Este flag distingue a dónde volver y si se pinta el botón de volver.
+    var editorObligatorio by rememberSaveable { mutableStateOf(false) }
+
     fun ir(destino: Screen) {
         screenKey = destino.aClave()
+    }
+
+    // Coil 3 no trae fetcher de red por defecto: se registra uno de Ktor para
+    // poder cargar avatares y fotos de perfil por URL.
+    setSingletonImageLoaderFactory { ctx ->
+        ImageLoader.Builder(ctx)
+            .components { add(KtorNetworkFetcherFactory()) }
+            .build()
     }
 
     BaniterioTheme {
@@ -117,14 +146,19 @@ fun App(
                 is Screen.Desbloqueo -> DesbloqueoScreen(
                     repo = deps.repo,
                     almacen = deps.almacen,
-                    onDesbloqueado = { alIniciarSesion(); ir(Screen.Panel) },
+                    onDesbloqueado = { alIniciarSesion(); ir(Screen.CargandoSesion) },
                     onUsarOtraCuenta = { ir(Screen.Login) },
                 )
                 is Screen.Login -> LoginScreen(
                     repo = deps.repo,
                     almacen = deps.almacen,
-                    onLoginSuccess = { alIniciarSesion(); ir(Screen.Panel) },
+                    onLoginSuccess = { alIniciarSesion(); ir(Screen.CargandoSesion) },
                     onIrARegistro = { ir(Screen.Registro) },
+                )
+                is Screen.CargandoSesion -> CargandoSesionScreen(
+                    perfilRepo = deps.perfilRepo,
+                    onPerfilCompleto = { ir(Screen.Panel) },
+                    onPerfilIncompleto = { editorObligatorio = true; ir(Screen.EditorPerfil) },
                 )
                 is Screen.Registro -> {
                     BackHandler { ir(Screen.Login) }
@@ -164,6 +198,29 @@ fun App(
                     BackHandler { ir(Screen.Panel) }
                     HistoriaScreen(
                         onVolver = { ir(Screen.Panel) },
+                    )
+                }
+                is Screen.Miembros -> {
+                    BackHandler { ir(Screen.Panel) }
+                    MiembrosScreen(
+                        perfilRepo = deps.perfilRepo,
+                        miId = deps.repo.usuarioActual?.id,
+                        onEditar = { editorObligatorio = false; ir(Screen.EditorPerfil) },
+                        onVolver = { ir(Screen.Panel) },
+                    )
+                }
+                is Screen.EditorPerfil -> {
+                    // En modo obligatorio no hay "atrás": hay que completar el perfil.
+                    if (!editorObligatorio) BackHandler { ir(Screen.Miembros) }
+                    EditorPerfilScreen(
+                        perfilRepo = deps.perfilRepo,
+                        obligatorio = editorObligatorio,
+                        onGuardado = {
+                            val iba = editorObligatorio
+                            editorObligatorio = false
+                            ir(if (iba) Screen.Panel else Screen.Miembros)
+                        },
+                        onVolver = { editorObligatorio = false; ir(Screen.Miembros) },
                     )
                 }
                 is Screen.AdminIndex -> {

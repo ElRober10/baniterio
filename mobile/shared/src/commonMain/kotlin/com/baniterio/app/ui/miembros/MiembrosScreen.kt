@@ -1,0 +1,23 @@
+package com.baniterio.app.ui.miembros
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.baniterio.app.data.PerfilRepository
+
+// Stub — lo sustituye Task 6.
+@Composable
+fun MiembrosScreen(
+    perfilRepo: PerfilRepository,
+    miId: Long?,
+    onEditar: () -> Unit,
+    onVolver: () -> Unit,
+) {
+    Column(Modifier.fillMaxSize().padding(24.dp)) {
+        Text("Miembros (pendiente)")
+    }
+}
