@@ -3,6 +3,7 @@ package com.baniterio.api.config;
 import java.util.List;
 
 import com.baniterio.api.auth.JwtAuthenticationFilter;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,8 +32,10 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  *       (bean {@link #corsConfigurationSource}).
  *   <li><b>STATELESS</b>: el servidor no guarda sesión; cada petición se
  *       autentica sola con su JWT.
- *   <li><b>Rutas públicas</b>: solo {@code /health}, {@code /auth/registro} y
- *       {@code /auth/login}. Cualquier otra ruta exige estar autenticado.
+ *   <li><b>Rutas públicas</b>: {@code /health}, el alta/entrada de {@code /auth}
+ *       ({@code registro}, {@code login}, {@code solicitudes}) y las imágenes de
+ *       {@code /media/**} (avatares y fotos de perfil). Cualquier otra ruta
+ *       exige estar autenticado.
  *   <li><b>401 en vez de 403</b>: sin el {@code authenticationEntryPoint},
  *       Spring devolvería 403 a una petición sin token; forzamos 401.
  *   <li>{@code addFilterBefore(jwtFilter, ...)}: mete nuestro filtro JWT en la
@@ -50,8 +53,11 @@ public class SecurityConfig {
                 .cors(cors -> {})
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // El forward interno a /error no se re-autoriza: conserva el
+                        // estado real (400 del firewall, 404, etc.) en vez de taparlo con un 401.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers("/api/v1/health", "/api/v1/auth/registro", "/api/v1/auth/login",
-                                "/api/v1/auth/solicitudes").permitAll()
+                                "/api/v1/auth/solicitudes", "/api/v1/media/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e.authenticationEntryPoint(
                         (req, res, ex) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED)))
