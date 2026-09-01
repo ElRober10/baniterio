@@ -7,7 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class CatalogoAvataresTest {
 
-    private final CatalogoAvatares catalogo = new CatalogoAvatares(new com.fasterxml.jackson.databind.ObjectMapper());
+    private final CatalogoAvatares catalogo = new CatalogoAvatares(new tools.jackson.databind.ObjectMapper());
 
     @Test
     void carga_el_manifiesto_del_classpath() {
