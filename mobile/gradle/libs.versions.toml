@@ -20,7 +20,7 @@ androidx-securityCrypto = "1.1.0"
 material3 = "1.11.0-alpha07"
 googleServices = "4.4.2"
 firebaseBom = "34.1.0"
-coil = "3.6.0"
+coil = "3.2.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
