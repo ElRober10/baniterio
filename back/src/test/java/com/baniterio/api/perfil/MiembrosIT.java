@@ -331,4 +331,33 @@ class MiembrosIT extends IntegrationTest {
         assertThat(tarjetaDe(lista, conTexto.id()).get("sobreMi")).isEqualTo("Me gusta el monte");
         assertThat(tarjetaDe(lista, sinTexto.id()).get("sobreMi")).isNull();
     }
+
+    @Test
+    void un_vinculo_pendiente_no_difunde_el_nombre_de_la_pareja() {
+        Miembro yo = crearMiembro();
+        Miembro pareja = crearMiembro();
+        // La pareja es un miembro registrado → el vínculo nace PENDIENTE (sin confirmar).
+        declararPareja(yo.token(), "Petra", "Prado", pareja.nombre(), pareja.telefono());
+
+        assertThat(tarjetaDe(listar(yo.token()), yo.id()).get("parejaNombre")).isNull();
+
+        // Tras aceptar, ya sí sale.
+        aceptarPareja(pareja.token());
+        assertThat(tarjetaDe(listar(yo.token()), yo.id()).get("parejaNombre")).isEqualTo(pareja.nombre());
+    }
+
+    @Test
+    void un_miembro_desactivado_no_sale_en_la_lista() {
+        Miembro yo = crearMiembro();
+        Miembro baja = crearMiembro();
+        completarPerfil(yo.token(), "Otto", "Ortega");
+        completarPerfil(baja.token(), "Dario", "Duarte");
+        assertThat(listar(yo.token())).anySatisfy(t -> assertThat(id(t)).isEqualTo(baja.id()));
+
+        Usuario u = usuarios.findById(baja.id()).orElseThrow();
+        u.setActivo(false);
+        usuarios.save(u);
+
+        assertThat(listar(yo.token())).noneSatisfy(t -> assertThat(id(t)).isEqualTo(baja.id()));
+    }
 }

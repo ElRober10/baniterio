@@ -67,8 +67,11 @@ public class MiembrosService {
 
         Map<Long, TarjetaMiembroResponse> porUsuario = new HashMap<>();
         List<Candidato> candidatos = new ArrayList<>();
-        for (Membresia m : membresias.findByPenaId(penaId)) {
+        for (Membresia m : membresias.findByPenaIdAndActivaTrue(penaId)) {
             Usuario u = m.getUsuario();
+            if (!u.isActivo()) {
+                continue;
+            }
             Optional<Perfil> perfil = perfiles.findByUsuarioId(u.getId());
             if (perfil.map(Perfil::isCompletado).orElse(false) && !porUsuario.containsKey(u.getId())) {
                 porUsuario.put(u.getId(), tarjeta(u, perfil.get()));
@@ -111,12 +114,17 @@ public class MiembrosService {
     }
 
     /**
-     * El nombre de la pareja para la tarjeta de este miembro: si él declaró el
-     * vínculo (vivo), el {@code parejaNombre} que tecleó; si es el lado que
-     * aceptó, el nombre real del solicitante (igual que {@code PerfilService}).
+     * El nombre de la pareja para la tarjeta pública de este miembro. Solo si el
+     * vínculo está confirmado en la práctica: {@code SIN_CUENTA} (la pareja no
+     * tiene cuenta, se asume cierto — así lo indica el spec) o {@code ACEPTADO}.
+     * Un {@code PENDIENTE} (declarado pero aún sin confirmar por la otra persona)
+     * NO se difunde. Si este miembro es el lado que aceptó, el nombre real del
+     * solicitante (igual que {@code PerfilService}).
      */
     private String parejaNombreDe(Long usuarioId) {
         return comoSolicitante(usuarioId)
+                .filter(v -> v.getEstado() == EstadoVinculo.SIN_CUENTA
+                        || v.getEstado() == EstadoVinculo.ACEPTADO)
                 .map(VinculoPareja::getParejaNombre)
                 .or(() -> comoParejaAceptada(usuarioId).map(v -> v.getSolicitante().getNombre()))
                 .orElse(null);
