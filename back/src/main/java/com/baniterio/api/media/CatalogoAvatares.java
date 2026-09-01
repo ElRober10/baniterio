@@ -8,7 +8,6 @@ import java.util.Optional;
 
 import com.baniterio.api.perfil.dto.AvatarResumen;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
@@ -24,7 +23,6 @@ public class CatalogoAvatares {
     private final ObjectMapper mapper;
     private List<AvatarResumen> avatares = List.of();
 
-    @Autowired
     public CatalogoAvatares(ObjectMapper mapper) {
         this.mapper = mapper;
         cargar();
