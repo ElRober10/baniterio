@@ -39,18 +39,37 @@ fun AvisoPendientes(cuenta: Int, modifier: Modifier = Modifier) {
         targetValue = 0f,
         animationSpec = infiniteRepeatable(
             animation = keyframes {
-                durationMillis = 4000
+                durationMillis = 3000
                 0f at 0
                 -12f at 120
                 10f at 360
                 -7f at 600
                 4f at 840
                 0f at 1080
-                0f at 4000
+                0f at 3000
             },
             repeatMode = RepeatMode.Restart,
         ),
         label = "giro",
+    )
+    // Durante el balanceo la campana crece un poco para llamar más la atención.
+    val escala by transicion.animateFloat(
+        initialValue = 1f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 3000
+                1f at 0
+                1.15f at 120
+                1.15f at 360
+                1.12f at 600
+                1.06f at 840
+                1f at 1080
+                1f at 3000
+            },
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "escala",
     )
 
     Text(
@@ -61,6 +80,8 @@ fun AvisoPendientes(cuenta: Int, modifier: Modifier = Modifier) {
         modifier = modifier
             .graphicsLayer {
                 rotationZ = giro
+                scaleX = escala
+                scaleY = escala
                 transformOrigin = TransformOrigin(0.5f, 0.15f)
             }
             .clip(CircleShape)
