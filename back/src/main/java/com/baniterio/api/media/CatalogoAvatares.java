@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.baniterio.api.perfil.dto.AvatarResumen;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
