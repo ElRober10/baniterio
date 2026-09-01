@@ -152,6 +152,8 @@ public class PerfilService {
         perfiles.save(perfil);
 
         if (fotoABorrar != null) {
+            // TODO(Task 7): mover borrarFoto a afterCommit (si la tx revierte tras
+            // este punto, hoy se pierde el fichero anterior sin haber persistido el cambio).
             almacen.borrarFoto(fotoABorrar);
         }
 

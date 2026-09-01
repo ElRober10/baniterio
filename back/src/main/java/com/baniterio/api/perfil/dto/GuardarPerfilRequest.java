@@ -25,7 +25,7 @@ public record GuardarPerfilRequest(
         @NotNull ImagenPerfil imagenTipo,
         @NotBlank @Size(max = 80) String imagenRef,
         @NotNull Boolean tienePareja,
-        String parejaNombre,
-        String parejaTelefono,
+        @Size(max = 140) String parejaNombre,
+        @Size(max = 20) String parejaTelefono,
         List<@Valid HijoRequest> hijos) {
 }
