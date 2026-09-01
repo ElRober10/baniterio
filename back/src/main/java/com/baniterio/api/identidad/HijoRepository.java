@@ -12,7 +12,8 @@ public interface HijoRepository extends JpaRepository<Hijo, Long> {
 
     List<Hijo> findByVinculoParejaId(Long vinculoParejaId);
 
-    Optional<Hijo> findByTelefono(String telefono);
+    /** {@code hijo.telefono} no es único: devuelve lista, no {@code Optional}. */
+    List<Hijo> findAllByTelefono(String telefono);
 
     Optional<Hijo> findByUsuarioId(Long usuarioId);
 }

@@ -79,6 +79,6 @@ class PerfilRepositoryIT extends IntegrationTest {
         hijos.save(Hijo.builder().creador(a).nombre("Peque").telefono(telHijo).visible(false).build());
 
         assertThat(hijos.findByCreadorId(a.getId())).hasSize(1);
-        assertThat(hijos.findByTelefono(telHijo)).isPresent();
+        assertThat(hijos.findAllByTelefono(telHijo)).hasSize(1);
     }
 }
