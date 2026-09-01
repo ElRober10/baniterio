@@ -68,24 +68,25 @@ public class VinculoParejaService {
     public void reconciliarAlEntrar(Long usuarioId) {
         Usuario usuario = usuarios.findById(usuarioId).orElseThrow();
 
-        Optional<VinculoPareja> candidato = vinculos
-                .findByParejaTelefonoAndEstado(usuario.getTelefono(), EstadoVinculo.SIN_CUENTA);
-        if (candidato.isEmpty()) {
-            return;
-        }
-        VinculoPareja v = candidato.get();
-        if (v.getSolicitante().getId().equals(usuarioId)) {
-            return;
-        }
         // NOTE: si este usuario ya tiene un vínculo vivo propio, no lo forzamos a
-        // este; se queda SIN_CUENTA y el solicitante puede rehacerlo. (El spec no
-        // cubre el choque; esta es la opción mínima y segura.)
+        // uno ajeno; el SIN_CUENTA se queda como está y el solicitante puede
+        // rehacerlo. (El spec no cubre el choque; opción mínima y segura.)
         if (tieneVinculoVivo(usuarioId)) {
             return;
         }
-        v.setParejaUsuario(usuario);
-        v.setEstado(EstadoVinculo.PENDIENTE);
-        vinculos.save(v);
+        // pareja_telefono NO es único: dos miembros pueden haber declarado, cada
+        // uno, este mismo teléfono aún sin cuenta. Se promueve el PRIMERO cuyo
+        // solicitante no sea este usuario; los demás siguen SIN_CUENTA (se
+        // resolverán o se podarán cuando su solicitante reedite su perfil).
+        for (VinculoPareja v : vinculos.findAllByParejaTelefonoAndEstado(
+                usuario.getTelefono(), EstadoVinculo.SIN_CUENTA)) {
+            if (!v.getSolicitante().getId().equals(usuarioId)) {
+                v.setParejaUsuario(usuario);
+                transicionar(v, EstadoVinculo.PENDIENTE);
+                vinculos.save(v);
+                return;
+            }
+        }
     }
 
     /**
@@ -102,6 +103,13 @@ public class VinculoParejaService {
      */
     @Transactional
     public void aplicarDesdePerfil(Long usuarioId, boolean tienePareja, String parejaNombre, String parejaTelefono) {
+        // El lado que ACEPTÓ (o al que se le declaró) no gestiona el vínculo
+        // desde el editor: los campos de pareja son de solo lectura para él y el
+        // PUT /perfil los ignora. Romper el vínculo es DELETE /perfil/pareja,
+        // desde cualquiera de los dos.
+        if (vinculos.findByParejaUsuarioIdAndEstadoNot(usuarioId, EstadoVinculo.RECHAZADO).isPresent()) {
+            return;
+        }
         if (!tienePareja) {
             deshacerLoDeclarado(usuarioId);
             return;
@@ -131,7 +139,7 @@ public class VinculoParejaService {
 
     private void declarar(Long usuarioId, String parejaNombre, String parejaTelefono) {
         if (!StringUtils.hasText(parejaNombre)) {
-            throw new TelefonoParejaInvalidoException();
+            throw new NombreParejaRequeridoException();
         }
         String tel = NormalizadorTelefono.normalizar(parejaTelefono)
                 .orElseThrow(TelefonoParejaInvalidoException::new);
@@ -154,7 +162,7 @@ public class VinculoParejaService {
                     miembroConTelefono(tel, usuarioId).ifPresent(b -> {
                         exigirMiembroLibre(b);
                         v.setParejaUsuario(b);
-                        v.setEstado(EstadoVinculo.PENDIENTE);
+                        transicionar(v, EstadoVinculo.PENDIENTE);
                         avisar(b.getId(), solicitante.getNombre() + " dice que sois pareja");
                     });
                 }
@@ -192,7 +200,7 @@ public class VinculoParejaService {
             throw new VinculoConflictoException("YA_TIENE_PAREJA");
         }
 
-        v.setEstado(EstadoVinculo.ACEPTADO);
+        transicionar(v, EstadoVinculo.ACEPTADO);
         vinculos.save(v);
 
         reparentarHijos(solicitante.getId(), v);
@@ -209,7 +217,7 @@ public class VinculoParejaService {
                 .filter(x -> x.getEstado() == EstadoVinculo.PENDIENTE)
                 .orElseThrow(VinculoNoEncontradoException::new);
 
-        v.setEstado(EstadoVinculo.RECHAZADO);
+        transicionar(v, EstadoVinculo.RECHAZADO);
         vinculos.save(v);
 
         Usuario quienRechaza = usuarios.findById(usuarioId).orElseThrow();
@@ -257,6 +265,20 @@ public class VinculoParejaService {
     }
 
     // --- Helpers ---
+
+    /**
+     * Cambia el estado de un vínculo YA persistido validando la transición contra
+     * {@link EstadoVinculo#puedePasarA}. Así la máquina de estados pura (y sus
+     * tests) y la real no pueden divergir. Una transición ilegal es un bug, no un
+     * caso de negocio: {@link IllegalStateException} → 500.
+     */
+    private void transicionar(VinculoPareja v, EstadoVinculo nuevo) {
+        if (!v.getEstado().puedePasarA(nuevo)) {
+            throw new IllegalStateException(
+                    "Transición de vínculo no permitida: " + v.getEstado() + " → " + nuevo);
+        }
+        v.setEstado(nuevo);
+    }
 
     private void crearVinculo(Usuario solicitante, String nombre, String tel) {
         Optional<Usuario> miembro = miembroConTelefono(tel, solicitante.getId());
@@ -317,6 +339,7 @@ public class VinculoParejaService {
     }
 
     private void altaTelefonoAutorizado(String tel, Usuario autorizadoPor) {
+        // telefono_autorizado.telefono SÍ es único: findByTelefono (Optional) es seguro.
         if (telefonosAutorizados.findByTelefono(tel).isPresent()) {
             return;
         }
@@ -330,16 +353,18 @@ public class VinculoParejaService {
 
     /**
      * Al quitar una pareja {@code SIN_CUENTA}: si la fila de
-     * {@code telefono_autorizado} sigue sin usar y ya no la referencia ningún
-     * otro vínculo vivo ni hijo, se borra.
+     * {@code telefono_autorizado} sigue sin usar y ya no la referencia NINGÚN
+     * otro vínculo vivo ni NINGÚN hijo, se borra. (Ambas columnas de origen son
+     * no únicas, de ahí las consultas de lista.)
      */
     private void podarTelefono(String tel) {
         telefonosAutorizados.findByTelefono(tel).ifPresent(ta -> {
             if (ta.isUsado()) {
                 return;
             }
-            boolean referenciado = !vinculos.findAllByParejaTelefonoAndEstadoNot(tel, EstadoVinculo.RECHAZADO).isEmpty()
-                    || hijos.findByTelefono(tel).isPresent();
+            boolean referenciado =
+                    !vinculos.findAllByParejaTelefonoAndEstadoNot(tel, EstadoVinculo.RECHAZADO).isEmpty()
+                            || !hijos.findAllByTelefono(tel).isEmpty();
             if (!referenciado) {
                 telefonosAutorizados.delete(ta);
             }

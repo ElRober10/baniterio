@@ -23,6 +23,7 @@ import com.baniterio.api.push.ServicioPush;
 import com.baniterio.api.support.IntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -42,11 +43,13 @@ import static org.springframework.http.HttpHeaders.AUTHORIZATION;
  * Test de integración de la máquina de estados del vínculo de pareja: declarar
  * (miembro → PENDIENTE + push; libre → SIN_CUENTA + alta de teléfono), aceptar,
  * rechazar, romper, el 409 de "ese teléfono ya tiene pareja", la detección
- * SIN_CUENTA→PENDIENTE al registrarse, y que un usuario no puede tener dos
- * parejas vivas.
+ * SIN_CUENTA→PENDIENTE al registrarse (incl. el caso de dos declaraciones del
+ * mismo teléfono), que el lado que acepta puede guardar su perfil sin tocar el
+ * vínculo, y que un usuario no puede tener dos parejas vivas.
  *
  * <p>{@link ServicioPush} va mockeado; los avisos se comprueban con Awaitility
- * porque {@code ManejadorAvisoPush} corre {@code AFTER_COMMIT}.
+ * (el manejador corre {@code AFTER_COMMIT}) y capturando los tokens para
+ * verificar que el push va a la persona correcta y no a la otra.
  */
 class VinculoParejaIT extends IntegrationTest {
 
@@ -87,7 +90,7 @@ class VinculoParejaIT extends IntegrationTest {
 
     // --- Helpers ---
 
-    private record Miembro(Long id, String telefono, String nombre, String token) {
+    private record Miembro(Long id, String telefono, String nombre, String token, String pushToken) {
     }
 
     private String telefonoLibre() {
@@ -115,12 +118,13 @@ class VinculoParejaIT extends IntegrationTest {
         Pena pena = penas.findBySlug("baniterio").orElseThrow();
         membresias.save(Membresia.builder()
                 .usuario(usuario).pena(pena).rol(RolMembresia.MIEMBRO).activa(true).build());
+        String pushToken = "tok-" + usuario.getId() + "-" + ThreadLocalRandom.current().nextInt(1_000_000);
         dispositivos.save(Dispositivo.builder()
                 .usuario(usuario)
-                .token("tok-" + usuario.getId() + "-" + ThreadLocalRandom.current().nextInt(1_000_000))
+                .token(pushToken)
                 .plataforma(PlataformaDispositivo.ANDROID)
                 .build());
-        return new Miembro(usuario.getId(), telefono, nombre, login(telefono));
+        return new Miembro(usuario.getId(), telefono, nombre, login(telefono), pushToken);
     }
 
     private String login(String telefono) {
@@ -161,9 +165,22 @@ class VinculoParejaIT extends IntegrationTest {
         return (Map<String, Object>) getPerfil(token).get("pareja");
     }
 
-    private void esperarPush(String titulo, String cuerpo) {
+    private void aceptar(String token) {
+        http.post().uri("/api/v1/perfil/pareja/aceptar").header(AUTHORIZATION, "Bearer " + token)
+                .exchange().expectStatus().isNoContent();
+    }
+
+    /**
+     * Espera a que salga el push con ese cuerpo y comprueba que va a
+     * {@code tokenDestino} y NO a {@code tokenOtro} (la audiencia ES el meollo de
+     * la máquina de estados).
+     */
+    private void esperarPush(String cuerpo, String tokenDestino, String tokenOtro) {
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<String>> tokens = ArgumentCaptor.forClass(List.class);
         await().atMost(ofSeconds(10)).untilAsserted(() ->
-                verify(servicioPush).enviar(any(), eq(titulo), eq(cuerpo)));
+                verify(servicioPush).enviar(tokens.capture(), eq("Vínculo de pareja"), eq(cuerpo)));
+        assertThat(tokens.getValue()).contains(tokenDestino).doesNotContain(tokenOtro);
     }
 
     // --- Casos ---
@@ -176,7 +193,7 @@ class VinculoParejaIT extends IntegrationTest {
         declarar(a.token(), "Mi pareja B", b.telefono()).expectStatus().isOk();
 
         assertThat(pareja(a.token()).get("estado")).isEqualTo("PENDIENTE");
-        esperarPush("Vínculo de pareja", a.nombre() + " dice que sois pareja");
+        esperarPush(a.nombre() + " dice que sois pareja", b.pushToken(), a.pushToken());
     }
 
     @Test
@@ -193,20 +210,30 @@ class VinculoParejaIT extends IntegrationTest {
     }
 
     @Test
+    void declarar_pareja_sin_nombre_da_400_nombre_requerido() {
+        Miembro a = crearMiembro();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = declarar(a.token(), "  ", telefonoLibre())
+                .expectStatus().isBadRequest()
+                .expectBody(Map.class).returnResult().getResponseBody();
+        assertThat(body.get("codigo")).isEqualTo("NOMBRE_PAREJA_REQUERIDO");
+    }
+
+    @Test
     void la_pareja_acepta_y_el_vinculo_es_mutuo() {
         Miembro a = crearMiembro();
         Miembro b = crearMiembro();
         declarar(a.token(), "B", b.telefono()).expectStatus().isOk();
 
-        http.post().uri("/api/v1/perfil/pareja/aceptar").header(AUTHORIZATION, "Bearer " + b.token())
-                .exchange().expectStatus().isNoContent();
+        aceptar(b.token());
 
         assertThat(pareja(a.token()).get("estado")).isEqualTo("ACEPTADO");
         Map<String, Object> vistaB = pareja(b.token());
         assertThat(vistaB.get("estado")).isEqualTo("ACEPTADO");
         assertThat(vistaB.get("nombre")).isEqualTo(a.nombre());
         assertThat(vistaB.get("telefono")).isEqualTo(a.telefono());
-        esperarPush("Vínculo de pareja", b.nombre() + " ha aceptado el vínculo de pareja");
+        esperarPush(b.nombre() + " ha aceptado el vínculo de pareja", a.pushToken(), b.pushToken());
     }
 
     @Test
@@ -219,7 +246,7 @@ class VinculoParejaIT extends IntegrationTest {
                 .exchange().expectStatus().isNoContent();
 
         assertThat(getPerfil(a.token()).get("pareja")).isNull();
-        esperarPush("Vínculo de pareja", b.nombre() + " ha rechazado el vínculo de pareja");
+        esperarPush(b.nombre() + " ha rechazado el vínculo de pareja", a.pushToken(), b.pushToken());
     }
 
     @Test
@@ -227,8 +254,7 @@ class VinculoParejaIT extends IntegrationTest {
         Miembro a = crearMiembro();
         Miembro b = crearMiembro();
         declarar(a.token(), "B", b.telefono()).expectStatus().isOk();
-        http.post().uri("/api/v1/perfil/pareja/aceptar").header(AUTHORIZATION, "Bearer " + b.token())
-                .exchange().expectStatus().isNoContent();
+        aceptar(b.token());
 
         Miembro c = crearMiembro();
         @SuppressWarnings("unchecked")
@@ -244,13 +270,7 @@ class VinculoParejaIT extends IntegrationTest {
         String libre = telefonoLibre();
         declarar(a.token(), "Futura pareja", libre).expectStatus().isOk();
 
-        http.post().uri("/api/v1/auth/registro").body(Map.of(
-                        "telefono", libre,
-                        "email", libre + "@nuevo.test",
-                        "password", "secreto1",
-                        "nombre", "Recien",
-                        "apellidos", "Llegado"))
-                .exchange().expectStatus().isCreated();
+        registrar(libre);
 
         Map<String, Object> perfilNuevo = getPerfil(login(libre));
         @SuppressWarnings("unchecked")
@@ -260,19 +280,72 @@ class VinculoParejaIT extends IntegrationTest {
     }
 
     @Test
+    void dos_miembros_declaran_el_mismo_telefono_libre_y_al_registrarse_no_revienta_get_perfil() {
+        Miembro a1 = crearMiembro();
+        Miembro a2 = crearMiembro();
+        String libre = telefonoLibre();
+        declarar(a1.token(), "Pareja de A1", libre).expectStatus().isOk();
+        declarar(a2.token(), "Pareja de A2", libre).expectStatus().isOk();
+
+        registrar(libre);
+        String tokenB = login(libre);
+        Long idB = usuarios.findByTelefono(libre).orElseThrow().getId();
+
+        // GET /perfil no da 500 pese a los dos SIN_CUENTA con el mismo teléfono...
+        Map<String, Object> perfilB = getPerfil(tokenB);
+        assertThat(perfilB.get("vinculoPendiente")).isNotNull();
+        // ...y es idempotente en llamadas sucesivas.
+        assertThat(getPerfil(tokenB).get("vinculoPendiente")).isNotNull();
+
+        // Exactamente un vínculo vivo apunta a B; el otro sigue SIN_CUENTA.
+        long comoPareja = vinculos.findAll().stream()
+                .filter(v -> v.getParejaUsuario() != null && v.getParejaUsuario().getId().equals(idB))
+                .filter(v -> v.getEstado() != EstadoVinculo.RECHAZADO)
+                .count();
+        assertThat(comoPareja).isEqualTo(1);
+    }
+
+    @Test
+    void el_lado_que_acepta_puede_guardar_su_perfil_sin_romper_el_vinculo() {
+        Miembro a = crearMiembro();
+        Miembro b = crearMiembro();
+        declarar(a.token(), "B", b.telefono()).expectStatus().isOk();
+        aceptar(b.token());
+
+        // B reenvía en su PUT /perfil los campos de pareja que le devolvió el GET.
+        Map<String, Object> vistaB = pareja(b.token());
+        Map<String, Object> req = putBase();
+        req.put("tienePareja", true);
+        req.put("parejaNombre", vistaB.get("nombre"));
+        req.put("parejaTelefono", vistaB.get("telefono"));
+        req.put("sobreMi", "me actualizo");
+        http.put().uri("/api/v1/perfil").header(AUTHORIZATION, "Bearer " + b.token())
+                .body(req).exchange().expectStatus().isOk();
+
+        // El vínculo sigue ACEPTADO en los dos lados y no se ha duplicado.
+        assertThat(pareja(a.token()).get("estado")).isEqualTo("ACEPTADO");
+        assertThat(pareja(b.token()).get("estado")).isEqualTo("ACEPTADO");
+        long vivos = vinculos.findAll().stream()
+                .filter(v -> v.getSolicitante().getId().equals(a.id()))
+                .filter(v -> v.getEstado() != EstadoVinculo.RECHAZADO)
+                .count();
+        assertThat(vivos).isEqualTo(1);
+        assertThat(getPerfil(b.token()).get("sobreMi")).isEqualTo("me actualizo");
+    }
+
+    @Test
     void romper_vinculo_aceptado_desde_cualquiera_de_los_dos() {
         Miembro a = crearMiembro();
         Miembro b = crearMiembro();
         declarar(a.token(), "B", b.telefono()).expectStatus().isOk();
-        http.post().uri("/api/v1/perfil/pareja/aceptar").header(AUTHORIZATION, "Bearer " + b.token())
-                .exchange().expectStatus().isNoContent();
+        aceptar(b.token());
 
         http.delete().uri("/api/v1/perfil/pareja").header(AUTHORIZATION, "Bearer " + b.token())
                 .exchange().expectStatus().isNoContent();
 
         assertThat(getPerfil(a.token()).get("pareja")).isNull();
         assertThat(getPerfil(b.token()).get("pareja")).isNull();
-        esperarPush("Vínculo de pareja", b.nombre() + " ha deshecho el vínculo de pareja");
+        esperarPush(b.nombre() + " ha deshecho el vínculo de pareja", a.pushToken(), b.pushToken());
     }
 
     @Test
@@ -293,5 +366,15 @@ class VinculoParejaIT extends IntegrationTest {
         assertThat(vivos).isEqualTo(1);
         // B queda libre otra vez.
         assertThat(getPerfil(b.token()).get("vinculoPendiente")).isNull();
+    }
+
+    private void registrar(String telefono) {
+        http.post().uri("/api/v1/auth/registro").body(Map.of(
+                        "telefono", telefono,
+                        "email", telefono + "@nuevo.test",
+                        "password", "secreto1",
+                        "nombre", "Recien",
+                        "apellidos", "Llegado"))
+                .exchange().expectStatus().isCreated();
     }
 }

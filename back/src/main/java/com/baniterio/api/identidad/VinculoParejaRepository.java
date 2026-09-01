@@ -14,7 +14,13 @@ public interface VinculoParejaRepository extends JpaRepository<VinculoPareja, Lo
     /** El vínculo vivo (estado != el dado) donde soy la pareja registrada. */
     Optional<VinculoPareja> findByParejaUsuarioIdAndEstadoNot(Long parejaUsuarioId, EstadoVinculo estado);
 
-    Optional<VinculoPareja> findByParejaTelefonoAndEstado(String parejaTelefono, EstadoVinculo estado);
+    /**
+     * Vínculos con ese teléfono de pareja y estado. Devuelve lista: {@code
+     * pareja_telefono} NO es único (dos miembros pueden declarar, cada uno, el
+     * mismo teléfono aún sin cuenta), así que un {@code Optional} reventaría con
+     * {@code IncorrectResultSizeDataAccessException}.
+     */
+    List<VinculoPareja> findAllByParejaTelefonoAndEstado(String parejaTelefono, EstadoVinculo estado);
 
     List<VinculoPareja> findAllByParejaTelefonoAndEstadoNot(String parejaTelefono, EstadoVinculo estado);
 }
