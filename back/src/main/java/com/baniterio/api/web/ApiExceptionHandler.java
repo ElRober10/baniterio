@@ -17,6 +17,11 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+
+import com.baniterio.api.perfil.AvatarInexistenteException;
+import com.baniterio.api.perfil.ImagenNoSoportadaException;
+import com.baniterio.api.perfil.ImagenRefInvalidaException;
 
 /**
  * Traductor central de excepciones → respuestas HTTP JSON. Con
@@ -124,6 +129,27 @@ public class ApiExceptionHandler {
     ResponseEntity<Map<String, Object>> entradaInvalida() {
         return ResponseEntity.badRequest()
                 .body(Map.of("codigo", "VALIDACION", "errores", Map.of()));
+    }
+
+    @ExceptionHandler(AvatarInexistenteException.class)
+    ResponseEntity<Map<String, Object>> avatarInexistente() {
+        return error(HttpStatus.BAD_REQUEST, "AVATAR_INEXISTENTE");
+    }
+
+    @ExceptionHandler(ImagenRefInvalidaException.class)
+    ResponseEntity<Map<String, Object>> imagenRefInvalida() {
+        return error(HttpStatus.BAD_REQUEST, "IMAGEN_REF_INVALIDA");
+    }
+
+    @ExceptionHandler(ImagenNoSoportadaException.class)
+    ResponseEntity<Map<String, Object>> imagenNoSoportada() {
+        return error(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "IMAGEN_NO_SOPORTADA");
+    }
+
+    /** El multipart supera {@code spring.servlet.multipart.max-file-size}. */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<Map<String, Object>> imagenDemasiadoGrande() {
+        return error(HttpStatus.CONTENT_TOO_LARGE, "IMAGEN_DEMASIADO_GRANDE");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
