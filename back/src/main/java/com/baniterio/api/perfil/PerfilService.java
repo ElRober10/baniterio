@@ -38,8 +38,8 @@ import org.springframework.util.StringUtils;
  * mapean a {@link PerfilResponse} aquí, nunca se devuelven al controlador.
  *
  * <p>{@code guardar} manda todo el estado del editor de una vez y delega la
- * reconciliación de pareja e hijos en {@link VinculoParejaService} (Task 7) y
- * {@link HijosReconciliador} (Task 8), que hoy son stubs.
+ * reconciliación de pareja e hijos en {@link VinculoParejaService} y
+ * {@link HijosReconciliador}.
  */
 @Service
 public class PerfilService {
@@ -75,14 +75,21 @@ public class PerfilService {
     /**
      * Mi perfil. Siempre devuelve algo: si aún no hay fila en {@code perfil}, la
      * forma vacía con {@code completado=false} y los datos de {@code usuario}.
-     * Antes de leer, deja que la Task 7 promueva un vínculo {@code SIN_CUENTA} a
-     * {@code PENDIENTE} si procede.
+     *
+     * <p>Antes de leer, dos reconciliaciones "al entrar":
+     * {@link VinculoParejaService#reconciliarAlEntrar} promueve un vínculo
+     * {@code SIN_CUENTA} a {@code PENDIENTE} si esta persona era la pareja
+     * declarada; y {@link HijosReconciliador#enlazarSiEsHijo} enlaza a esta cuenta
+     * cualquier {@code hijo} declarado con su teléfono (por eso el enlace de un
+     * hijo registrado ocurre en su <b>primer {@code GET /perfil}</b>, no en el
+     * registro).
      */
     @Transactional
     public PerfilResponse miPerfil(Long usuarioId) {
         vinculoParejaService.reconciliarAlEntrar(usuarioId);
 
         Usuario usuario = usuarios.findById(usuarioId).orElseThrow();
+        hijosReconciliador.enlazarSiEsHijo(usuario);
         Optional<Perfil> perfil = perfiles.findByUsuarioId(usuarioId);
 
         ParejaEnPerfil pareja = vinculos
@@ -238,7 +245,8 @@ public class PerfilService {
     /**
      * Los hijos que este usuario ve/edita: los que él creó y —si tiene un vínculo
      * {@code ACEPTADO}— también los que cuelgan de ese vínculo (los de su pareja).
-     * Sin duplicar por id.
+     * Sin duplicar por id. Se excluyen los hijos ya registrados
+     * ({@code usuario_id != null}): tienen tarjeta propia y se gestionan solos.
      */
     private List<HijoEnPerfil> misHijos(Long usuarioId) {
         Map<Long, Hijo> porId = new LinkedHashMap<>();
@@ -254,8 +262,11 @@ public class PerfilService {
 
         List<HijoEnPerfil> resultado = new ArrayList<>();
         for (Hijo h : porId.values()) {
+            if (h.getUsuario() != null) {
+                continue;
+            }
             resultado.add(new HijoEnPerfil(h.getId(), h.getNombre(), h.isMayorDeEdad(),
-                    h.getTelefono(), h.isVisible(), h.getUsuario() != null));
+                    h.getTelefono(), h.isVisible(), false));
         }
         return resultado;
     }

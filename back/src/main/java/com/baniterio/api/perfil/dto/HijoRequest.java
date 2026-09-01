@@ -13,6 +13,6 @@ public record HijoRequest(
         Long id,
         @NotBlank @Size(max = 80) String nombre,
         boolean mayorDeEdad,
-        String telefono,
+        @Size(max = 20) String telefono,
         boolean visible) {
 }

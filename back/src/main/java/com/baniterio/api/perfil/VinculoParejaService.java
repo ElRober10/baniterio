@@ -3,7 +3,6 @@ package com.baniterio.api.perfil;
 import java.util.Optional;
 
 import com.baniterio.api.identidad.EstadoVinculo;
-import com.baniterio.api.identidad.Hijo;
 import com.baniterio.api.identidad.HijoRepository;
 import com.baniterio.api.identidad.MembresiaRepository;
 import com.baniterio.api.identidad.Pena;
@@ -43,18 +42,20 @@ public class VinculoParejaService {
     private final PenaRepository penas;
     private final TelefonoAutorizadoRepository telefonosAutorizados;
     private final HijoRepository hijos;
+    private final HijosReconciliador hijosReconciliador;
     private final ApplicationEventPublisher eventos;
 
     public VinculoParejaService(VinculoParejaRepository vinculos, UsuarioRepository usuarios,
             MembresiaRepository membresias, PenaRepository penas,
             TelefonoAutorizadoRepository telefonosAutorizados, HijoRepository hijos,
-            ApplicationEventPublisher eventos) {
+            HijosReconciliador hijosReconciliador, ApplicationEventPublisher eventos) {
         this.vinculos = vinculos;
         this.usuarios = usuarios;
         this.membresias = membresias;
         this.penas = penas;
         this.telefonosAutorizados = telefonosAutorizados;
         this.hijos = hijos;
+        this.hijosReconciliador = hijosReconciliador;
         this.eventos = eventos;
     }
 
@@ -203,8 +204,7 @@ public class VinculoParejaService {
         transicionar(v, EstadoVinculo.ACEPTADO);
         vinculos.save(v);
 
-        reparentarHijos(solicitante.getId(), v);
-        reparentarHijos(usuarioId, v);
+        hijosReconciliador.alAceptarVinculo(v);
 
         Usuario aceptante = usuarios.findById(usuarioId).orElseThrow();
         avisar(solicitante.getId(), aceptante.getNombre() + " ha aceptado el vínculo de pareja");
@@ -244,10 +244,7 @@ public class VinculoParejaService {
         }
 
         if (v.getEstado() == EstadoVinculo.ACEPTADO) {
-            for (Hijo h : hijos.findByVinculoParejaId(v.getId())) {
-                h.setVinculoPareja(null);
-                hijos.save(h);
-            }
+            hijosReconciliador.alRomperVinculo(v);
         }
 
         EstadoVinculo estadoPrevio = v.getEstado();
@@ -327,15 +324,6 @@ public class VinculoParejaService {
                         .filter(v -> !v.getId().equals(exceptoId)).isPresent()
                 || vinculos.findByParejaUsuarioIdAndEstadoNot(usuarioId, EstadoVinculo.RECHAZADO)
                         .filter(v -> !v.getId().equals(exceptoId)).isPresent();
-    }
-
-    private void reparentarHijos(Long creadorId, VinculoPareja vinculo) {
-        for (Hijo h : hijos.findByCreadorId(creadorId)) {
-            if (h.getVinculoPareja() == null) {
-                h.setVinculoPareja(vinculo);
-                hijos.save(h);
-            }
-        }
     }
 
     private void altaTelefonoAutorizado(String tel, Usuario autorizadoPor) {

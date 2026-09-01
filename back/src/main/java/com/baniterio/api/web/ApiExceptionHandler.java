@@ -23,6 +23,7 @@ import com.baniterio.api.perfil.AvatarInexistenteException;
 import com.baniterio.api.perfil.ImagenNoSoportadaException;
 import com.baniterio.api.perfil.ImagenRefInvalidaException;
 import com.baniterio.api.perfil.NombreParejaRequeridoException;
+import com.baniterio.api.perfil.TelefonoHijoInvalidoException;
 import com.baniterio.api.perfil.TelefonoParejaInvalidoException;
 import com.baniterio.api.perfil.VinculoConflictoException;
 import com.baniterio.api.perfil.VinculoNoEncontradoException;
@@ -163,6 +164,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(NombreParejaRequeridoException.class)
     ResponseEntity<Map<String, Object>> nombreParejaRequerido() {
         return error(HttpStatus.BAD_REQUEST, "NOMBRE_PAREJA_REQUERIDO");
+    }
+
+    @ExceptionHandler(TelefonoHijoInvalidoException.class)
+    ResponseEntity<Map<String, Object>> telefonoHijoInvalido() {
+        return error(HttpStatus.BAD_REQUEST, "TELEFONO_HIJO_INVALIDO");
     }
 
     @ExceptionHandler(ImagenNoSoportadaException.class)
