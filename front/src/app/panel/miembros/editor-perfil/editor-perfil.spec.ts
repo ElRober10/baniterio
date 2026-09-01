@@ -105,6 +105,22 @@ describe('EditorPerfil', () => {
     expect(texto()).toContain('Elige una foto o un avatar.');
   });
 
+  it('guardar con el nombre vacío avisa y no manda el PUT', async () => {
+    await iniciar(perfilVacio);
+    (
+      Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button[aria-pressed]'))[0] as HTMLButtonElement
+    ).click();
+    (campo('nombre') as HTMLInputElement).value = '';
+    campo('nombre').dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    boton('Guardar').click();
+    fixture.detectChanges();
+
+    httpMock.expectNone(`${base}/perfil`);
+    expect(texto()).toContain('Revisa los campos obligatorios');
+  });
+
   it('guardar con un avatar elegido manda PUT con imagenTipo AVATAR y su ref', async () => {
     await iniciar(perfilVacio);
     rellenarDatosMinimos();
