@@ -1,0 +1,54 @@
+<div class="flex flex-col gap-4">
+  <div class="inline-flex w-fit overflow-hidden rounded-xl border border-outline">
+    <button
+      type="button"
+      (click)="ponerFiltro('TODOS')"
+      [class]="
+        filtro() === 'TODOS'
+          ? 'bg-brand px-4 py-2 text-sm font-bold text-gold'
+          : 'bg-surface px-4 py-2 text-sm font-medium text-muted transition hover:text-ink'
+      "
+    >
+      Todos
+    </button>
+    <button
+      type="button"
+      (click)="ponerFiltro('CHICO')"
+      [class]="
+        filtro() === 'CHICO'
+          ? 'bg-brand px-4 py-2 text-sm font-bold text-gold'
+          : 'bg-surface px-4 py-2 text-sm font-medium text-muted transition hover:text-ink'
+      "
+    >
+      Chicos
+    </button>
+    <button
+      type="button"
+      (click)="ponerFiltro('CHICA')"
+      [class]="
+        filtro() === 'CHICA'
+          ? 'bg-brand px-4 py-2 text-sm font-bold text-gold'
+          : 'bg-surface px-4 py-2 text-sm font-medium text-muted transition hover:text-ink'
+      "
+    >
+      Chicas
+    </button>
+  </div>
+
+  <div class="grid grid-cols-4 gap-3 sm:grid-cols-6">
+    @for (avatar of visibles(); track avatar.id) {
+      <button
+        type="button"
+        (click)="elegido.emit(avatar.id)"
+        [attr.aria-pressed]="seleccionado() === avatar.id"
+        [class]="
+          seleccionado() === avatar.id
+            ? 'overflow-hidden rounded-full ring-2 ring-gold ring-offset-2 ring-offset-panel'
+            : 'overflow-hidden rounded-full ring-2 ring-transparent transition hover:ring-outline'
+        "
+      >
+        <img [src]="urlAvatar(avatar.id)" alt="" class="aspect-square w-full object-cover" />
+      </button>
+    }
+  </div>
+</div>
