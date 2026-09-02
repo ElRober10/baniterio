@@ -13,6 +13,8 @@ front/.angular/
 .idea/
 .vscode/settings.json
 *.iml
+.claude/
+.claudeignore
 .env
 .env.*
 !.env.example
