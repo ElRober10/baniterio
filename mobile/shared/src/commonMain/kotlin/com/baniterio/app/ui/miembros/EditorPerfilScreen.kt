@@ -47,6 +47,8 @@ import com.baniterio.app.data.dto.GuardarPerfilRequest
 import com.baniterio.app.data.dto.HijoRequest
 import com.baniterio.app.data.dto.PerfilResponse
 import com.baniterio.app.data.normalizarTelefonoEs
+import com.baniterio.app.data.rememberSelectorContacto
+import com.baniterio.app.data.rememberSelectorFoto
 import com.baniterio.app.data.urlMedia
 import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.theme.BaniterioWordmark
@@ -100,6 +102,8 @@ fun EditorPerfilScreen(
     var errorCarga by remember { mutableStateOf<String?>(null) }
     var intento by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
+    val selectorFoto = rememberSelectorFoto()
+    val selectorContacto = rememberSelectorContacto()
 
     var avatares by remember { mutableStateOf<List<AvatarResumen>>(emptyList()) }
     var dialogoAvatar by remember { mutableStateOf(false) }
@@ -317,14 +321,34 @@ fun EditorPerfilScreen(
                         modifier = Modifier.fillMaxWidth().padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Button(
-                            onClick = { dialogoAvatar = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = BaniterioColors.brand,
-                                contentColor = BaniterioColors.gold,
-                            ),
-                        ) { Text("Elegir avatar", fontWeight = FontWeight.Bold) }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = { dialogoAvatar = true },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = BaniterioColors.brand,
+                                    contentColor = BaniterioColors.gold,
+                                ),
+                            ) { Text("Elegir avatar", fontWeight = FontWeight.Bold) }
+                            if (selectorFoto.disponible) {
+                                Button(
+                                    onClick = {
+                                        selectorFoto.elegir {
+                                            if (it != null) {
+                                                fotoPendiente = it
+                                                imagenRefAvatar = null
+                                                imagenRefFoto = null
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = BaniterioColors.brand,
+                                        contentColor = BaniterioColors.gold,
+                                    ),
+                                ) { Text("Subir una foto", fontWeight = FontWeight.Bold) }
+                            }
+                        }
 
                         OutlinedTextField(
                             value = nombre, onValueChange = { nombre = it },
@@ -378,6 +402,13 @@ fun EditorPerfilScreen(
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                                         modifier = Modifier.fillMaxWidth(),
                                     )
+                                    if (selectorContacto.disponible) {
+                                        TextButton(onClick = {
+                                            selectorContacto.elegir { n ->
+                                                if (n != null) parejaTelefono = normalizarTelefonoEs(n) ?: n
+                                            }
+                                        }) { Text("Elegir de contactos") }
+                                    }
                                     if (parejaEstado == "PENDIENTE") {
                                         Text("Esperando a que confirme el vínculo.", color = BaniterioColors.muted)
                                     }
@@ -432,6 +463,13 @@ fun EditorPerfilScreen(
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                                         modifier = Modifier.fillMaxWidth(),
                                     )
+                                    if (selectorContacto.disponible) {
+                                        TextButton(onClick = {
+                                            selectorContacto.elegir { n ->
+                                                if (n != null) h.telefono = normalizarTelefonoEs(n) ?: n
+                                            }
+                                        }) { Text("Elegir de contactos") }
+                                    }
                                     Text(
                                         AVISO_TELEFONO_FAMILIA,
                                         color = BaniterioColors.muted,
