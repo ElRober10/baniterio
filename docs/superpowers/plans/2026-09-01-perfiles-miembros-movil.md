@@ -5,6 +5,18 @@
 > datos con `:shared:testAndroidHostTest`; las pantallas Compose se verifican
 > por compilación + humo manual (igual que el resto de `mobile/`, que no tiene
 > tests de UI).
+>
+> **Ejecutado 2026-09-02.** Desviaciones respecto a este plan:
+> - Coil fijado a **3.2.0** (no 3.6.0): la 3.6 exige compileSdk 37 y el proyecto
+>   va por 36 con AGP 9.0.1.
+> - Tareas de compilación reales del plugin `com.android.kotlin.multiplatform.library`:
+>   `:shared:compileAndroidMain` (no `compileDebugKotlinAndroid`),
+>   `:shared:compileKotlinIosSimulatorArm64`, `:androidApp:compileDebugKotlin`.
+> - El editor y las tarjetas siguen la **forma de carta** que se rediseñó en la
+>   web después del Plan B (composable `CaraDeCarta`, imagen 4:5 con marco
+>   dorado); el selector de avatar va en un `Dialog`, no en línea.
+> - `SelectorFoto`/`SelectorContacto` (interfaces + `expect`) se crean en Task 7/8
+>   (no en Task 2); Task 2 solo deja `FotoElegida` en su propio fichero.
 
 **Goal:** editor de perfil (avatar/foto, datos, pareja, hijos) obligatorio en el
 primer login, y la sección Miembros con tarjetas, en la app Kotlin
