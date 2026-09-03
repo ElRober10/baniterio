@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
 import com.baniterio.api.auth.ServicioPermisos;
+import com.baniterio.api.evento.dto.AsistenciaResumen;
 import com.baniterio.api.identidad.AsistenciaEvento;
 import com.baniterio.api.identidad.AsistenciaEventoRepository;
 import com.baniterio.api.identidad.EstadoAsistencia;
@@ -12,6 +13,7 @@ import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
 import com.baniterio.api.identidad.NotificacionEvento;
 import com.baniterio.api.identidad.NotificacionEventoRepository;
+import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
 import com.baniterio.api.push.Audiencia;
 import com.baniterio.api.push.AvisoPushEvent;
@@ -116,5 +118,52 @@ public class AsistenciaService {
                 : "«" + e.getNombre() + "» — ¿te apuntas? Entra en la app y responde.";
         publisher.publishEvent(new AvisoPushEvent(
                 new Audiencia.SinRespuestaEvento(eventoId), TITULO_PUSH, cuerpo));
+    }
+
+    /**
+     * Añade a mano a alguien sin app (invitado, persona sin cuenta). Solo un
+     * administrador o quien organiza el evento. La fila queda sin {@code usuario}
+     * y con {@code registradoPor} = quien la creó.
+     */
+    @Transactional
+    public AsistenciaResumen anadirAMano(Long usuarioId, Long eventoId, String nombre,
+                                         EstadoAsistencia estado) {
+        Evento e = cargar(eventoId);
+        if (!puedeGestionar(usuarioId, e)) {
+            throw new SinPermisoEventoException();
+        }
+        Usuario registrador = usuarios.findById(usuarioId).orElseThrow();
+        AsistenciaEvento a = asistencias.save(AsistenciaEvento.builder()
+                .evento(e)
+                .nombre(nombre.trim())
+                .estado(estado)
+                .registradoPor(registrador)
+                .build());
+        return aResumen(a);
+    }
+
+    /**
+     * Quita una asistencia añadida a mano. Solo un administrador o quien organiza
+     * el evento; {@link AsistenciaNoEncontradaException} si no existe en ese
+     * evento; {@link AsistenciaNoManualException} si la fila es de un usuario real
+     * (esas no se borran, la persona cambia su propia respuesta).
+     */
+    @Transactional
+    public void quitarAMano(Long usuarioId, Long eventoId, Long asistenciaId) {
+        Evento e = cargar(eventoId);
+        if (!puedeGestionar(usuarioId, e)) {
+            throw new SinPermisoEventoException();
+        }
+        AsistenciaEvento a = asistencias.findByIdAndEventoId(asistenciaId, eventoId)
+                .orElseThrow(AsistenciaNoEncontradaException::new);
+        if (a.getUsuario() != null) {
+            throw new AsistenciaNoManualException();
+        }
+        asistencias.delete(a);
+    }
+
+    private static AsistenciaResumen aResumen(AsistenciaEvento a) {
+        String nombre = a.getUsuario() != null ? a.getUsuario().getNombre() : a.getNombre();
+        return new AsistenciaResumen(a.getId(), nombre, a.getEstado(), a.getUsuario() == null);
     }
 }

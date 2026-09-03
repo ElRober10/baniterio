@@ -1,12 +1,15 @@
 package com.baniterio.api.evento;
 
 import com.baniterio.api.auth.UsuarioPrincipal;
+import com.baniterio.api.evento.dto.AnadirAsistenteRequest;
+import com.baniterio.api.evento.dto.AsistenciaResumen;
 import com.baniterio.api.evento.dto.EventoDetalle;
 import com.baniterio.api.evento.dto.MandarNotificacionRequest;
 import com.baniterio.api.evento.dto.ResponderAsistenciaRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -45,5 +48,19 @@ public class AsistenciaController {
             @PathVariable Long id,
             @Valid @RequestBody(required = false) MandarNotificacionRequest req) {
         asistenciaService.mandarNotificacion(principal.id(), id, req == null ? null : req.texto());
+    }
+
+    @PostMapping("/{id}/asistencias")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AsistenciaResumen anadir(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long id, @Valid @RequestBody AnadirAsistenteRequest req) {
+        return asistenciaService.anadirAMano(principal.id(), id, req.nombre(), req.estado());
+    }
+
+    @DeleteMapping("/{id}/asistencias/{asistenciaId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void quitar(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long id, @PathVariable Long asistenciaId) {
+        asistenciaService.quitarAMano(principal.id(), id, asistenciaId);
     }
 }
