@@ -16,6 +16,8 @@ enum class CodigoErrorEvento {
     CREDITO_SIN_CONSUMIR,
     SOLICITUD_EVENTO_NO_APLICA,
     SOLICITUD_EVENTO_YA_RESUELTA,
+    CUENTA_YA_EXISTE,
+    CUENTA_NO_ENCONTRADA,
     SIN_PERMISO,
     VALIDACION,
     SIN_CONEXION,
@@ -30,6 +32,8 @@ enum class CodigoErrorEvento {
             "CREDITO_SIN_CONSUMIR" -> CREDITO_SIN_CONSUMIR
             "SOLICITUD_EVENTO_NO_APLICA" -> SOLICITUD_EVENTO_NO_APLICA
             "SOLICITUD_EVENTO_YA_RESUELTA" -> SOLICITUD_EVENTO_YA_RESUELTA
+            "CUENTA_YA_EXISTE" -> CUENTA_YA_EXISTE
+            "CUENTA_NO_ENCONTRADA" -> CUENTA_NO_ENCONTRADA
             "SIN_PERMISO" -> SIN_PERMISO
             "VALIDACION" -> VALIDACION
             else -> DESCONOCIDO
@@ -45,6 +49,8 @@ enum class CodigoErrorEvento {
             CREDITO_SIN_CONSUMIR -> "Ya tienes un evento autorizado sin crear."
             SOLICITUD_EVENTO_NO_APLICA -> "Como administrador puedes crear eventos directamente."
             SOLICITUD_EVENTO_YA_RESUELTA -> "Esa solicitud ya la resolvió alguien."
+            CUENTA_YA_EXISTE -> "Ya existe una cuenta con ese nombre. Elígela de la lista."
+            CUENTA_NO_ENCONTRADA -> "Esa cuenta ya no existe."
             VALIDACION -> "Revisa los datos del formulario."
             SIN_CONEXION -> "No se pudo conectar con el servidor."
             DESCONOCIDO -> "Algo ha ido mal. Inténtalo de nuevo."

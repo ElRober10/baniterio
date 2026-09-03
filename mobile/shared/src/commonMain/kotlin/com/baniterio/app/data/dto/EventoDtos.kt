@@ -2,6 +2,10 @@ package com.baniterio.app.data.dto
 
 import kotlinx.serialization.Serializable
 
+/** La cuenta a la que pertenece un evento (ver sección Cuentas). */
+@Serializable
+data class CuentaRef(val id: Long, val nombre: String)
+
 /** Fila del listado de eventos (`GET /eventos`). Fechas en ISO `yyyy-MM-dd`. */
 @Serializable
 data class EventoResumen(
@@ -11,6 +15,7 @@ data class EventoResumen(
     val fechaFin: String? = null,
     val lugar: String? = null,
     val pasado: Boolean,
+    val cuenta: CuentaRef,
 )
 
 @Serializable
@@ -26,6 +31,7 @@ data class EventoDetalle(
     val fecha: String,
     val fechaFin: String? = null,
     val pasado: Boolean,
+    val cuenta: CuentaRef,
     val creadoPor: CreadoPor? = null,
     val puedoEditar: Boolean,
     val puedoBorrar: Boolean,
@@ -41,7 +47,10 @@ data class ListaEventosResponse(
     val puedeSolicitar: Boolean,
 )
 
-/** Cuerpo de `POST /eventos` y `PUT /eventos/{id}`. */
+/**
+ * Cuerpo de `POST /eventos` y `PUT /eventos/{id}`. Para la cuenta: o `cuentaId`
+ * (una existente) o `cuentaNueva = true` (crea una con el nombre del evento).
+ */
 @Serializable
 data class GuardarEventoRequest(
     val nombre: String,
@@ -49,6 +58,8 @@ data class GuardarEventoRequest(
     val lugar: String? = null,
     val fecha: String,
     val fechaFin: String? = null,
+    val cuentaId: Long? = null,
+    val cuentaNueva: Boolean = false,
 )
 
 /** Fila del bloque de administración "Solicitudes de evento". */

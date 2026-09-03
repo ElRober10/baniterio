@@ -15,6 +15,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,11 +24,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.baniterio.app.data.CuentasRepository
 import com.baniterio.app.data.EventosRepository
+import com.baniterio.app.data.ResultadoCuenta
 import com.baniterio.app.data.ResultadoEvento
+import com.baniterio.app.data.dto.CuentaResumen
 import com.baniterio.app.data.dto.GuardarEventoRequest
 import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.theme.BaniterioWordmark
@@ -45,6 +50,7 @@ private sealed interface EstadoEditorEvento {
 @Composable
 fun EditorEventoScreen(
     eventosRepo: EventosRepository,
+    cuentasRepo: CuentasRepository,
     eventoId: Long?,
     onGuardado: (Long) -> Unit,
     onVolver: () -> Unit,
@@ -60,9 +66,21 @@ fun EditorEventoScreen(
     var lugar by remember { mutableStateOf("") }
     var fecha by remember { mutableStateOf("") }
     var fechaFin by remember { mutableStateOf("") }
+    var cuentas by remember { mutableStateOf<List<CuentaResumen>>(emptyList()) }
+    // Cuenta elegida: un id de cuenta existente, o `cuentaNueva` para crear una
+    // con el nombre del evento. Nunca las dos a la vez.
+    var cuentaId by remember { mutableStateOf<Long?>(null) }
+    var cuentaNueva by remember { mutableStateOf(false) }
     var guardando by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        when (val r = cuentasRepo.listar()) {
+            is ResultadoCuenta.Exito -> cuentas = r.dato
+            is ResultadoCuenta.Error -> Unit
+        }
+    }
 
     LaunchedEffect(eventoId) {
         if (eventoId == null) return@LaunchedEffect
@@ -74,6 +92,8 @@ fun EditorEventoScreen(
                 lugar = r.dato.lugar ?: ""
                 fecha = r.dato.fecha
                 fechaFin = r.dato.fechaFin ?: ""
+                cuentaId = r.dato.cuenta.id
+                cuentaNueva = false
                 estado = EstadoEditorEvento.Listo
             }
             is ResultadoEvento.Error -> estado = EstadoEditorEvento.Error(r.mensaje)
@@ -100,6 +120,10 @@ fun EditorEventoScreen(
                 return
             }
         }
+        if (!cuentaNueva && cuentaId == null) {
+            error = "Elige una cuenta."
+            return
+        }
         guardando = true
         scope.launch {
             val req = GuardarEventoRequest(
@@ -108,6 +132,8 @@ fun EditorEventoScreen(
                 lugar = lugar.trim().ifBlank { null },
                 fecha = fecha,
                 fechaFin = fechaFin.ifBlank { null },
+                cuentaId = if (cuentaNueva) null else cuentaId,
+                cuentaNueva = cuentaNueva,
             )
             val r = if (eventoId != null) eventosRepo.editar(eventoId, req) else eventosRepo.crear(req)
             when (r) {
@@ -177,6 +203,14 @@ fun EditorEventoScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
 
+                    SelectorCuenta(
+                        cuentas = cuentas,
+                        cuentaId = cuentaId,
+                        cuentaNueva = cuentaNueva,
+                        onExistente = { cuentaId = it; cuentaNueva = false },
+                        onNueva = { cuentaId = null; cuentaNueva = true },
+                    )
+
                     error?.let {
                         Text(it, color = BaniterioColors.error, style = MaterialTheme.typography.bodyMedium)
                     }
@@ -195,5 +229,45 @@ fun EditorEventoScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SelectorCuenta(
+    cuentas: List<CuentaResumen>,
+    cuentaId: Long?,
+    cuentaNueva: Boolean,
+    onExistente: (Long) -> Unit,
+    onNueva: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            "Cuenta",
+            style = MaterialTheme.typography.labelLarge,
+            color = BaniterioColors.muted,
+        )
+        cuentas.forEach { c ->
+            OpcionCuenta(
+                texto = c.nombre,
+                seleccionada = !cuentaNueva && cuentaId == c.id,
+                onClick = { onExistente(c.id) },
+            )
+        }
+        OpcionCuenta(
+            texto = "Otro evento (crea una cuenta nueva)",
+            seleccionada = cuentaNueva,
+            onClick = onNueva,
+        )
+    }
+}
+
+@Composable
+private fun OpcionCuenta(texto: String, seleccionada: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = seleccionada, onClick = onClick)
+        Text(texto, color = MaterialTheme.colorScheme.onBackground)
     }
 }
