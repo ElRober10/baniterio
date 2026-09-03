@@ -68,6 +68,27 @@
       </label>
     </div>
 
+    <label class="flex flex-col gap-1.5 text-sm">
+      <span class="font-medium text-ink">Cuenta</span>
+      <select
+        formControlName="cuenta"
+        class="rounded-xl border border-outline bg-surface px-4 py-2.5 text-ink outline-none focus:border-gold"
+      >
+        <option value="" disabled>Elige una cuenta</option>
+        @for (c of cuentas(); track c.id) {
+          <option [value]="c.id">{{ c.nombre }}</option>
+        }
+        <option [value]="CUENTA_NUEVA">➕ Otro evento (crea una cuenta nueva)</option>
+      </select>
+      <span class="text-xs text-muted">
+        Todo evento va a una cuenta. Si es un evento distinto a los que ya hay, elige «Otro evento»
+        y se crea una cuenta con el nombre de este evento.
+      </span>
+      @if (form.controls.cuenta.touched && form.controls.cuenta.invalid) {
+        <span class="text-xs text-red-300">Elige una cuenta.</span>
+      }
+    </label>
+
     <button
       type="submit"
       [disabled]="form.invalid || guardando()"

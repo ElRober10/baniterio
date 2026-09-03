@@ -7,12 +7,18 @@ import { EditorEvento } from './editor-evento';
 
 /**
  * Tests del editor de evento: modo crear (ruta sin id) hace POST; modo editar
- * (ruta con id) precarga con GET y luego hace PUT.
+ * (ruta con id) precarga con GET y luego hace PUT. El editor pide siempre la
+ * lista de cuentas para el desplegable "Cuenta".
  */
 describe('EditorEvento', () => {
   let fixture: ComponentFixture<EditorEvento>;
   let httpMock: HttpTestingController;
   const base = environment.apiBaseUrl;
+
+  const CUENTAS = [
+    { id: 1, nombre: 'Chuletas Santas', descripcion: null },
+    { id: 2, nombre: 'San Miguel', descripcion: null },
+  ];
 
   function crear(id: string | null) {
     TestBed.configureTestingModule({
@@ -33,19 +39,28 @@ describe('EditorEvento', () => {
 
   afterEach(() => httpMock.verify());
 
-  function escribir(control: string, valor: string) {
-    const input = (fixture.nativeElement as HTMLElement).querySelector(
-      `[formControlName="${control}"]`,
-    ) as HTMLInputElement;
-    input.value = valor;
-    input.dispatchEvent(new Event('input'));
+  /** Responde al GET /cuentas que el editor dispara en ngOnInit. */
+  function responderCuentas() {
+    httpMock.expectOne(`${base}/cuentas`).flush(CUENTAS);
+    fixture.detectChanges();
   }
 
-  it('modo crear: al enviar hace POST a /eventos con el cuerpo', () => {
+  function escribir(control: string, valor: string) {
+    const el = (fixture.nativeElement as HTMLElement).querySelector(
+      `[formControlName="${control}"]`,
+    ) as HTMLInputElement | HTMLSelectElement;
+    el.value = valor;
+    el.dispatchEvent(new Event('input'));
+    el.dispatchEvent(new Event('change'));
+  }
+
+  it('modo crear: al enviar hace POST a /eventos con el cuerpo (cuenta existente)', () => {
     crear(null);
     fixture.detectChanges();
+    responderCuentas();
     escribir('nombre', 'Cena de Navidad');
     escribir('fecha', '2027-12-24');
+    escribir('cuenta', '2');
     fixture.detectChanges();
 
     (fixture.nativeElement as HTMLElement).querySelector('form')!.dispatchEvent(new Event('submit'));
@@ -58,13 +73,33 @@ describe('EditorEvento', () => {
       lugar: null,
       fecha: '2027-12-24',
       fechaFin: null,
+      cuentaId: 2,
+      cuentaNueva: false,
     });
     req.flush({ id: 3 });
   });
 
-  it('modo editar: precarga con GET y al enviar hace PUT', () => {
+  it('modo crear: con "Otro evento" envía cuentaNueva', () => {
+    crear(null);
+    fixture.detectChanges();
+    responderCuentas();
+    escribir('nombre', 'Torneo de mus');
+    escribir('fecha', '2027-05-01');
+    escribir('cuenta', '__nueva__');
+    fixture.detectChanges();
+
+    (fixture.nativeElement as HTMLElement).querySelector('form')!.dispatchEvent(new Event('submit'));
+
+    const req = httpMock.expectOne(`${base}/eventos`);
+    expect(req.request.body.cuentaNueva).toBe(true);
+    expect(req.request.body.cuentaId).toBeNull();
+    req.flush({ id: 4 });
+  });
+
+  it('modo editar: precarga la cuenta del evento y al enviar hace PUT', () => {
     crear('7');
     fixture.detectChanges();
+    responderCuentas();
     httpMock.expectOne(`${base}/eventos/7`).flush({
       id: 7,
       nombre: 'San Miguel',
@@ -73,6 +108,7 @@ describe('EditorEvento', () => {
       fecha: '2026-09-25',
       fechaFin: '2026-09-26',
       pasado: false,
+      cuenta: { id: 2, nombre: 'San Miguel' },
       creadoPor: null,
       puedoEditar: true,
       puedoBorrar: true,
@@ -87,23 +123,26 @@ describe('EditorEvento', () => {
     const put = httpMock.expectOne(`${base}/eventos/7`);
     expect(put.request.method).toBe('PUT');
     expect(put.request.body.nombre).toBe('San Miguel 2026');
+    expect(put.request.body.cuentaId).toBe(2);
     put.flush({ id: 7 });
   });
 
-  it('muestra un mensaje si el backend responde SIN_CREDITO_EVENTO', () => {
+  it('muestra un mensaje si el backend responde CUENTA_YA_EXISTE', () => {
     crear(null);
     fixture.detectChanges();
-    escribir('nombre', 'X');
+    responderCuentas();
+    escribir('nombre', 'San Miguel');
     escribir('fecha', '2027-01-01');
+    escribir('cuenta', '__nueva__');
     fixture.detectChanges();
     (fixture.nativeElement as HTMLElement).querySelector('form')!.dispatchEvent(new Event('submit'));
 
     httpMock
       .expectOne(`${base}/eventos`)
-      .flush({ codigo: 'SIN_CREDITO_EVENTO' }, { status: 409, statusText: 'Conflict' });
+      .flush({ codigo: 'CUENTA_YA_EXISTE' }, { status: 409, statusText: 'Conflict' });
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain(
-      'No tienes ningún evento autorizado sin crear',
+      'Ya existe una cuenta con ese nombre',
     );
   });
 });

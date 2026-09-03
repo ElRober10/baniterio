@@ -43,6 +43,7 @@ describe('EventoDetalleComponent', () => {
       fecha: '2026-09-25',
       fechaFin: '2026-09-26',
       pasado: false,
+      cuenta: { id: 2, nombre: 'San Miguel' },
       creadoPor: null,
       puedoEditar: false,
       puedoBorrar: false,
@@ -51,7 +52,7 @@ describe('EventoDetalleComponent', () => {
     });
   }
 
-  it('pinta el nombre, las fechas, el lugar y la descripción', () => {
+  it('pinta el nombre, las fechas, el lugar, la descripción y la cuenta', () => {
     crear();
     fixture.detectChanges();
     responder();
@@ -61,6 +62,9 @@ describe('EventoDetalleComponent', () => {
     expect(txt).toContain('2026-09-25');
     expect(txt).toContain('La plaza');
     expect(txt).toContain('La fiesta grande');
+    expect(txt).toContain('Cuenta:');
+    const enlace = (fixture.nativeElement as HTMLElement).querySelector('a[href="/panel/cuentas/2"]');
+    expect(enlace).toBeTruthy();
   });
 
   it('sin permisos no muestra botones de gestión', () => {
