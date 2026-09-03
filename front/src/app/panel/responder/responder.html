@@ -1,0 +1,45 @@
+<section class="mx-auto flex min-h-[60vh] w-full max-w-lg flex-col justify-center">
+  @switch (estado()) {
+    @case ('cargando') {
+      <p class="text-sm text-muted">Cargando…</p>
+    }
+    @case ('error') {
+      <p class="text-sm text-red-300">No se ha podido cargar. Recarga la página.</p>
+    }
+    @case ('listo') {
+      @if (pendientes()[0]; as e) {
+        <article class="carta-relieve rounded-2xl p-6 text-center">
+          <p class="text-xs uppercase tracking-wide text-muted">Convocatoria</p>
+          <h1 class="mt-1 font-display text-2xl font-extrabold">{{ e.nombre }}</h1>
+          <p class="mt-1 text-sm text-muted">
+            {{ e.fecha }}@if (e.fechaFin) { &nbsp;–&nbsp;{{ e.fechaFin }} }
+          </p>
+          @if (e.lugar) {
+            <p class="mt-1 text-sm">{{ e.lugar }}</p>
+          }
+          <p class="mt-4 text-sm">¿Vas a ir?</p>
+          <div class="mt-3 flex flex-col gap-2">
+            @for (o of opciones; track o.valor) {
+              <button
+                type="button"
+                (click)="responder(o.valor)"
+                [disabled]="enviando()"
+                class="rounded-xl bg-brand px-4 py-3 text-sm font-bold text-gold transition hover:bg-brand-dark disabled:opacity-50"
+              >
+                {{ o.texto }}
+              </button>
+            }
+          </div>
+          @if (pendientes().length > 1) {
+            <p class="mt-4 text-xs text-muted">
+              Te quedan {{ pendientes().length }} convocatorias por contestar.
+            </p>
+          }
+          @if (aviso()) {
+            <p role="status" class="mt-3 text-sm text-red-300">{{ aviso() }}</p>
+          }
+        </article>
+      }
+    }
+  }
+</section>
