@@ -1,0 +1,28 @@
+<section class="mx-auto w-full max-w-2xl">
+  <div class="mb-4"><app-volver destino="/panel/cuentas" /></div>
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <p class="text-sm text-muted">Cargando…</p>
+    }
+    @case ('error') {
+      <p class="text-sm text-red-300">No se ha podido cargar la cuenta.</p>
+    }
+    @case ('listo') {
+      @if (cuenta(); as c) {
+        <article class="carta-relieve rounded-2xl p-6">
+          <h1 class="font-display text-2xl font-extrabold">{{ c.nombre }}</h1>
+          @if (c.descripcion) {
+            <p class="mt-2 text-sm leading-relaxed text-muted">{{ c.descripcion }}</p>
+          }
+        </article>
+
+        <p
+          class="mt-4 rounded-xl border border-brand-bright/30 bg-brand/15 px-4 py-3 text-sm text-gold-soft"
+        >
+          Los movimientos de la cuenta (ingresos, gastos y balance) todavía están en construcción.
+        </p>
+      }
+    }
+  }
+</section>

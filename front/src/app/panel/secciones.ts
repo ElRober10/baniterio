@@ -10,7 +10,6 @@ export interface Seccion {
 }
 
 export const SECCIONES: Seccion[] = [
-  { nombre: 'Cuentas', descripcion: 'Ingresos, gastos y balance de la peña.' },
   { nombre: 'Inventario', descripcion: 'Material y enseres que tiene la peña.' },
   { nombre: 'Ropa', descripcion: 'Pedidos y tallas del vestuario de la peña.' },
 ];

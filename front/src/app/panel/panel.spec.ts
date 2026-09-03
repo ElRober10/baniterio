@@ -77,6 +77,13 @@ describe('Panel · nav lateral', () => {
     expect((enlace?.textContent ?? '').trim()).toBe('Miembros');
   });
 
+  it('"Cuentas" es un enlace real a /panel/cuentas, no una sección "Pronto"', () => {
+    const el = render([]);
+    const enlace = el.querySelector('a[href="/panel/cuentas"]');
+    expect(enlace).toBeTruthy();
+    expect((enlace?.textContent ?? '').trim()).toBe('Cuentas');
+  });
+
   it('usuario sin áreas: no aparece "Administración" ni se pide el recuento', () => {
     expect(render([]).textContent).not.toContain('Administración');
     expect(refrescos).toBe(0);
