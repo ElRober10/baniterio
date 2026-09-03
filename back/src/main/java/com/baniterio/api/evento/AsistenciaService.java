@@ -5,6 +5,9 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
 import com.baniterio.api.auth.ServicioPermisos;
+import java.util.List;
+
+import com.baniterio.api.evento.dto.AsistenciaDetalle;
 import com.baniterio.api.evento.dto.AsistenciaResumen;
 import com.baniterio.api.identidad.AsistenciaEvento;
 import com.baniterio.api.identidad.AsistenciaEventoRepository;
@@ -13,10 +16,12 @@ import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
 import com.baniterio.api.identidad.NotificacionEvento;
 import com.baniterio.api.identidad.NotificacionEventoRepository;
+import com.baniterio.api.identidad.PenaRepository;
 import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
 import com.baniterio.api.push.Audiencia;
 import com.baniterio.api.push.AvisoPushEvent;
+import com.baniterio.api.push.ResolutorAudiencia;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AsistenciaService {
 
     private static final String TITULO_PUSH = "Eventos";
+    private static final String SLUG_PENA = "baniterio";
     /** Horas que hay que esperar entre un envío de notificación y el siguiente. */
     private static final int HORAS_ENTRE_ENVIOS = 48;
 
@@ -38,19 +44,23 @@ public class AsistenciaService {
     private final NotificacionEventoRepository notificaciones;
     private final EventoRepository eventos;
     private final UsuarioRepository usuarios;
+    private final PenaRepository penas;
     private final ServicioPermisos permisos;
     private final ApplicationEventPublisher publisher;
+    private final ResolutorAudiencia resolutor;
 
     public AsistenciaService(AsistenciaEventoRepository asistencias,
                              NotificacionEventoRepository notificaciones, EventoRepository eventos,
-                             UsuarioRepository usuarios, ServicioPermisos permisos,
-                             ApplicationEventPublisher publisher) {
+                             UsuarioRepository usuarios, PenaRepository penas, ServicioPermisos permisos,
+                             ApplicationEventPublisher publisher, ResolutorAudiencia resolutor) {
         this.asistencias = asistencias;
         this.notificaciones = notificaciones;
         this.eventos = eventos;
         this.usuarios = usuarios;
+        this.penas = penas;
         this.permisos = permisos;
         this.publisher = publisher;
+        this.resolutor = resolutor;
     }
 
     /** Un administrador de verdad, o quien organiza (creó) el evento. */
@@ -165,5 +175,42 @@ public class AsistenciaService {
     private static AsistenciaResumen aResumen(AsistenciaEvento a) {
         String nombre = a.getUsuario() != null ? a.getUsuario().getNombre() : a.getNombre();
         return new AsistenciaResumen(a.getId(), nombre, a.getEstado(), a.getUsuario() == null);
+    }
+
+    /**
+     * El bloque de asistencia que va dentro de {@code EventoDetalle} para el
+     * usuario que pregunta: su respuesta, si puede mandar la notificación, cuándo
+     * se puede reenviar y los recuentos. {@code sinContestar} reutiliza la misma
+     * audiencia del push ({@link Audiencia.SinRespuestaEvento}).
+     */
+    @Transactional(readOnly = true)
+    public AsistenciaDetalle detalleDe(Long usuarioId, Evento e) {
+        Long eventoId = e.getId();
+        String miAsistencia = asistencias.findByEventoIdAndUsuarioId(eventoId, usuarioId)
+                .map(a -> a.getEstado().name()).orElse(null);
+        boolean puedeNotificar = puedeGestionar(usuarioId, e)
+                && !e.getFecha().isBefore(LocalDate.now());
+        Instant reenviableAt = notificaciones.findFirstByEventoIdOrderByEnviadaAtDesc(eventoId)
+                .map(n -> n.getEnviadaAt().plus(HORAS_ENTRE_ENVIOS, ChronoUnit.HOURS))
+                .orElse(null);
+        int apuntados = (int) asistencias.countByEventoIdAndEstado(eventoId, EstadoAsistencia.APUNTADO);
+        int noVoy = (int) asistencias.countByEventoIdAndEstado(eventoId, EstadoAsistencia.NO_VOY);
+        int enDuda = (int) asistencias.countByEventoIdAndEstado(eventoId, EstadoAsistencia.EN_DUDA);
+        int sinContestar = resolutor.resolver(new Audiencia.SinRespuestaEvento(eventoId)).size();
+        return new AsistenciaDetalle(miAsistencia, puedeNotificar, reenviableAt,
+                apuntados, noVoy, enDuda, sinContestar);
+    }
+
+    /**
+     * Eventos que el usuario tiene pendientes de contestar (hay notificación y no
+     * ha respondido), ordenados por fecha ascendente. La pantalla bloqueante los
+     * recorre uno a uno.
+     */
+    @Transactional(readOnly = true)
+    public List<Evento> pendientesRespuesta(Long usuarioId) {
+        Long penaId = penas.findBySlug(SLUG_PENA)
+                .orElseThrow(() -> new IllegalStateException("Falta la peña piloto '" + SLUG_PENA + "'"))
+                .getId();
+        return eventos.pendientesRespuesta(penaId, usuarioId, LocalDate.now());
     }
 }
