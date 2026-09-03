@@ -11,6 +11,7 @@ sealed class Screen {
     data object Miembros : Screen()
     data object EditorPerfil : Screen()
     data object Eventos : Screen()
+    data object ResponderEvento : Screen()
     data object EventoDetalle : Screen()
     data object EditorEvento : Screen()
     data object Cuentas : Screen()

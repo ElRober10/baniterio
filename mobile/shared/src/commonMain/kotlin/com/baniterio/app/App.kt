@@ -29,6 +29,7 @@ import com.baniterio.app.ui.cuentas.CuentasScreen
 import com.baniterio.app.ui.eventos.EditorEventoScreen
 import com.baniterio.app.ui.eventos.EventoDetalleScreen
 import com.baniterio.app.ui.eventos.EventosScreen
+import com.baniterio.app.ui.eventos.ResponderEventoScreen
 import com.baniterio.app.ui.historia.HistoriaScreen
 import com.baniterio.app.ui.auth.desbloqueo.DesbloqueoScreen
 import com.baniterio.app.ui.auth.login.LoginScreen
@@ -49,6 +50,7 @@ private const val CLAVE_HISTORIA = "Historia"
 private const val CLAVE_MIEMBROS = "Miembros"
 private const val CLAVE_EDITOR_PERFIL = "EditorPerfil"
 private const val CLAVE_EVENTOS = "Eventos"
+private const val CLAVE_RESPONDER_EVENTO = "ResponderEvento"
 private const val CLAVE_EVENTO_DETALLE = "EventoDetalle"
 private const val CLAVE_EDITOR_EVENTO = "EditorEvento"
 private const val CLAVE_CUENTAS = "Cuentas"
@@ -68,6 +70,7 @@ private fun Screen.aClave(): String = when (this) {
     Screen.Miembros -> CLAVE_MIEMBROS
     Screen.EditorPerfil -> CLAVE_EDITOR_PERFIL
     Screen.Eventos -> CLAVE_EVENTOS
+    Screen.ResponderEvento -> CLAVE_RESPONDER_EVENTO
     Screen.EventoDetalle -> CLAVE_EVENTO_DETALLE
     Screen.EditorEvento -> CLAVE_EDITOR_EVENTO
     Screen.Cuentas -> CLAVE_CUENTAS
@@ -87,6 +90,7 @@ private fun claveAScreen(clave: String): Screen = when (clave) {
     CLAVE_MIEMBROS -> Screen.Miembros
     CLAVE_EDITOR_PERFIL -> Screen.EditorPerfil
     CLAVE_EVENTOS -> Screen.Eventos
+    CLAVE_RESPONDER_EVENTO -> Screen.ResponderEvento
     CLAVE_EVENTO_DETALLE -> Screen.EventoDetalle
     CLAVE_EDITOR_EVENTO -> Screen.EditorEvento
     CLAVE_CUENTAS -> Screen.Cuentas
@@ -120,8 +124,8 @@ fun App(
         if (deps.repo.usuarioActual == null &&
             (screen == Screen.CargandoSesion || screen == Screen.Panel || screen == Screen.Historia ||
                 screen == Screen.Miembros || screen == Screen.EditorPerfil ||
-                screen == Screen.Eventos || screen == Screen.EventoDetalle ||
-                screen == Screen.EditorEvento ||
+                screen == Screen.Eventos || screen == Screen.ResponderEvento ||
+                screen == Screen.EventoDetalle || screen == Screen.EditorEvento ||
                 screen == Screen.Cuentas || screen == Screen.CuentaDetalle ||
                 screen == Screen.AdminIndex || screen == Screen.AdminSolicitudes ||
                 screen == Screen.AdminPermisos)
@@ -188,7 +192,9 @@ fun App(
                 )
                 is Screen.CargandoSesion -> CargandoSesionScreen(
                     perfilRepo = deps.perfilRepo,
-                    onPerfilCompleto = { ir(Screen.Panel) },
+                    // Tras el perfil, la pantalla de convocatorias: si no hay
+                    // ninguna pendiente, ella misma llama onTerminado() → Panel.
+                    onPerfilCompleto = { ir(Screen.ResponderEvento) },
                     onPerfilIncompleto = { editorObligatorio = true; ir(Screen.EditorPerfil) },
                 )
                 is Screen.Registro -> {
@@ -261,6 +267,14 @@ fun App(
                         onAbrirEvento = { id -> eventoSeleccionado = id; ir(Screen.EventoDetalle) },
                         onCrear = { editorEventoId = null; ir(Screen.EditorEvento) },
                         onVolver = { ir(Screen.Panel) },
+                    )
+                }
+                is Screen.ResponderEvento -> {
+                    // Sin BackHandler: es bloqueante. Cuando no queda ninguna
+                    // convocatoria por contestar, va al panel.
+                    ResponderEventoScreen(
+                        asistenciaRepo = deps.asistenciaRepo,
+                        onTerminado = { ir(Screen.Panel) },
                     )
                 }
                 is Screen.EventoDetalle -> {
