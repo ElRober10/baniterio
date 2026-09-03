@@ -54,6 +54,21 @@ class FlywayMigrationIT extends IntegrationTest {
     }
 
     @Test
+    void v13_crea_evento_con_el_check_de_fechas() {
+        Integer tabla = jdbc.queryForObject("""
+            SELECT count(*) FROM information_schema.tables WHERE table_name = 'evento'
+            """, Integer.class);
+        assertThat(tabla).isEqualTo(1);
+
+        Integer check = jdbc.queryForObject("""
+            SELECT count(*) FROM information_schema.table_constraints
+            WHERE table_name = 'evento' AND constraint_type = 'CHECK'
+              AND constraint_name = 'ck_evento_fecha_fin'
+            """, Integer.class);
+        assertThat(check).isEqualTo(1);
+    }
+
+    @Test
     void siembra_la_pena_baniterio_y_solo_el_telefono_del_fundador() {
         Integer penas = jdbc.queryForObject(
             "SELECT count(*) FROM pena WHERE slug = 'baniterio'", Integer.class);
