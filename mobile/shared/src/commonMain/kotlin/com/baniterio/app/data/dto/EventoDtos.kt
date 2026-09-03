@@ -21,6 +21,22 @@ data class EventoResumen(
 @Serializable
 data class CreadoPor(val id: Long, val nombre: String)
 
+/**
+ * Bloque de asistencia dentro de [EventoDetalle] para el usuario que pregunta.
+ * `miAsistencia` = "APUNTADO" | "NO_VOY" | "EN_DUDA" o `null`.
+ * `notificacionReenviableAt` = ISO o `null` si nunca se ha mandado.
+ */
+@Serializable
+data class AsistenciaDetalleDto(
+    val miAsistencia: String? = null,
+    val puedeNotificar: Boolean = false,
+    val notificacionReenviableAt: String? = null,
+    val apuntados: Int = 0,
+    val noVoy: Int = 0,
+    val enDuda: Int = 0,
+    val sinContestar: Int = 0,
+)
+
 /** Detalle de un evento (`GET /eventos/{id}`). */
 @Serializable
 data class EventoDetalle(
@@ -37,7 +53,30 @@ data class EventoDetalle(
     val puedoEditar: Boolean,
     val puedoBorrar: Boolean,
     val borradoPendiente: Boolean,
+    val asistencia: AsistenciaDetalleDto = AsistenciaDetalleDto(),
 )
+
+/** Fila devuelta al añadir un asistente a mano (`POST /eventos/{id}/asistencias`). */
+@Serializable
+data class AsistenciaResumenDto(
+    val id: Long,
+    val nombre: String,
+    val estado: String,
+    val esManual: Boolean,
+)
+
+@Serializable
+data class ResponderAsistenciaBody(val estado: String)
+
+@Serializable
+data class AnadirAsistenteBody(val nombre: String, val estado: String)
+
+@Serializable
+data class MandarNotificacionBody(val texto: String? = null)
+
+/** `GET /eventos/pendientes-respuesta`. */
+@Serializable
+data class PendientesRespuestaDto(val eventos: List<EventoResumen> = emptyList())
 
 @Serializable
 data class ListaEventosResponse(

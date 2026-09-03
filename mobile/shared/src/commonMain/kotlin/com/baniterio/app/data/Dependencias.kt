@@ -12,6 +12,7 @@ class Dependencias(
     val dispositivoRepo: DispositivoRepository,
     val perfilRepo: PerfilRepository,
     val eventosRepo: EventosRepository,
+    val asistenciaRepo: AsistenciaRepository,
     val cuentasRepo: CuentasRepository,
 )
 
@@ -32,6 +33,7 @@ fun crearDependencias(almacen: AlmacenCredenciales): Dependencias {
         dispositivoRepo = DispositivoRepositoryImpl(http, sesion),
         perfilRepo = PerfilRepositoryImpl(http, sesion),
         eventosRepo = EventosRepositoryImpl(http, sesion),
+        asistenciaRepo = AsistenciaRepositoryImpl(http, sesion),
         cuentasRepo = CuentasRepositoryImpl(http, sesion),
     )
 }
