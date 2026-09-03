@@ -52,10 +52,12 @@ public class EventoService {
     private final PenaRepository penas;
     private final UsuarioRepository usuarios;
     private final ApplicationEventPublisher publisher;
+    private final AsistenciaService asistencias;
 
     public EventoService(EventoRepository eventos, SolicitudEventoRepository solicitudes,
                          CuentaRepository cuentas, ServicioPermisos permisos, PenaRepository penas,
-                         UsuarioRepository usuarios, ApplicationEventPublisher publisher) {
+                         UsuarioRepository usuarios, ApplicationEventPublisher publisher,
+                         AsistenciaService asistencias) {
         this.eventos = eventos;
         this.solicitudes = solicitudes;
         this.cuentas = cuentas;
@@ -63,6 +65,7 @@ public class EventoService {
         this.penas = penas;
         this.usuarios = usuarios;
         this.publisher = publisher;
+        this.asistencias = asistencias;
     }
 
     private static String vacioANull(String s) {
@@ -132,10 +135,7 @@ public class EventoService {
     public ListaEventosResponse listar(Long usuarioId, int pagina) {
         Page<Evento> p = eventos.listar(penaId(), limiteFuturo(),
                 PageRequest.of(Math.max(pagina, 0), PAGINA));
-        var resumenes = p.getContent().stream()
-                .map(e -> new EventoResumen(e.getId(), e.getNombre(), e.getFecha(), e.getFechaFin(),
-                        e.getLugar(), esPasado(e), aCuentaRef(e)))
-                .toList();
+        var resumenes = p.getContent().stream().map(EventoService::aResumen).toList();
         return new ListaEventosResponse(resumenes, p.getNumber(), p.getTotalPages(),
                 puedeCrear(usuarioId), puedeSolicitar(usuarioId));
     }
@@ -288,6 +288,12 @@ public class EventoService {
         return new CuentaRef(c.getId(), c.getNombre());
     }
 
+    /** Ficha corta de un evento. La usa el listado y {@code AsistenciaController} (pendientes de respuesta). */
+    static EventoResumen aResumen(Evento e) {
+        return new EventoResumen(e.getId(), e.getNombre(), e.getFecha(), e.getFechaFin(),
+                e.getLugar(), esPasado(e), aCuentaRef(e));
+    }
+
     EventoDetalle aDetalle(Long usuarioId, Evento e) {
         Usuario creador = e.getCreadoPor();
         var creadoPor = creador == null ? null
@@ -297,6 +303,7 @@ public class EventoService {
                 e.getId(), TipoSolicitudEvento.BORRAR, EstadoSolicitud.PENDIENTE);
         return new EventoDetalle(e.getId(), e.getNombre(), e.getDescripcion(), e.getLugar(),
                 e.getFecha(), e.getFechaFin(), esPasado(e), aCuentaRef(e), e.getCuotaMaxima(),
-                creadoPor, gestiona, gestiona, borradoPendiente);
+                creadoPor, gestiona, gestiona, borradoPendiente,
+                asistencias.detalleDe(usuarioId, e));
     }
 }

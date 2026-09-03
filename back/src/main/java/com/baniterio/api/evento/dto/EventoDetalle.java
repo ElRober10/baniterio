@@ -12,7 +12,8 @@ import java.time.LocalDate;
 public record EventoDetalle(Long id, String nombre, String descripcion, String lugar,
                             LocalDate fecha, LocalDate fechaFin, boolean pasado,
                             CuentaRef cuenta, BigDecimal cuotaMaxima, CreadoPor creadoPor,
-                            boolean puedoEditar, boolean puedoBorrar, boolean borradoPendiente) {
+                            boolean puedoEditar, boolean puedoBorrar, boolean borradoPendiente,
+                            AsistenciaDetalle asistencia) {
 
     public record CreadoPor(Long id, String nombre) {
     }

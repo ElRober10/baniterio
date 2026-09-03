@@ -5,11 +5,13 @@ import com.baniterio.api.evento.dto.AnadirAsistenteRequest;
 import com.baniterio.api.evento.dto.AsistenciaResumen;
 import com.baniterio.api.evento.dto.EventoDetalle;
 import com.baniterio.api.evento.dto.MandarNotificacionRequest;
+import com.baniterio.api.evento.dto.PendientesRespuestaResponse;
 import com.baniterio.api.evento.dto.ResponderAsistenciaRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -33,6 +35,13 @@ public class AsistenciaController {
     public AsistenciaController(AsistenciaService asistenciaService, EventoService eventoService) {
         this.asistenciaService = asistenciaService;
         this.eventoService = eventoService;
+    }
+
+    @GetMapping("/pendientes-respuesta")
+    public PendientesRespuestaResponse pendientes(@AuthenticationPrincipal UsuarioPrincipal principal) {
+        var eventos = asistenciaService.pendientesRespuesta(principal.id()).stream()
+                .map(EventoService::aResumen).toList();
+        return new PendientesRespuestaResponse(eventos);
     }
 
     @PutMapping("/{id}/asistencia")

@@ -47,4 +47,20 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
             where e.pena.id = :penaId and coalesce(e.fechaFin, e.fecha) >= :limite
             """)
     List<Evento> futuros(@Param("penaId") Long penaId, @Param("limite") LocalDate limite);
+
+    /**
+     * Eventos de la peña que el usuario tiene pendientes de contestar: su fecha de
+     * inicio no ha pasado, alguien ha mandado la notificación y el usuario aún no
+     * tiene fila de asistencia. Orden: fecha ascendente (primero el más próximo).
+     */
+    @Query("""
+            select e from Evento e
+            join fetch e.cuenta
+            where e.pena.id = :penaId and e.fecha >= :hoy
+              and exists (select 1 from NotificacionEvento n where n.evento = e)
+              and not exists (select 1 from AsistenciaEvento a where a.evento = e and a.usuario.id = :usuarioId)
+            order by e.fecha asc, e.id asc
+            """)
+    List<Evento> pendientesRespuesta(@Param("penaId") Long penaId,
+            @Param("usuarioId") Long usuarioId, @Param("hoy") LocalDate hoy);
 }

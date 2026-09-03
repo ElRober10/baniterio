@@ -312,4 +312,65 @@ class AsistenciaIT extends IntegrationTest {
                 .exchange().expectStatus().isNotFound()
                 .expectBody().jsonPath("$.codigo").isEqualTo("ASISTENCIA_NO_ENCONTRADA");
     }
+
+    @Test
+    void pendientes_respuesta_trae_eventos_con_notificacion_sin_respuesta_mia() {
+        Sesion s = crearMiembro(RolMembresia.MIEMBRO);
+        Usuario u = usuarios.findById(s.id()).orElseThrow();
+
+        Evento conNotifSinResp = sembrarEvento("IT-asis-pend-A", LocalDate.now().plusDays(10), null);
+        notificaciones.save(NotificacionEvento.builder().evento(conNotifSinResp).enviadaPor(u).build());
+
+        Evento conNotifRespondido = sembrarEvento("IT-asis-pend-B", LocalDate.now().plusDays(11), null);
+        notificaciones.save(NotificacionEvento.builder().evento(conNotifRespondido).enviadaPor(u).build());
+        http.put().uri("/api/v1/eventos/" + conNotifRespondido.getId() + "/asistencia")
+                .header(AUTHORIZATION, "Bearer " + s.token())
+                .body(Map.of("estado", "NO_VOY")).exchange().expectStatus().isOk();
+
+        sembrarEvento("IT-asis-pend-C", LocalDate.now().plusDays(12), null); // sin notificación
+
+        http.get().uri("/api/v1/eventos/pendientes-respuesta")
+                .header(AUTHORIZATION, "Bearer " + s.token())
+                .exchange().expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.eventos.length()").isEqualTo(1)
+                .jsonPath("$.eventos[0].nombre").isEqualTo("IT-asis-pend-A");
+    }
+
+    @Test
+    void detalle_trae_recuento_y_mi_asistencia() {
+        Sesion yo = crearMiembro(RolMembresia.MIEMBRO);
+        Sesion otro1 = crearMiembro(RolMembresia.MIEMBRO);
+        Sesion otro2 = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sembrarEvento("IT-asis-recuento", LocalDate.now().plusDays(20), null);
+
+        for (Sesion s : new Sesion[] {otro1, otro2}) {
+            http.put().uri("/api/v1/eventos/" + e.getId() + "/asistencia")
+                    .header(AUTHORIZATION, "Bearer " + s.token())
+                    .body(Map.of("estado", "APUNTADO")).exchange().expectStatus().isOk();
+        }
+        http.put().uri("/api/v1/eventos/" + e.getId() + "/asistencia")
+                .header(AUTHORIZATION, "Bearer " + yo.token())
+                .body(Map.of("estado", "EN_DUDA")).exchange().expectStatus().isOk();
+
+        http.get().uri("/api/v1/eventos/" + e.getId())
+                .header(AUTHORIZATION, "Bearer " + yo.token())
+                .exchange().expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.asistencia.apuntados").isEqualTo(2)
+                .jsonPath("$.asistencia.enDuda").isEqualTo(1)
+                .jsonPath("$.asistencia.miAsistencia").isEqualTo("EN_DUDA")
+                .jsonPath("$.asistencia.puedeNotificar").isEqualTo(false);
+    }
+
+    @Test
+    void detalle_puedeNotificar_true_para_admin() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Evento e = sembrarEvento("IT-asis-puede-notif", LocalDate.now().plusDays(20), null);
+
+        http.get().uri("/api/v1/eventos/" + e.getId())
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.asistencia.puedeNotificar").isEqualTo(true);
+    }
 }
