@@ -1,0 +1,79 @@
+<section class="mx-auto w-full max-w-xl">
+  <div class="mb-4"><app-volver destino="/panel/eventos" /></div>
+
+  <h1 class="font-display text-2xl font-extrabold leading-tight">
+    {{ editando ? 'Editar evento' : 'Nuevo evento' }}
+  </h1>
+
+  @if (error()) {
+    <p
+      role="alert"
+      class="mt-4 rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+    >
+      {{ error() }}
+    </p>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="guardar()" class="mt-6 flex flex-col gap-4">
+    <label class="flex flex-col gap-1.5 text-sm">
+      <span class="font-medium text-ink">Nombre</span>
+      <input
+        type="text"
+        formControlName="nombre"
+        class="rounded-xl border border-outline bg-surface px-4 py-2.5 text-ink outline-none focus:border-gold"
+      />
+      @if (form.controls.nombre.touched && form.controls.nombre.invalid) {
+        <span class="text-xs text-red-300">El nombre es obligatorio (máx. 120).</span>
+      }
+    </label>
+
+    <label class="flex flex-col gap-1.5 text-sm">
+      <span class="font-medium text-ink">Descripción</span>
+      <textarea
+        rows="4"
+        formControlName="descripcion"
+        class="rounded-xl border border-outline bg-surface px-4 py-2.5 text-ink outline-none focus:border-gold"
+      ></textarea>
+    </label>
+
+    <label class="flex flex-col gap-1.5 text-sm">
+      <span class="font-medium text-ink">Lugar</span>
+      <input
+        type="text"
+        formControlName="lugar"
+        class="rounded-xl border border-outline bg-surface px-4 py-2.5 text-ink outline-none focus:border-gold"
+      />
+    </label>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="flex flex-col gap-1.5 text-sm">
+        <span class="font-medium text-ink">Fecha</span>
+        <input
+          type="date"
+          formControlName="fecha"
+          class="rounded-xl border border-outline bg-surface px-4 py-2.5 text-ink outline-none focus:border-gold"
+        />
+        @if (form.controls.fecha.touched && form.controls.fecha.invalid) {
+          <span class="text-xs text-red-300">Elige una fecha.</span>
+        }
+      </label>
+
+      <label class="flex flex-col gap-1.5 text-sm">
+        <span class="font-medium text-ink">Fecha de fin <span class="text-muted">(opcional)</span></span>
+        <input
+          type="date"
+          formControlName="fechaFin"
+          class="rounded-xl border border-outline bg-surface px-4 py-2.5 text-ink outline-none focus:border-gold"
+        />
+      </label>
+    </div>
+
+    <button
+      type="submit"
+      [disabled]="form.invalid || guardando()"
+      class="mt-2 w-full rounded-xl bg-brand px-4 py-2.5 text-sm font-bold text-gold transition hover:bg-brand-dark disabled:opacity-60"
+    >
+      {{ guardando() ? 'Guardando…' : 'Guardar' }}
+    </button>
+  </form>
+</section>
