@@ -6,6 +6,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.concurrent.ThreadLocalRandom;
 
 import com.baniterio.api.support.IntegrationTest;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -40,6 +41,15 @@ class AsistenciaEventoRepositoryIT extends IntegrationTest {
 
     @Autowired
     PasswordEncoder passwordEncoder;
+
+    /** La BBDD la comparten los {@code *IT}; se limpian los eventos que crea esta suite. */
+    @AfterEach
+    void limpiar() {
+        asistencias.deleteAllInBatch();
+        notificaciones.deleteAllInBatch();
+        eventos.deleteAll(eventos.findAll().stream()
+                .filter(e -> e.getNombre().startsWith("IT-asis-repo-")).toList());
+    }
 
     private Pena pena() {
         return penas.findBySlug("baniterio").orElseThrow();
