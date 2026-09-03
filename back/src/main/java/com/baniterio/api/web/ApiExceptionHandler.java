@@ -186,6 +186,11 @@ public class ApiExceptionHandler {
         return error(HttpStatus.CONFLICT, "SIN_CREDITO_EVENTO");
     }
 
+    @ExceptionHandler(com.baniterio.api.evento.SinPermisoEventoException.class)
+    ResponseEntity<Map<String, Object>> sinPermisoEvento() {
+        return error(HttpStatus.FORBIDDEN, "SIN_PERMISO_EVENTO");
+    }
+
     /** El multipart supera {@code spring.servlet.multipart.max-file-size}. */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     ResponseEntity<Map<String, Object>> imagenDemasiadoGrande() {

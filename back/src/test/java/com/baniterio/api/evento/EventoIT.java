@@ -151,4 +151,29 @@ class EventoIT extends IntegrationTest {
                 .exchange().expectStatus().isBadRequest()
                 .expectBody().jsonPath("$.codigo").isEqualTo("VALIDACION");
     }
+
+    @Test
+    void creador_edita_su_evento() {
+        Sesion miembro = crearMiembro(RolMembresia.MIEMBRO);
+        Usuario creador = usuarios.findById(miembro.id()).orElseThrow();
+        Evento e = sembrarEvento("IT-edita-mio", LocalDate.of(2999, 8, 1), creador);
+
+        http.put().uri("/api/v1/eventos/" + e.getId())
+                .header(AUTHORIZATION, "Bearer " + miembro.token())
+                .body(Map.of("nombre", "IT-edita-mio-2", "fecha", "2999-08-02"))
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.nombre").isEqualTo("IT-edita-mio-2");
+    }
+
+    @Test
+    void miembro_no_creador_no_puede_editar_403() {
+        Sesion otro = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sembrarEvento("IT-edita-ajeno", LocalDate.of(2999, 8, 3), null);
+
+        http.put().uri("/api/v1/eventos/" + e.getId())
+                .header(AUTHORIZATION, "Bearer " + otro.token())
+                .body(Map.of("nombre", "no", "fecha", "2999-08-03"))
+                .exchange().expectStatus().isForbidden()
+                .expectBody().jsonPath("$.codigo").isEqualTo("SIN_PERMISO_EVENTO");
+    }
 }
