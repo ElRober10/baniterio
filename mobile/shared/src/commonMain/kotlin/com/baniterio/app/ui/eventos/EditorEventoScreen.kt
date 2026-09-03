@@ -1,9 +1,47 @@
 package com.baniterio.app.ui.eventos
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import com.baniterio.app.data.EventosRepository
+import com.baniterio.app.data.ResultadoEvento
+import com.baniterio.app.data.dto.GuardarEventoRequest
+import com.baniterio.app.theme.BaniterioColors
+import com.baniterio.app.theme.BaniterioWordmark
+import com.baniterio.app.ui.comun.relieveDeCarta
+import kotlinx.coroutines.launch
 
-// Stub — se rellena en la tarea 4 del Plan C.
+private val REGEX_FECHA = Regex("""\d{4}-\d{2}-\d{2}""")
+
+private sealed interface EstadoEditorEvento {
+    data object Cargando : EstadoEditorEvento
+    data object Listo : EstadoEditorEvento
+    data class Error(val mensaje: String) : EstadoEditorEvento
+}
+
 @Composable
 fun EditorEventoScreen(
     eventosRepo: EventosRepository,
@@ -11,4 +49,151 @@ fun EditorEventoScreen(
     onGuardado: (Long) -> Unit,
     onVolver: () -> Unit,
 ) {
+    val editando = eventoId != null
+    var estado by remember {
+        mutableStateOf<EstadoEditorEvento>(
+            if (editando) EstadoEditorEvento.Cargando else EstadoEditorEvento.Listo,
+        )
+    }
+    var nombre by remember { mutableStateOf("") }
+    var descripcion by remember { mutableStateOf("") }
+    var lugar by remember { mutableStateOf("") }
+    var fecha by remember { mutableStateOf("") }
+    var fechaFin by remember { mutableStateOf("") }
+    var guardando by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(eventoId) {
+        if (eventoId == null) return@LaunchedEffect
+        estado = EstadoEditorEvento.Cargando
+        when (val r = eventosRepo.detalle(eventoId)) {
+            is ResultadoEvento.Exito -> {
+                nombre = r.dato.nombre
+                descripcion = r.dato.descripcion ?: ""
+                lugar = r.dato.lugar ?: ""
+                fecha = r.dato.fecha
+                fechaFin = r.dato.fechaFin ?: ""
+                estado = EstadoEditorEvento.Listo
+            }
+            is ResultadoEvento.Error -> estado = EstadoEditorEvento.Error(r.mensaje)
+        }
+    }
+
+    fun guardar() {
+        error = null
+        if (nombre.isBlank()) {
+            error = "El nombre es obligatorio."
+            return
+        }
+        if (!REGEX_FECHA.matches(fecha)) {
+            error = "La fecha debe tener el formato aaaa-mm-dd."
+            return
+        }
+        if (fechaFin.isNotBlank()) {
+            if (!REGEX_FECHA.matches(fechaFin)) {
+                error = "La fecha de fin debe tener el formato aaaa-mm-dd."
+                return
+            }
+            if (fechaFin < fecha) {
+                error = "La fecha de fin no puede ser anterior a la de inicio."
+                return
+            }
+        }
+        guardando = true
+        scope.launch {
+            val req = GuardarEventoRequest(
+                nombre = nombre.trim(),
+                descripcion = descripcion.trim().ifBlank { null },
+                lugar = lugar.trim().ifBlank { null },
+                fecha = fecha,
+                fechaFin = fechaFin.ifBlank { null },
+            )
+            val r = if (eventoId != null) eventosRepo.editar(eventoId, req) else eventosRepo.crear(req)
+            when (r) {
+                is ResultadoEvento.Exito -> onGuardado(r.dato.id)
+                is ResultadoEvento.Error -> {
+                    guardando = false
+                    error = r.mensaje
+                }
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp).imePadding(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            BaniterioWordmark()
+            Text(
+                "Volver",
+                style = MaterialTheme.typography.bodyMedium,
+                color = BaniterioColors.brandBright,
+                modifier = Modifier.clickable { onVolver() },
+            )
+        }
+        Text(
+            if (editando) "Editar evento" else "Nuevo evento",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            fontWeight = FontWeight.Bold,
+        )
+
+        when (val e = estado) {
+            is EstadoEditorEvento.Cargando -> Text("Cargando…", color = BaniterioColors.muted)
+            is EstadoEditorEvento.Error -> Text(e.mensaje, color = BaniterioColors.error)
+            is EstadoEditorEvento.Listo -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                        .relieveDeCarta(RoundedCornerShape(18.dp))
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    OutlinedTextField(
+                        value = nombre, onValueChange = { nombre = it },
+                        label = { Text("Nombre") }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = descripcion, onValueChange = { descripcion = it },
+                        label = { Text("Descripción (opcional)") }, minLines = 3,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = lugar, onValueChange = { lugar = it },
+                        label = { Text("Lugar (opcional)") }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = fecha, onValueChange = { fecha = it },
+                        label = { Text("Fecha (aaaa-mm-dd)") }, singleLine = true,
+                        placeholder = { Text("2027-03-26") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = fechaFin, onValueChange = { fechaFin = it },
+                        label = { Text("Fecha de fin (opcional, aaaa-mm-dd)") }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    error?.let {
+                        Text(it, color = BaniterioColors.error, style = MaterialTheme.typography.bodyMedium)
+                    }
+
+                    Button(
+                        onClick = { guardar() },
+                        enabled = !guardando,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = BaniterioColors.brand,
+                            contentColor = BaniterioColors.gold,
+                        ),
+                    ) {
+                        Text(if (guardando) "Guardando…" else "Guardar", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
 }
