@@ -2,8 +2,6 @@ package com.baniterio.api.identidad;
 
 import java.time.Instant;
 
-import org.hibernate.annotations.CreationTimestamp;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -23,6 +21,10 @@ import lombok.Setter;
  * Un envío de "Mandar notificación" para un evento (fila de
  * {@code notificacion_evento}, ver V21). Se guarda una fila por envío; la más
  * reciente marca cuándo se puede reenviar (>= 48 h después).
+ *
+ * <p>{@code enviadaAt} es una columna normal (no {@code @CreationTimestamp}): el
+ * servicio la fija al enviar y los tests pueden antedatarla para probar la
+ * ventana de reenvío.
  */
 @Entity
 @Table(name = "notificacion_evento")
@@ -48,9 +50,7 @@ public class NotificacionEvento {
     @JoinColumn(name = "enviada_por_id", nullable = false)
     private Usuario enviadaPor;
 
-    // Sin updatable=false: los tests necesitan poder antedatar un envío para
-    // probar la ventana de reenvío de 48 h. En producción nada lo modifica.
-    @CreationTimestamp
+    @Builder.Default
     @Column(name = "enviada_at", nullable = false)
-    private Instant enviadaAt;
+    private Instant enviadaAt = Instant.now();
 }

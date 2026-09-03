@@ -15,4 +15,10 @@ public sealed interface Audiencia {
 
     /** Administradores y superadministradores activos de la peña. */
     record Administradores() implements Audiencia {}
+
+    /**
+     * Miembros activos de la peña que aún no han respondido a la convocatoria de
+     * un evento. Los que dijeron "No voy" ya tienen respuesta → no reciben nada.
+     */
+    record SinRespuestaEvento(Long eventoId) implements Audiencia {}
 }

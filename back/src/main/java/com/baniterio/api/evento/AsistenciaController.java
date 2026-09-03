@@ -2,13 +2,17 @@ package com.baniterio.api.evento;
 
 import com.baniterio.api.auth.UsuarioPrincipal;
 import com.baniterio.api.evento.dto.EventoDetalle;
+import com.baniterio.api.evento.dto.MandarNotificacionRequest;
 import com.baniterio.api.evento.dto.ResponderAsistenciaRequest;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -33,5 +37,13 @@ public class AsistenciaController {
             @PathVariable Long id, @Valid @RequestBody ResponderAsistenciaRequest req) {
         asistenciaService.responder(principal.id(), id, req.estado());
         return eventoService.detalle(principal.id(), id);
+    }
+
+    @PostMapping("/{id}/notificacion")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void mandarNotificacion(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) MandarNotificacionRequest req) {
+        asistenciaService.mandarNotificacion(principal.id(), id, req == null ? null : req.texto());
     }
 }
