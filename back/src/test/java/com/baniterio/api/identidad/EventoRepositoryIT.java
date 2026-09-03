@@ -53,4 +53,17 @@ class EventoRepositoryIT extends IntegrationTest {
                 .fecha(LocalDate.of(2027, 3, 27)).fechaFin(LocalDate.of(2027, 3, 26)).build();
         assertThatThrownBy(() -> eventos.saveAndFlush(e)).isNotNull();
     }
+
+    @Test
+    void la_siembra_v15_deja_los_tres_eventos_ordenados() {
+        var pagina = eventos.findByPenaId(pena().getId(),
+                PageRequest.of(0, 100, Sort.by(Sort.Order.desc("fecha"), Sort.Order.desc("id"))));
+        var nombres = pagina.getContent().stream().map(Evento::getNombre).toList();
+
+        assertThat(nombres).contains(
+                "Fiestas de San Miguel 2026", "Chuletas Santas 2027", "Migas Santas 2027");
+        // Migas (27/03/2027) va antes que Chuletas (26/03/2027), y ambas antes que San Miguel (25/09/2026).
+        assertThat(nombres).containsSubsequence(
+                "Migas Santas 2027", "Chuletas Santas 2027", "Fiestas de San Miguel 2026");
+    }
 }
