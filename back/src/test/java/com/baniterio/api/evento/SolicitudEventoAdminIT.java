@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
+import com.baniterio.api.identidad.Cuenta;
+import com.baniterio.api.identidad.CuentaRepository;
 import com.baniterio.api.identidad.EstadoSolicitud;
 import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
@@ -50,6 +52,9 @@ class SolicitudEventoAdminIT extends IntegrationTest {
     EventoRepository eventos;
 
     @Autowired
+    CuentaRepository cuentas;
+
+    @Autowired
     SolicitudEventoRepository solicitudes;
 
     @Autowired
@@ -82,8 +87,13 @@ class SolicitudEventoAdminIT extends IntegrationTest {
         return new Sesion(u.getId(), (String) body.get("token"));
     }
 
+    Cuenta cuenta() {
+        return cuentas.findByPenaIdAndNombre(pena().getId(), "San Miguel").orElseThrow();
+    }
+
     Evento sembrarEvento(String nombre, LocalDate fecha, Usuario creador) {
-        return eventos.save(Evento.builder().pena(pena()).nombre(nombre).fecha(fecha).creadoPor(creador).build());
+        return eventos.save(Evento.builder().pena(pena()).cuenta(cuenta())
+                .nombre(nombre).fecha(fecha).creadoPor(creador).build());
     }
 
     long pedirCredito(Sesion miembro) {
@@ -117,7 +127,8 @@ class SolicitudEventoAdminIT extends IntegrationTest {
 
         http.post().uri("/api/v1/eventos")
                 .header(AUTHORIZATION, "Bearer " + miembro.token())
-                .body(Map.of("nombre", "IT-tras-credito", "fecha", "2999-10-01"))
+                .body(Map.of("nombre", "IT-tras-credito", "fecha", "2999-10-01",
+                        "cuentaId", cuenta().getId()))
                 .exchange().expectStatus().isCreated();
     }
 

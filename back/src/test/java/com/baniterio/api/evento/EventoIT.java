@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
+import com.baniterio.api.identidad.Cuenta;
+import com.baniterio.api.identidad.CuentaRepository;
 import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
 import com.baniterio.api.identidad.Membresia;
@@ -48,6 +50,9 @@ class EventoIT extends IntegrationTest {
     EventoRepository eventos;
 
     @Autowired
+    CuentaRepository cuentas;
+
+    @Autowired
     com.baniterio.api.identidad.SolicitudEventoRepository solicitudes;
 
     @Autowired
@@ -80,8 +85,13 @@ class EventoIT extends IntegrationTest {
         return new Sesion(u.getId(), (String) body.get("token"));
     }
 
+    Cuenta cuenta() {
+        return cuentas.findByPenaIdAndNombre(pena().getId(), "San Miguel").orElseThrow();
+    }
+
     Evento sembrarEvento(String nombre, LocalDate fecha, Usuario creador) {
-        return eventos.save(Evento.builder().pena(pena()).nombre(nombre).fecha(fecha).creadoPor(creador).build());
+        return eventos.save(Evento.builder().pena(pena()).cuenta(cuenta())
+                .nombre(nombre).fecha(fecha).creadoPor(creador).build());
     }
 
     @Test
@@ -148,7 +158,8 @@ class EventoIT extends IntegrationTest {
         Sesion s = crearMiembro(RolMembresia.MIEMBRO);
         http.post().uri("/api/v1/eventos")
                 .header(AUTHORIZATION, "Bearer " + s.token())
-                .body(Map.of("nombre", "IT-sin-credito", "fecha", "2999-06-01"))
+                .body(Map.of("nombre", "IT-sin-credito", "fecha", "2999-06-01",
+                        "cuentaId", cuenta().getId()))
                 .exchange().expectStatus().isEqualTo(409)
                 .expectBody().jsonPath("$.codigo").isEqualTo("SIN_CREDITO_EVENTO");
     }
@@ -158,11 +169,46 @@ class EventoIT extends IntegrationTest {
         Sesion admin = crearMiembro(RolMembresia.ADMIN);
         http.post().uri("/api/v1/eventos")
                 .header(AUTHORIZATION, "Bearer " + admin.token())
-                .body(Map.of("nombre", "IT-admin-crea", "fecha", "2999-07-01", "lugar", "La sede"))
+                .body(Map.of("nombre", "IT-admin-crea", "fecha", "2999-07-01", "lugar", "La sede",
+                        "cuentaId", cuenta().getId()))
                 .exchange().expectStatus().isCreated()
                 .expectBody()
                 .jsonPath("$.nombre").isEqualTo("IT-admin-crea")
+                .jsonPath("$.cuenta.nombre").isEqualTo("San Miguel")
                 .jsonPath("$.puedoEditar").isEqualTo(true);
+    }
+
+    @Test
+    void crear_sin_cuenta_es_400_VALIDACION() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        http.post().uri("/api/v1/eventos")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("nombre", "IT-sin-cuenta", "fecha", "2999-07-03"))
+                .exchange().expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.codigo").isEqualTo("VALIDACION");
+    }
+
+    @Test
+    void crear_con_cuenta_nueva_la_crea_con_el_nombre_del_evento() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        String nombre = "IT-cuenta-nueva-" + ThreadLocalRandom.current().nextInt(1_000_000);
+        http.post().uri("/api/v1/eventos")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("nombre", nombre, "fecha", "2999-07-04", "cuentaNueva", true))
+                .exchange().expectStatus().isCreated()
+                .expectBody().jsonPath("$.cuenta.nombre").isEqualTo(nombre);
+
+        assertThat(cuentas.findByPenaIdAndNombre(pena().getId(), nombre)).isPresent();
+    }
+
+    @Test
+    void crear_con_cuenta_nueva_de_nombre_repetido_es_409() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        http.post().uri("/api/v1/eventos")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("nombre", "San Miguel", "fecha", "2999-07-05", "cuentaNueva", true))
+                .exchange().expectStatus().isEqualTo(409)
+                .expectBody().jsonPath("$.codigo").isEqualTo("CUENTA_YA_EXISTE");
     }
 
     @Test
@@ -170,7 +216,8 @@ class EventoIT extends IntegrationTest {
         Sesion admin = crearMiembro(RolMembresia.ADMIN);
         http.post().uri("/api/v1/eventos")
                 .header(AUTHORIZATION, "Bearer " + admin.token())
-                .body(Map.of("nombre", "IT-fechas", "fecha", "2999-07-02", "fechaFin", "2999-07-01"))
+                .body(Map.of("nombre", "IT-fechas", "fecha", "2999-07-02", "fechaFin", "2999-07-01",
+                        "cuentaId", cuenta().getId()))
                 .exchange().expectStatus().isBadRequest()
                 .expectBody().jsonPath("$.codigo").isEqualTo("VALIDACION");
     }
@@ -183,9 +230,24 @@ class EventoIT extends IntegrationTest {
 
         http.put().uri("/api/v1/eventos/" + e.getId())
                 .header(AUTHORIZATION, "Bearer " + miembro.token())
-                .body(Map.of("nombre", "IT-edita-mio-2", "fecha", "2999-08-02"))
+                .body(Map.of("nombre", "IT-edita-mio-2", "fecha", "2999-08-02",
+                        "cuentaId", cuenta().getId()))
                 .exchange().expectStatus().isOk()
                 .expectBody().jsonPath("$.nombre").isEqualTo("IT-edita-mio-2");
+    }
+
+    @Test
+    void editar_cambia_la_cuenta_del_evento() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Evento e = sembrarEvento("IT-cambia-cuenta", LocalDate.of(2999, 8, 10), null);
+        Long chuletas = cuentas.findByPenaIdAndNombre(pena().getId(), "Chuletas Santas")
+                .orElseThrow().getId();
+
+        http.put().uri("/api/v1/eventos/" + e.getId())
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("nombre", "IT-cambia-cuenta", "fecha", "2999-08-10", "cuentaId", chuletas))
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.cuenta.id").isEqualTo(chuletas.intValue());
     }
 
     @Test
@@ -195,7 +257,7 @@ class EventoIT extends IntegrationTest {
 
         http.put().uri("/api/v1/eventos/" + e.getId())
                 .header(AUTHORIZATION, "Bearer " + otro.token())
-                .body(Map.of("nombre", "no", "fecha", "2999-08-03"))
+                .body(Map.of("nombre", "no", "fecha", "2999-08-03", "cuentaId", cuenta().getId()))
                 .exchange().expectStatus().isForbidden()
                 .expectBody().jsonPath("$.codigo").isEqualTo("SIN_PERMISO_EVENTO");
     }

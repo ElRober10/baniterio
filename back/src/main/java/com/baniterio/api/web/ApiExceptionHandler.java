@@ -186,6 +186,11 @@ public class ApiExceptionHandler {
         return error(HttpStatus.NOT_FOUND, "CUENTA_NO_ENCONTRADA");
     }
 
+    @ExceptionHandler(com.baniterio.api.cuenta.CuentaConflictoException.class)
+    ResponseEntity<Map<String, Object>> cuentaConflicto() {
+        return error(HttpStatus.CONFLICT, "CUENTA_YA_EXISTE");
+    }
+
     @ExceptionHandler(com.baniterio.api.evento.SinCreditoEventoException.class)
     ResponseEntity<Map<String, Object>> sinCreditoEvento() {
         return error(HttpStatus.CONFLICT, "SIN_CREDITO_EVENTO");

@@ -24,14 +24,22 @@ class EventoRepositoryIT extends IntegrationTest {
     EventoRepository eventos;
 
     @Autowired
+    CuentaRepository cuentas;
+
+    @Autowired
     PenaRepository penas;
 
     private Pena pena() {
         return penas.findBySlug("baniterio").orElseThrow();
     }
 
+    private Cuenta cuenta() {
+        return cuentas.findByPenaIdAndNombre(pena().getId(), "San Miguel").orElseThrow();
+    }
+
     private Evento crear(String nombre, LocalDate fecha) {
-        return eventos.save(Evento.builder().pena(pena()).nombre(nombre).fecha(fecha).build());
+        return eventos.save(Evento.builder().pena(pena()).cuenta(cuenta())
+                .nombre(nombre).fecha(fecha).build());
     }
 
     @Test
@@ -56,7 +64,7 @@ class EventoRepositoryIT extends IntegrationTest {
 
     @Test
     void ck_fecha_fin_rechaza_fin_anterior_al_inicio() {
-        Evento e = Evento.builder().pena(pena()).nombre("IT-malas-fechas")
+        Evento e = Evento.builder().pena(pena()).cuenta(cuenta()).nombre("IT-malas-fechas")
                 .fecha(LocalDate.of(2027, 3, 27)).fechaFin(LocalDate.of(2027, 3, 26)).build();
         assertThatThrownBy(() -> eventos.saveAndFlush(e)).isNotNull();
     }

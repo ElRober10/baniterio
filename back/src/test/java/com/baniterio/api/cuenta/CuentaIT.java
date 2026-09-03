@@ -1,11 +1,14 @@
 package com.baniterio.api.cuenta;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 import com.baniterio.api.identidad.Cuenta;
 import com.baniterio.api.identidad.CuentaRepository;
+import com.baniterio.api.identidad.Evento;
+import com.baniterio.api.identidad.EventoRepository;
 import com.baniterio.api.identidad.Membresia;
 import com.baniterio.api.identidad.MembresiaRepository;
 import com.baniterio.api.identidad.Pena;
@@ -45,6 +48,9 @@ class CuentaIT extends IntegrationTest {
 
     @Autowired
     CuentaRepository cuentas;
+
+    @Autowired
+    EventoRepository eventos;
 
     @Autowired
     PasswordEncoder passwordEncoder;
@@ -98,6 +104,28 @@ class CuentaIT extends IntegrationTest {
                 .expectBody()
                 .jsonPath("$.nombre").isEqualTo("IT-cuenta-detalle")
                 .jsonPath("$.descripcion").isEqualTo("Una cuenta de prueba");
+    }
+
+    @Test
+    void listado_ordena_por_el_evento_futuro_mas_proximo() {
+        String token = token(RolMembresia.MIEMBRO);
+        long sufijo = ThreadLocalRandom.current().nextLong(1_000_000);
+        Cuenta lejos = cuentas.save(Cuenta.builder().pena(pena()).nombre("IT-Cta-Lejos-" + sufijo).build());
+        Cuenta cerca = cuentas.save(Cuenta.builder().pena(pena()).nombre("IT-Cta-Cerca-" + sufijo).build());
+        Cuenta sinEvento = cuentas.save(Cuenta.builder().pena(pena()).nombre("IT-Cta-SinEvento-" + sufijo).build());
+
+        eventos.save(Evento.builder().pena(pena()).cuenta(lejos)
+                .nombre("IT-evt-lejos-" + sufijo).fecha(LocalDate.of(2999, 1, 1)).build());
+        eventos.save(Evento.builder().pena(pena()).cuenta(cerca)
+                .nombre("IT-evt-cerca-" + sufijo).fecha(LocalDate.of(2998, 1, 1)).build());
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> lista = http.get().uri("/api/v1/cuentas")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .exchange().expectStatus().isOk().expectBody(List.class).returnResult().getResponseBody();
+
+        var nombres = lista.stream().map(c -> (String) c.get("nombre")).toList();
+        assertThat(nombres).containsSubsequence(cerca.getNombre(), lejos.getNombre(), sinEvento.getNombre());
     }
 
     @Test
