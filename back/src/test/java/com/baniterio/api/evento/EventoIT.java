@@ -85,7 +85,7 @@ class EventoIT extends IntegrationTest {
     }
 
     @Test
-    void listado_devuelve_los_eventos_ordenados_y_paginados() {
+    void listado_ordena_los_futuros_por_fecha_ascendente_y_pagina() {
         Sesion s = crearMiembro(RolMembresia.MIEMBRO);
         sembrarEvento("IT-list-A", LocalDate.of(2999, 1, 1), null);
         sembrarEvento("IT-list-B", LocalDate.of(2998, 1, 1), null);
@@ -95,10 +95,30 @@ class EventoIT extends IntegrationTest {
                 .header(AUTHORIZATION, "Bearer " + s.token())
                 .exchange().expectStatus().isOk().expectBody(Map.class).returnResult().getResponseBody();
 
-        List<?> lista = (List<?>) r.get("eventos");
-        assertThat(lista).isNotEmpty();
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> lista = (List<Map<String, Object>>) r.get("eventos");
+        var nombres = lista.stream().map(e -> (String) e.get("nombre")).toList();
+        // B (2998) va antes que A (2999): entre futuros, el más cercano primero.
+        assertThat(nombres).containsSubsequence("IT-list-B", "IT-list-A");
         assertThat(r.get("puedeCrear")).isEqualTo(false);
         assertThat(r.get("puedeSolicitar")).isEqualTo(true);
+    }
+
+    @Test
+    void un_evento_es_pasado_cuando_han_transcurrido_mas_de_3_dias() {
+        Sesion s = crearMiembro(RolMembresia.ADMIN);
+        Evento vigente = sembrarEvento("IT-vigente-2d", LocalDate.now().minusDays(2), null);
+        Evento pasado = sembrarEvento("IT-pasado-10d", LocalDate.now().minusDays(10), null);
+
+        http.get().uri("/api/v1/eventos/" + vigente.getId())
+                .header(AUTHORIZATION, "Bearer " + s.token())
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.pasado").isEqualTo(false);
+
+        http.get().uri("/api/v1/eventos/" + pasado.getId())
+                .header(AUTHORIZATION, "Bearer " + s.token())
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.pasado").isEqualTo(true);
     }
 
     @Test
