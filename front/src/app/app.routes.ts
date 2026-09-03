@@ -9,6 +9,7 @@ import { Login } from './auth/login/login';
 import { Panel } from './panel/panel';
 import { PanelInicio } from './panel/inicio/inicio';
 import { EditorPerfil } from './panel/miembros/editor-perfil/editor-perfil';
+import { EditorEvento } from './panel/eventos/editor-evento/editor-evento';
 import { EventoDetalleComponent } from './panel/eventos/evento-detalle/evento-detalle';
 import { Eventos } from './panel/eventos/eventos';
 import { Miembros } from './panel/miembros/miembros';
@@ -34,6 +35,9 @@ export const routes: Routes = [
       { path: 'miembros/editar', component: EditorPerfil },
       { path: 'miembros', component: Miembros, canActivate: [perfilCompletoGuard] },
       { path: 'eventos', component: Eventos, canActivate: [perfilCompletoGuard] },
+      // Específicas antes de la comodín `:id`, o `nuevo`/`editar` caerían en el detalle.
+      { path: 'eventos/nuevo', component: EditorEvento, canActivate: [perfilCompletoGuard] },
+      { path: 'eventos/:id/editar', component: EditorEvento, canActivate: [perfilCompletoGuard] },
       { path: 'eventos/:id', component: EventoDetalleComponent, canActivate: [perfilCompletoGuard] },
       // Índice de administración: sin areaGuard (cualquier miembro lo abre); solo
       // pinta las secciones para las que tiene área.
