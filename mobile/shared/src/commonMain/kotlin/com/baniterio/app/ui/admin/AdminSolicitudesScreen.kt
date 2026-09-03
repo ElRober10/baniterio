@@ -17,6 +17,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -48,7 +49,11 @@ private sealed interface EstadoLista {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminSolicitudesScreen(adminRepo: AdminRepository, onVolver: () -> Unit) {
+fun AdminSolicitudesScreen(
+    adminRepo: AdminRepository,
+    esAdmin: Boolean,
+    onVolver: () -> Unit,
+) {
     var estado by remember { mutableStateOf<EstadoLista>(EstadoLista.Cargando) }
     var aviso by remember { mutableStateOf<String?>(null) }
     var rechazandoId by remember { mutableStateOf<Long?>(null) }
@@ -179,6 +184,19 @@ fun AdminSolicitudesScreen(adminRepo: AdminRepository, onVolver: () -> Unit) {
                             },
                         )
                     }
+                }
+            }
+        }
+
+        // Solo para admin/superadmin de verdad (no un área concedida): el bloque
+        // de solicitudes de crear/borrar evento, embebido tras la lista de acceso.
+        if (esAdmin) {
+            item {
+                Column {
+                    Spacer(Modifier.height(16.dp))
+                    HorizontalDivider(color = BaniterioColors.outline)
+                    Spacer(Modifier.height(16.dp))
+                    SolicitudesEventoAdmin(adminRepo)
                 }
             }
         }
