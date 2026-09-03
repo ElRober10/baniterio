@@ -2,6 +2,7 @@ package com.baniterio.app.data
 
 import com.baniterio.app.data.dto.AprobarResponse
 import com.baniterio.app.data.dto.MiembroResumen
+import com.baniterio.app.data.dto.SolicitudEventoResumen
 import com.baniterio.app.data.dto.SolicitudResumen
 
 /**
@@ -31,4 +32,12 @@ interface AdminRepository {
      * áreas con al menos un pendiente. Mapa vacío si no hay nada o no tiene áreas.
      */
     suspend fun pendientesPorArea(): ResultadoAdmin<Map<String, Int>>
+
+    /**
+     * Solicitudes de la sección Eventos (crear un evento / borrar uno propio) que
+     * un miembro normal ha pedido y un administrador de verdad tiene que resolver.
+     */
+    suspend fun solicitudesEvento(estado: String = "PENDIENTE"): ResultadoAdmin<List<SolicitudEventoResumen>>
+    suspend fun aprobarSolicitudEvento(id: Long): ResultadoAdmin<Unit>
+    suspend fun rechazarSolicitudEvento(id: Long, motivo: String?): ResultadoAdmin<Unit>
 }

@@ -20,7 +20,7 @@ enum class CodigoErrorAdmin {
     companion object {
         fun deCodigoBackend(codigo: String?): CodigoErrorAdmin = when (codigo) {
             "SIN_PERMISO" -> SIN_PERMISO
-            "SOLICITUD_YA_RESUELTA" -> SOLICITUD_YA_RESUELTA
+            "SOLICITUD_YA_RESUELTA", "SOLICITUD_EVENTO_YA_RESUELTA" -> SOLICITUD_YA_RESUELTA
             "ULTIMO_ADMIN" -> ULTIMO_ADMIN
             "NO_TE_PUEDES_DEGRADAR", "NO_TE_PUEDES_DESACTIVAR" -> AUTO_MODIFICACION
             "SOLO_EL_SUPERADMIN" -> SOLO_EL_SUPERADMIN

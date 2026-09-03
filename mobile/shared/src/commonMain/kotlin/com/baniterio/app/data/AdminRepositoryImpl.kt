@@ -7,6 +7,7 @@ import com.baniterio.app.data.dto.ErrorResponse
 import com.baniterio.app.data.dto.MiembroResumen
 import com.baniterio.app.data.dto.RechazoRequest
 import com.baniterio.app.data.dto.RolRequest
+import com.baniterio.app.data.dto.SolicitudEventoResumen
 import com.baniterio.app.data.dto.SolicitudResumen
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -97,6 +98,29 @@ class AdminRepositoryImpl(
         peticion {
             http.get("$API_BASE_URL/admin/pendientes") { auth() }
                 .body<Map<String, Int>>()
+        }
+
+    override suspend fun solicitudesEvento(estado: String): ResultadoAdmin<List<SolicitudEventoResumen>> =
+        peticion {
+            http.get("$API_BASE_URL/admin/solicitudes-evento") {
+                auth()
+                parameter("estado", estado)
+            }.body<List<SolicitudEventoResumen>>()
+        }
+
+    override suspend fun aprobarSolicitudEvento(id: Long): ResultadoAdmin<Unit> =
+        peticion {
+            http.post("$API_BASE_URL/admin/solicitudes-evento/$id/aprobar") { auth() }
+                .bodyAsText().let { }
+        }
+
+    override suspend fun rechazarSolicitudEvento(id: Long, motivo: String?): ResultadoAdmin<Unit> =
+        peticion {
+            http.post("$API_BASE_URL/admin/solicitudes-evento/$id/rechazar") {
+                auth()
+                contentType(ContentType.Application.Json)
+                setBody(RechazoRequest(motivo))
+            }.bodyAsText().let { }
         }
 
     /**

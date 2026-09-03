@@ -287,7 +287,12 @@ fun App(
                 }
                 is Screen.AdminSolicitudes -> {
                     BackHandler { ir(Screen.AdminIndex) }
-                    AdminSolicitudesScreen(adminRepo = deps.adminRepo, onVolver = { ir(Screen.AdminIndex) })
+                    AdminSolicitudesScreen(
+                        adminRepo = deps.adminRepo,
+                        // Admin de verdad = rol ADMIN o superadmin; un área concedida no cuenta.
+                        esAdmin = deps.repo.usuarioActual?.let { it.rol == "ADMIN" || it.esSuperadmin } == true,
+                        onVolver = { ir(Screen.AdminIndex) },
+                    )
                 }
                 is Screen.AdminPermisos -> {
                     BackHandler { ir(Screen.AdminIndex) }
