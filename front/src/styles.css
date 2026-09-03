@@ -34,3 +34,22 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
 }
+
+/*
+  Relieve "3D" de las cartas de miembro (rejilla y editor): sombra proyectada
+  teñida de morado —en fondo oscuro la negra no se ve—, degradado vertical en la
+  cara (luz arriba, sombra abajo) y un bisel de 1px con filo claro arriba y
+  oscuro abajo. Mismo efecto que en la app móvil (ver relieveDeCarta.kt).
+*/
+.carta-relieve {
+  background-image: linear-gradient(
+    to bottom,
+    #2a2467 0%,
+    var(--color-panel) 45%,
+    #141031 100%
+  );
+  box-shadow:
+    0 18px 40px -12px rgba(55, 47, 165, 0.55),
+    inset 0 1px 0 0 rgba(111, 99, 216, 0.55),
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.35);
+}

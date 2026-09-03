@@ -3,22 +3,31 @@ package com.baniterio.app
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.ContactsContract
+import android.provider.MediaStore
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.baniterio.app.data.FotoElegida
 import com.baniterio.app.data.PuenteNativo
+import java.io.File
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.launch
 
 class MainActivity : FragmentActivity() {
+
+    // Fichero donde la app de cámara escribe la foto a resolución completa (via
+    // FileProvider). Se recuerda entre el lanzamiento y onActivityResult porque
+    // ACTION_IMAGE_CAPTURE no devuelve la URI en el Intent de resultado.
+    private var uriFotoCamara: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -32,13 +41,26 @@ class MainActivity : FragmentActivity() {
         // Puente para el editor de perfil: elegir foto y elegir contacto. Se usa
         // startActivityForResult clásico (requestCode de 16 bits) por el mismo
         // motivo que el permiso de notificaciones (ver más abajo).
-        PuenteNativo.lanzarFoto = {
+        PuenteNativo.lanzarFotoGaleria = {
             val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
                 type = "image/*"
                 addCategory(Intent.CATEGORY_OPENABLE)
             }
             @Suppress("DEPRECATION")
             startActivityForResult(intent, RC_FOTO)
+        }
+        PuenteNativo.lanzarFotoCamara = {
+            // La foto se escribe en cache y se lee en onActivityResult. Un único
+            // fichero reutilizado: solo interesa la última captura.
+            val archivo = File(cacheDir, "captura_perfil.jpg")
+            val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", archivo)
+            uriFotoCamara = uri
+            val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                putExtra(MediaStore.EXTRA_OUTPUT, uri)
+                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            }
+            @Suppress("DEPRECATION")
+            startActivityForResult(intent, RC_FOTO_CAMARA)
         }
         PuenteNativo.lanzarContacto = {
             val intent = Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)
@@ -114,11 +136,20 @@ class MainActivity : FragmentActivity() {
                 PuenteNativo.pendienteFoto = null
                 val uri = data?.data
                 val foto = if (resultCode == RESULT_OK && uri != null) {
-                    runCatching {
-                        val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                        val mime = contentResolver.getType(uri) ?: "image/jpeg"
-                        bytes?.let { FotoElegida(it, "foto", mime) }
-                    }.getOrNull()
+                    reducirImagen(this, uri)?.let { FotoElegida(it, "foto", "image/jpeg") }
+                } else {
+                    null
+                }
+                cb?.invoke(foto)
+            }
+
+            RC_FOTO_CAMARA -> {
+                val cb = PuenteNativo.pendienteFoto
+                PuenteNativo.pendienteFoto = null
+                val uri = uriFotoCamara
+                uriFotoCamara = null
+                val foto = if (resultCode == RESULT_OK && uri != null) {
+                    reducirImagen(this, uri)?.let { FotoElegida(it, "foto", "image/jpeg") }
                 } else {
                     null
                 }
@@ -147,7 +178,8 @@ class MainActivity : FragmentActivity() {
 
     override fun onDestroy() {
         // Se sueltan las lambdas para no retener la Activity si el proceso la recrea.
-        PuenteNativo.lanzarFoto = null
+        PuenteNativo.lanzarFotoGaleria = null
+        PuenteNativo.lanzarFotoCamara = null
         PuenteNativo.lanzarContacto = null
         super.onDestroy()
     }
@@ -157,5 +189,6 @@ class MainActivity : FragmentActivity() {
         const val RC_PERMISO_NOTIF = 1001
         const val RC_FOTO = 1002
         const val RC_CONTACTO = 1003
+        const val RC_FOTO_CAMARA = 1004
     }
 }

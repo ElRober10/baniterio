@@ -41,7 +41,7 @@ const MENSAJES: Partial<Record<CodigoErrorPerfil, string>> = {
 
 /** El texto fijo que explica por qué pedimos el teléfono de la pareja/un hijo. */
 export const AVISO_TELEFONO_FAMILIA =
-  'Lo pedimos para que cuando haya un evento, un solo miembro de la familia pueda apuntar a todos.';
+  'Los teléfonos sirven para que un adulto pueda apuntar a toda la familia a un evento de una vez.';
 
 /** Forma de una fila del FormArray de hijos (el FormGroup interno no está tipado). */
 interface FilaHijo {

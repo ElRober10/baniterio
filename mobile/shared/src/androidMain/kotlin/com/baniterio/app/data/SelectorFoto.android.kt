@@ -5,10 +5,14 @@ import androidx.compose.runtime.remember
 
 private class SelectorFotoAndroid : SelectorFoto {
     override val disponible = true
+    override val puedeHacerFoto = true
 
-    override fun elegir(onFoto: (FotoElegida?) -> Unit) {
+    override fun elegir(origen: OrigenFoto, onFoto: (FotoElegida?) -> Unit) {
         PuenteNativo.pendienteFoto = onFoto
-        PuenteNativo.lanzarFoto?.invoke()
+        when (origen) {
+            OrigenFoto.GALERIA -> PuenteNativo.lanzarFotoGaleria?.invoke()
+            OrigenFoto.CAMARA -> PuenteNativo.lanzarFotoCamara?.invoke()
+        }
     }
 }
 

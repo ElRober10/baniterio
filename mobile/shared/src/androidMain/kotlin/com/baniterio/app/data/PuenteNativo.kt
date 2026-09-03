@@ -12,7 +12,8 @@ package com.baniterio.app.data
  * editor visible, así que el estado mutable de proceso vale.
  */
 object PuenteNativo {
-    var lanzarFoto: (() -> Unit)? = null
+    var lanzarFotoGaleria: (() -> Unit)? = null
+    var lanzarFotoCamara: (() -> Unit)? = null
     var lanzarContacto: (() -> Unit)? = null
     var pendienteFoto: ((FotoElegida?) -> Unit)? = null
     var pendienteContacto: ((String?) -> Unit)? = null
