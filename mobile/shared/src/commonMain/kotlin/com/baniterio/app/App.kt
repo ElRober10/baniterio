@@ -271,6 +271,7 @@ fun App(
                     } else {
                         EventoDetalleScreen(
                             eventosRepo = deps.eventosRepo,
+                            asistenciaRepo = deps.asistenciaRepo,
                             eventoId = id,
                             onEditar = { editorEventoId = id; ir(Screen.EditorEvento) },
                             onBorrado = { ir(Screen.Eventos) },
