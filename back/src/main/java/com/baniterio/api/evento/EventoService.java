@@ -210,6 +210,39 @@ public class EventoService {
         throw new SinPermisoEventoException();
     }
 
+    /**
+     * Un miembro normal pide un crédito para crear un evento. Un administrador no
+     * lo necesita → 409 {@code SOLICITUD_EVENTO_NO_APLICA}. Ya con una CREAR
+     * pendiente → 409 {@code SOLICITUD_EVENTO_YA_PENDIENTE}. Con un crédito
+     * aprobado sin usar → 409 {@code CREDITO_SIN_CONSUMIR}. Publica push a los
+     * administradores. Devuelve el id de la solicitud creada.
+     */
+    @Transactional
+    public Long solicitarCredito(Long usuarioId, String mensaje) {
+        if (permisos.esAdministrador(usuarioId)) {
+            throw new SolicitudEventoConflictoException("SOLICITUD_EVENTO_NO_APLICA");
+        }
+        if (solicitudes.existsBySolicitanteIdAndTipoAndEstado(
+                usuarioId, TipoSolicitudEvento.CREAR, EstadoSolicitud.PENDIENTE)) {
+            throw new SolicitudEventoConflictoException("SOLICITUD_EVENTO_YA_PENDIENTE");
+        }
+        if (solicitudes.findFirstBySolicitanteIdAndTipoAndEstadoAndEventoIsNullOrderByIdAsc(
+                usuarioId, TipoSolicitudEvento.CREAR, EstadoSolicitud.APROBADA).isPresent()) {
+            throw new SolicitudEventoConflictoException("CREDITO_SIN_CONSUMIR");
+        }
+        Usuario u = usuarios.findById(usuarioId).orElseThrow();
+        SolicitudEvento sol = solicitudes.save(SolicitudEvento.builder()
+                .pena(penas.findBySlug(SLUG_PENA).orElseThrow())
+                .solicitante(u)
+                .tipo(TipoSolicitudEvento.CREAR)
+                .mensaje(vacioANull(mensaje))
+                .estado(EstadoSolicitud.PENDIENTE)
+                .build());
+        publisher.publishEvent(new AvisoPushEvent(new Audiencia.Administradores(),
+                TITULO_PUSH, u.getNombre() + " quiere crear un evento."));
+        return sol.getId();
+    }
+
     EventoDetalle aDetalle(Long usuarioId, Evento e) {
         Usuario creador = e.getCreadoPor();
         var creadoPor = creador == null ? null

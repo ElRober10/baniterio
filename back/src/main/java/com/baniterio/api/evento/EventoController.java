@@ -3,6 +3,7 @@ package com.baniterio.api.evento;
 import java.util.Map;
 
 import com.baniterio.api.auth.UsuarioPrincipal;
+import com.baniterio.api.evento.dto.CrearSolicitudEventoRequest;
 import com.baniterio.api.evento.dto.EventoDetalle;
 import com.baniterio.api.evento.dto.GuardarEventoRequest;
 import com.baniterio.api.evento.dto.ListaEventosResponse;
@@ -68,5 +69,13 @@ public class EventoController {
         return r == ResultadoBorrado.BORRADO
                 ? ResponseEntity.noContent().build()
                 : ResponseEntity.accepted().body(Map.of("estado", "PENDIENTE"));
+    }
+
+    @PostMapping("/solicitudes")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Object> solicitarCredito(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @Valid @RequestBody(required = false) CrearSolicitudEventoRequest req) {
+        Long id = eventoService.solicitarCredito(principal.id(), req == null ? null : req.mensaje());
+        return Map.of("id", id, "estado", "PENDIENTE");
     }
 }
