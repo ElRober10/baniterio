@@ -1,5 +1,6 @@
 package com.baniterio.api.evento;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -234,6 +235,53 @@ class EventoIT extends IntegrationTest {
                         "cuentaId", cuenta().getId()))
                 .exchange().expectStatus().isOk()
                 .expectBody().jsonPath("$.nombre").isEqualTo("IT-edita-mio-2");
+    }
+
+    @Test
+    void admin_fija_la_cuota_maxima_al_crear() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = http.post().uri("/api/v1/eventos")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("nombre", "IT-cuota", "fecha", "2999-07-20",
+                        "cuentaId", cuenta().getId(), "cuotaMaxima", 26))
+                .exchange().expectStatus().isCreated()
+                .expectBody(Map.class).returnResult().getResponseBody();
+
+        Long id = ((Number) body.get("id")).longValue();
+        assertThat(new BigDecimal(body.get("cuotaMaxima").toString()))
+                .isEqualByComparingTo(new BigDecimal("26"));
+        assertThat(eventos.findById(id).orElseThrow().getCuotaMaxima())
+                .isEqualByComparingTo(new BigDecimal("26.00"));
+    }
+
+    @Test
+    void miembro_creador_no_puede_cambiar_la_cuota_maxima() {
+        Sesion miembro = crearMiembro(RolMembresia.MIEMBRO);
+        Usuario creador = usuarios.findById(miembro.id()).orElseThrow();
+        Evento e = sembrarEvento("IT-cuota-fija", LocalDate.of(2999, 7, 21), creador);
+        e.setCuotaMaxima(new BigDecimal("20.00"));
+        eventos.save(e);
+
+        http.put().uri("/api/v1/eventos/" + e.getId())
+                .header(AUTHORIZATION, "Bearer " + miembro.token())
+                .body(Map.of("nombre", "IT-cuota-fija-2", "fecha", "2999-07-21",
+                        "cuentaId", cuenta().getId(), "cuotaMaxima", 5))
+                .exchange().expectStatus().isOk();
+
+        assertThat(eventos.findById(e.getId()).orElseThrow().getCuotaMaxima())
+                .isEqualByComparingTo(new BigDecimal("20.00"));
+    }
+
+    @Test
+    void cuota_maxima_negativa_es_400_VALIDACION() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        http.post().uri("/api/v1/eventos")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("nombre", "IT-cuota-neg", "fecha", "2999-07-22",
+                        "cuentaId", cuenta().getId(), "cuotaMaxima", -1))
+                .exchange().expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.codigo").isEqualTo("VALIDACION");
     }
 
     @Test

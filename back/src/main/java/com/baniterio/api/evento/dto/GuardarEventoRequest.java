@@ -1,10 +1,13 @@
 package com.baniterio.api.evento.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -20,7 +23,8 @@ public record GuardarEventoRequest(
         @NotNull LocalDate fecha,
         LocalDate fechaFin,
         Long cuentaId,
-        Boolean cuentaNueva) {
+        Boolean cuentaNueva,
+        @PositiveOrZero @Digits(integer = 5, fraction = 2) BigDecimal cuotaMaxima) {
 
     /** {@code true} si el request pide crear una cuenta nueva (campo opcional; ausente = no). */
     public boolean quiereCuentaNueva() {

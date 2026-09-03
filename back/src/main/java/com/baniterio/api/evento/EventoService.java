@@ -170,6 +170,8 @@ public class EventoService {
                 .lugar(vacioANull(req.lugar()))
                 .fecha(req.fecha())
                 .fechaFin(req.fechaFin())
+                // La cuota máxima solo la fija un administrador; un miembro con crédito no.
+                .cuotaMaxima(admin ? req.cuotaMaxima() : null)
                 .creadoPor(usuario)
                 .build());
 
@@ -193,6 +195,10 @@ public class EventoService {
         e.setFecha(req.fecha());
         e.setFechaFin(req.fechaFin());
         e.setCuenta(resolverCuenta(req));
+        // La cuota máxima solo la cambia un administrador; si edita el creador, se deja como está.
+        if (permisos.esAdministrador(usuarioId)) {
+            e.setCuotaMaxima(req.cuotaMaxima());
+        }
         eventos.save(e);
         return aDetalle(usuarioId, e);
     }
@@ -290,7 +296,7 @@ public class EventoService {
         boolean borradoPendiente = solicitudes.existsByEventoIdAndTipoAndEstado(
                 e.getId(), TipoSolicitudEvento.BORRAR, EstadoSolicitud.PENDIENTE);
         return new EventoDetalle(e.getId(), e.getNombre(), e.getDescripcion(), e.getLugar(),
-                e.getFecha(), e.getFechaFin(), esPasado(e), aCuentaRef(e), creadoPor, gestiona,
-                gestiona, borradoPendiente);
+                e.getFecha(), e.getFechaFin(), esPasado(e), aCuentaRef(e), e.getCuotaMaxima(),
+                creadoPor, gestiona, gestiona, borradoPendiente);
     }
 }
