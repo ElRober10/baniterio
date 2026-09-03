@@ -1,6 +1,8 @@
 package com.baniterio.api.evento;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -12,6 +14,7 @@ import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
 import com.baniterio.api.identidad.Membresia;
 import com.baniterio.api.identidad.MembresiaRepository;
+import com.baniterio.api.identidad.NotificacionEvento;
 import com.baniterio.api.identidad.NotificacionEventoRepository;
 import com.baniterio.api.identidad.Pena;
 import com.baniterio.api.identidad.PenaRepository;
@@ -164,5 +167,72 @@ class AsistenciaIT extends IntegrationTest {
                 .body(Map.of("estado", "APUNTADO"))
                 .exchange().expectStatus().isNotFound()
                 .expectBody().jsonPath("$.codigo").isEqualTo("EVENTO_NO_ENCONTRADO");
+    }
+
+    @Test
+    void admin_manda_notificacion_primera_vez_204_y_la_registra() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Evento e = sembrarEvento("IT-asis-notif", LocalDate.now().plusDays(30), null);
+
+        http.post().uri("/api/v1/eventos/" + e.getId() + "/notificacion")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("texto", "¡Nos vemos en San Miguel!"))
+                .exchange().expectStatus().isNoContent();
+
+        assertThat(notificaciones.existsByEventoId(e.getId())).isTrue();
+    }
+
+    @Test
+    void el_organizador_no_admin_tambien_puede_mandar_notificacion() {
+        Sesion miembro = crearMiembro(RolMembresia.MIEMBRO);
+        Usuario creador = usuarios.findById(miembro.id()).orElseThrow();
+        Evento e = sembrarEvento("IT-asis-notif-org", LocalDate.now().plusDays(30), creador);
+
+        http.post().uri("/api/v1/eventos/" + e.getId() + "/notificacion")
+                .header(AUTHORIZATION, "Bearer " + miembro.token())
+                .body(Map.of())
+                .exchange().expectStatus().isNoContent();
+    }
+
+    @Test
+    void mandar_notificacion_sin_ser_admin_ni_organizador_403() {
+        Sesion otro = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sembrarEvento("IT-asis-notif-403", LocalDate.now().plusDays(30), null);
+
+        http.post().uri("/api/v1/eventos/" + e.getId() + "/notificacion")
+                .header(AUTHORIZATION, "Bearer " + otro.token())
+                .body(Map.of())
+                .exchange().expectStatus().isForbidden()
+                .expectBody().jsonPath("$.codigo").isEqualTo("SIN_PERMISO_EVENTO");
+    }
+
+    @Test
+    void reenviar_antes_de_48h_es_409_NOTIFICACION_REENVIO_PRONTO() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Usuario u = usuarios.findById(admin.id()).orElseThrow();
+        Evento e = sembrarEvento("IT-asis-reenvio-pronto", LocalDate.now().plusDays(30), null);
+        notificaciones.save(NotificacionEvento.builder().evento(e).enviadaPor(u).build());
+
+        http.post().uri("/api/v1/eventos/" + e.getId() + "/notificacion")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of())
+                .exchange().expectStatus().isEqualTo(409)
+                .expectBody().jsonPath("$.codigo").isEqualTo("NOTIFICACION_REENVIO_PRONTO");
+    }
+
+    @Test
+    void reenviar_pasadas_48h_204() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Usuario u = usuarios.findById(admin.id()).orElseThrow();
+        Evento e = sembrarEvento("IT-asis-reenvio-ok", LocalDate.now().plusDays(30), null);
+        NotificacionEvento vieja = notificaciones.save(
+                NotificacionEvento.builder().evento(e).enviadaPor(u).build());
+        vieja.setEnviadaAt(Instant.now().minus(49, ChronoUnit.HOURS));
+        notificaciones.save(vieja);
+
+        http.post().uri("/api/v1/eventos/" + e.getId() + "/notificacion")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of())
+                .exchange().expectStatus().isNoContent();
     }
 }

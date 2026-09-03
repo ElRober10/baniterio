@@ -2,7 +2,9 @@ package com.baniterio.api.push;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
+import com.baniterio.api.identidad.AsistenciaEventoRepository;
 import com.baniterio.api.identidad.Membresia;
 import com.baniterio.api.identidad.MembresiaRepository;
 import com.baniterio.api.identidad.Pena;
@@ -21,7 +23,9 @@ class ResolutorAudienciaTest {
     private final MembresiaRepository membresias = mock(MembresiaRepository.class);
     private final UsuarioRepository usuarios = mock(UsuarioRepository.class);
     private final PenaRepository penas = mock(PenaRepository.class);
-    private final ResolutorAudiencia resolutor = new ResolutorAudiencia(membresias, usuarios, penas);
+    private final AsistenciaEventoRepository asistencias = mock(AsistenciaEventoRepository.class);
+    private final ResolutorAudiencia resolutor =
+            new ResolutorAudiencia(membresias, usuarios, penas, asistencias);
 
     {
         when(penas.findBySlug("baniterio")).thenReturn(Optional.of(Pena.builder().id(1L).build()));
@@ -63,6 +67,18 @@ class ResolutorAudienciaTest {
 
         assertThat(resolutor.resolver(new Audiencia.Administradores()))
                 .containsExactlyInAnyOrder(2L, 3L, 4L);
+    }
+
+    @Test
+    void sin_respuesta_evento_excluye_a_quien_ya_respondio() {
+        when(membresias.findByPenaIdAndActivaTrue(1L)).thenReturn(List.of(
+                membresia(1L, RolMembresia.MIEMBRO, false),
+                membresia(2L, RolMembresia.MIEMBRO, false),
+                membresia(3L, RolMembresia.ADMIN, false)));
+        when(asistencias.idsUsuariosConRespuesta(50L)).thenReturn(Set.of(2L));
+
+        assertThat(resolutor.resolver(new Audiencia.SinRespuestaEvento(50L)))
+                .containsExactlyInAnyOrder(1L, 3L);
     }
 
     @Test

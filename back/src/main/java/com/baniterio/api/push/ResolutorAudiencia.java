@@ -1,8 +1,10 @@
 package com.baniterio.api.push;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
+import com.baniterio.api.identidad.AsistenciaEventoRepository;
 import com.baniterio.api.identidad.Membresia;
 import com.baniterio.api.identidad.MembresiaRepository;
 import com.baniterio.api.identidad.PenaRepository;
@@ -25,12 +27,14 @@ public class ResolutorAudiencia {
     private final MembresiaRepository membresias;
     private final UsuarioRepository usuarios;
     private final PenaRepository penas;
+    private final AsistenciaEventoRepository asistencias;
 
     public ResolutorAudiencia(MembresiaRepository membresias, UsuarioRepository usuarios,
-                              PenaRepository penas) {
+                              PenaRepository penas, AsistenciaEventoRepository asistencias) {
         this.membresias = membresias;
         this.usuarios = usuarios;
         this.penas = penas;
+        this.asistencias = asistencias;
     }
 
     @Transactional(readOnly = true)
@@ -45,6 +49,12 @@ public class ResolutorAudiencia {
         }
         if (audiencia instanceof Audiencia.Administradores) {
             return administradores();
+        }
+        if (audiencia instanceof Audiencia.SinRespuestaEvento s) {
+            Set<Long> conRespuesta = asistencias.idsUsuariosConRespuesta(s.eventoId());
+            return activas().map(m -> m.getUsuario().getId()).distinct()
+                    .filter(id -> !conRespuesta.contains(id))
+                    .toList();
         }
         throw new IllegalArgumentException("Audiencia no soportada: " + audiencia);
     }
