@@ -1,7 +1,7 @@
 package com.baniterio.app.ui.miembros
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,6 +21,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,6 +41,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.baniterio.app.data.FotoElegida
+import com.baniterio.app.data.OrigenFoto
 import com.baniterio.app.data.PerfilRepository
 import com.baniterio.app.data.ResultadoPerfil
 import com.baniterio.app.data.dto.AvatarResumen
@@ -53,6 +55,7 @@ import com.baniterio.app.data.urlMedia
 import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.theme.BaniterioWordmark
 import com.baniterio.app.ui.comun.CaraDeCarta
+import com.baniterio.app.ui.comun.relieveDeCarta
 import kotlinx.coroutines.launch
 
 /** Texto fijo junto al teléfono de pareja/hijo. */
@@ -70,6 +73,21 @@ private class FilaHijo(
     var mayorDeEdad by mutableStateOf(mayorDeEdad)
     var telefono by mutableStateOf(telefono)
     var visible by mutableStateOf(visible)
+}
+
+/**
+ * Botón para abrir la agenda y rellenar un teléfono. Con borde y a lo ancho para
+ * que se lea claramente como botón (antes era un `TextButton` sin marco que no
+ * parecía pulsable).
+ */
+@Composable
+private fun BotonElegirContacto(onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = BaniterioColors.brandBright),
+        border = BorderStroke(1.dp, BaniterioColors.brandBright),
+    ) { Text("Elegir de contactos", fontWeight = FontWeight.Medium) }
 }
 
 private sealed interface EstadoEditor {
@@ -107,6 +125,7 @@ fun EditorPerfilScreen(
 
     var avatares by remember { mutableStateOf<List<AvatarResumen>>(emptyList()) }
     var dialogoAvatar by remember { mutableStateOf(false) }
+    var dialogoFoto by remember { mutableStateOf(false) }
 
     var nombre by remember { mutableStateOf("") }
     var apellidos by remember { mutableStateOf("") }
@@ -169,6 +188,19 @@ fun EditorPerfilScreen(
         else -> null
     }
     val hayImagen = fotoPendiente != null || imagenRefFoto != null || imagenRefAvatar != null
+
+    fun aplicarFoto(f: FotoElegida?) {
+        if (f != null) {
+            fotoPendiente = f
+            imagenRefAvatar = null
+            imagenRefFoto = null
+        }
+    }
+
+    fun pedirFoto(origen: OrigenFoto) {
+        dialogoFoto = false
+        selectorFoto.elegir(origen) { aplicarFoto(it) }
+    }
 
     fun guardar() {
         mensajeError = null
@@ -306,9 +338,7 @@ fun EditorPerfilScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .widthIn(max = 440.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .border(1.dp, BaniterioColors.outline, RoundedCornerShape(16.dp))
-                        .background(BaniterioColors.panel),
+                        .relieveDeCarta(RoundedCornerShape(18.dp)),
                 ) {
                     CaraDeCarta(
                         modelo = modeloImagen,
@@ -333,13 +363,8 @@ fun EditorPerfilScreen(
                             if (selectorFoto.disponible) {
                                 Button(
                                     onClick = {
-                                        selectorFoto.elegir {
-                                            if (it != null) {
-                                                fotoPendiente = it
-                                                imagenRefAvatar = null
-                                                imagenRefFoto = null
-                                            }
-                                        }
+                                        if (selectorFoto.puedeHacerFoto) dialogoFoto = true
+                                        else pedirFoto(OrigenFoto.GALERIA)
                                     },
                                     modifier = Modifier.weight(1f),
                                     colors = ButtonDefaults.buttonColors(
@@ -403,11 +428,11 @@ fun EditorPerfilScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                     )
                                     if (selectorContacto.disponible) {
-                                        TextButton(onClick = {
+                                        BotonElegirContacto {
                                             selectorContacto.elegir { n ->
                                                 if (n != null) parejaTelefono = normalizarTelefonoEs(n) ?: n
                                             }
-                                        }) { Text("Elegir de contactos") }
+                                        }
                                     }
                                     if (parejaEstado == "PENDIENTE") {
                                         Text("Esperando a que confirme el vínculo.", color = BaniterioColors.muted)
@@ -464,11 +489,11 @@ fun EditorPerfilScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                     )
                                     if (selectorContacto.disponible) {
-                                        TextButton(onClick = {
+                                        BotonElegirContacto {
                                             selectorContacto.elegir { n ->
                                                 if (n != null) h.telefono = normalizarTelefonoEs(n) ?: n
                                             }
-                                        }) { Text("Elegir de contactos") }
+                                        }
                                     }
                                     Text(
                                         AVISO_TELEFONO_FAMILIA,
@@ -507,6 +532,46 @@ fun EditorPerfilScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+
+    if (dialogoFoto) {
+        Dialog(onDismissRequest = { dialogoFoto = false }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(BaniterioColors.panel)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    "Subir una foto",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Button(
+                    onClick = { pedirFoto(OrigenFoto.CAMARA) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = BaniterioColors.brand,
+                        contentColor = BaniterioColors.gold,
+                    ),
+                ) { Text("Hacer una foto", fontWeight = FontWeight.Bold) }
+                Button(
+                    onClick = { pedirFoto(OrigenFoto.GALERIA) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = BaniterioColors.brand,
+                        contentColor = BaniterioColors.gold,
+                    ),
+                ) { Text("Elegir de la galería", fontWeight = FontWeight.Bold) }
+                TextButton(
+                    onClick = { dialogoFoto = false },
+                    modifier = Modifier.align(Alignment.End),
+                ) { Text("Cancelar") }
             }
         }
     }

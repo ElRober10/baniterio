@@ -15,6 +15,7 @@ dependencies {
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.biometric)
+    implementation(libs.androidx.exifinterface)
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)

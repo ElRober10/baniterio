@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- getCacheDir() de la app: aquí se escribe "captura_perfil.jpg". -->
+    <cache-path name="capturas" path="." />
+</paths>

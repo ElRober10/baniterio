@@ -10,10 +10,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -26,11 +25,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.baniterio.app.data.PerfilRepository
 import com.baniterio.app.data.ResultadoPerfil
@@ -40,6 +40,7 @@ import com.baniterio.app.data.urlMedia
 import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.theme.BaniterioWordmark
 import com.baniterio.app.ui.comun.CaraDeCarta
+import com.baniterio.app.ui.comun.relieveDeCarta
 import kotlinx.coroutines.launch
 
 private sealed interface EstadoMiembros {
@@ -89,7 +90,12 @@ fun MiembrosScreen(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -156,16 +162,54 @@ fun MiembrosScreen(
                     Spacer(Modifier.height(16.dp))
                 }
 
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(150.dp),
+                RejillaAlturaIgual(
+                    items = e.tarjetas,
+                    columnas = 2,
+                    espacio = 16.dp,
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(e.tarjetas, key = { it.id }) { t ->
-                        TarjetaMiembro(t = t, esLaMia = t.id == miId, onEditar = onEditar)
-                    }
+                ) { t ->
+                    TarjetaMiembro(t = t, esLaMia = t.id == miId, onEditar = onEditar)
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Rejilla de [columnas] columnas donde TODAS las celdas miden lo mismo de alto:
+ * el de la celda más alta con su contenido natural (no se recorta nada). No es
+ * lazy —la lista de miembros de una peña es corta— y se apoya en un
+ * [SubcomposeLayout] para medir dos veces: primero cada celda a su alto natural
+ * y luego todas fijadas al máximo, así el fondo de cada tarjeta llena su hueco.
+ */
+@Composable
+private fun <T> RejillaAlturaIgual(
+    items: List<T>,
+    columnas: Int,
+    espacio: Dp,
+    modifier: Modifier = Modifier,
+    celda: @Composable (T) -> Unit,
+) {
+    SubcomposeLayout(modifier = modifier) { constraints ->
+        val gap = espacio.roundToPx()
+        val anchoCol = ((constraints.maxWidth - gap * (columnas - 1)) / columnas).coerceAtLeast(0)
+        val medida = Constraints(maxWidth = anchoCol)
+
+        val alturaMax = subcompose("medir") { items.forEach { celda(it) } }
+            .maxOfOrNull { it.measure(medida).height } ?: 0
+
+        val fijo = Constraints.fixed(anchoCol, alturaMax)
+        val placeables = subcompose("pintar") { items.forEach { celda(it) } }
+            .map { it.measure(fijo) }
+
+        val filas = if (items.isEmpty()) 0 else (items.size + columnas - 1) / columnas
+        val alto = filas * alturaMax + (filas - 1).coerceAtLeast(0) * gap
+
+        layout(constraints.maxWidth, alto) {
+            placeables.forEachIndexed { i, p ->
+                val fila = i / columnas
+                val col = i % columnas
+                p.place(x = col * (anchoCol + gap), y = fila * (alturaMax + gap))
             }
         }
     }
@@ -176,8 +220,7 @@ private fun TarjetaMiembro(t: TarjetaMiembroResponse, esLaMia: Boolean, onEditar
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(BaniterioColors.panel),
+            .relieveDeCarta(RoundedCornerShape(18.dp)),
     ) {
         CaraDeCarta(
             modelo = urlMedia(t.imagenUrl),
@@ -203,8 +246,6 @@ private fun TarjetaMiembro(t: TarjetaMiembroResponse, esLaMia: Boolean, onEditar
                     it,
                     color = BaniterioColors.muted,
                     style = MaterialTheme.typography.bodySmall,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
                 )
             }
             t.parejaNombre?.let {
