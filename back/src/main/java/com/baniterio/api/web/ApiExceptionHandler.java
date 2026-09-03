@@ -181,6 +181,11 @@ public class ApiExceptionHandler {
         return error(HttpStatus.NOT_FOUND, "EVENTO_NO_ENCONTRADO");
     }
 
+    @ExceptionHandler(com.baniterio.api.evento.SinCreditoEventoException.class)
+    ResponseEntity<Map<String, Object>> sinCreditoEvento() {
+        return error(HttpStatus.CONFLICT, "SIN_CREDITO_EVENTO");
+    }
+
     /** El multipart supera {@code spring.servlet.multipart.max-file-size}. */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     ResponseEntity<Map<String, Object>> imagenDemasiadoGrande() {

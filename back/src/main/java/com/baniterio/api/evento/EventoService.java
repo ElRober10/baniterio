@@ -5,14 +5,17 @@ import java.time.LocalDate;
 import com.baniterio.api.auth.ServicioPermisos;
 import com.baniterio.api.evento.dto.EventoDetalle;
 import com.baniterio.api.evento.dto.EventoResumen;
+import com.baniterio.api.evento.dto.GuardarEventoRequest;
 import com.baniterio.api.evento.dto.ListaEventosResponse;
 import com.baniterio.api.identidad.EstadoSolicitud;
 import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
 import com.baniterio.api.identidad.PenaRepository;
+import com.baniterio.api.identidad.SolicitudEvento;
 import com.baniterio.api.identidad.SolicitudEventoRepository;
 import com.baniterio.api.identidad.TipoSolicitudEvento;
 import com.baniterio.api.identidad.Usuario;
+import com.baniterio.api.identidad.UsuarioRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -35,13 +38,20 @@ public class EventoService {
     private final SolicitudEventoRepository solicitudes;
     private final ServicioPermisos permisos;
     private final PenaRepository penas;
+    private final UsuarioRepository usuarios;
 
     public EventoService(EventoRepository eventos, SolicitudEventoRepository solicitudes,
-                         ServicioPermisos permisos, PenaRepository penas) {
+                         ServicioPermisos permisos, PenaRepository penas,
+                         UsuarioRepository usuarios) {
         this.eventos = eventos;
         this.solicitudes = solicitudes;
         this.permisos = permisos;
         this.penas = penas;
+        this.usuarios = usuarios;
+    }
+
+    private static String vacioANull(String s) {
+        return (s == null || s.isBlank()) ? null : s.trim();
     }
 
     Long penaId() {
@@ -94,6 +104,40 @@ public class EventoService {
     @Transactional(readOnly = true)
     public EventoDetalle detalle(Long usuarioId, Long eventoId) {
         return aDetalle(usuarioId, cargar(eventoId));
+    }
+
+    /**
+     * Crea un evento. Un administrador lo crea directo; un miembro normal necesita
+     * un crédito CREAR aprobado sin consumir, que al crear el evento queda
+     * consumido (se le engancha el evento). Sin crédito → {@link SinCreditoEventoException}.
+     */
+    @Transactional
+    public EventoDetalle crear(Long usuarioId, GuardarEventoRequest req) {
+        Usuario usuario = usuarios.findById(usuarioId).orElseThrow();
+        boolean admin = permisos.esAdministrador(usuarioId);
+
+        SolicitudEvento credito = null;
+        if (!admin) {
+            credito = solicitudes.findFirstBySolicitanteIdAndTipoAndEstadoAndEventoIsNullOrderByIdAsc(
+                    usuarioId, TipoSolicitudEvento.CREAR, EstadoSolicitud.APROBADA)
+                    .orElseThrow(SinCreditoEventoException::new);
+        }
+
+        Evento e = eventos.save(Evento.builder()
+                .pena(penas.findBySlug(SLUG_PENA).orElseThrow())
+                .nombre(req.nombre().trim())
+                .descripcion(vacioANull(req.descripcion()))
+                .lugar(vacioANull(req.lugar()))
+                .fecha(req.fecha())
+                .fechaFin(req.fechaFin())
+                .creadoPor(usuario)
+                .build());
+
+        if (credito != null) {
+            credito.setEvento(e);
+            solicitudes.save(credito);
+        }
+        return aDetalle(usuarioId, e);
     }
 
     EventoDetalle aDetalle(Long usuarioId, Evento e) {
