@@ -176,6 +176,11 @@ public class ApiExceptionHandler {
         return error(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "IMAGEN_NO_SOPORTADA");
     }
 
+    @ExceptionHandler(com.baniterio.api.evento.EventoNoEncontradoException.class)
+    ResponseEntity<Map<String, Object>> eventoNoEncontrado() {
+        return error(HttpStatus.NOT_FOUND, "EVENTO_NO_ENCONTRADO");
+    }
+
     /** El multipart supera {@code spring.servlet.multipart.max-file-size}. */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     ResponseEntity<Map<String, Object>> imagenDemasiadoGrande() {
