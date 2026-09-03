@@ -2,12 +2,18 @@ package com.baniterio.api.evento;
 
 import com.baniterio.api.auth.UsuarioPrincipal;
 import com.baniterio.api.evento.dto.EventoDetalle;
+import com.baniterio.api.evento.dto.GuardarEventoRequest;
 import com.baniterio.api.evento.dto.ListaEventosResponse;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -35,5 +41,12 @@ public class EventoController {
     public EventoDetalle detalle(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long id) {
         return eventoService.detalle(principal.id(), id);
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public EventoDetalle crear(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @Valid @RequestBody GuardarEventoRequest req) {
+        return eventoService.crear(principal.id(), req);
     }
 }

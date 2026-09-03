@@ -119,4 +119,36 @@ class EventoIT extends IntegrationTest {
                 .jsonPath("$.puedoEditar").isEqualTo(true)
                 .jsonPath("$.puedoBorrar").isEqualTo(true);
     }
+
+    @Test
+    void miembro_sin_credito_no_puede_crear_evento_409() {
+        Sesion s = crearMiembro(RolMembresia.MIEMBRO);
+        http.post().uri("/api/v1/eventos")
+                .header(AUTHORIZATION, "Bearer " + s.token())
+                .body(Map.of("nombre", "IT-sin-credito", "fecha", "2999-06-01"))
+                .exchange().expectStatus().isEqualTo(409)
+                .expectBody().jsonPath("$.codigo").isEqualTo("SIN_CREDITO_EVENTO");
+    }
+
+    @Test
+    void admin_crea_evento_directo_201() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        http.post().uri("/api/v1/eventos")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("nombre", "IT-admin-crea", "fecha", "2999-07-01", "lugar", "La sede"))
+                .exchange().expectStatus().isCreated()
+                .expectBody()
+                .jsonPath("$.nombre").isEqualTo("IT-admin-crea")
+                .jsonPath("$.puedoEditar").isEqualTo(true);
+    }
+
+    @Test
+    void fecha_fin_anterior_a_fecha_es_validacion_400() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        http.post().uri("/api/v1/eventos")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("nombre", "IT-fechas", "fecha", "2999-07-02", "fechaFin", "2999-07-01"))
+                .exchange().expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.codigo").isEqualTo("VALIDACION");
+    }
 }
