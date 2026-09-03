@@ -197,6 +197,11 @@ public class ApiExceptionHandler {
         return error(HttpStatus.CONFLICT, ex.getCodigo());
     }
 
+    @ExceptionHandler(com.baniterio.api.evento.SolicitudEventoYaResueltaException.class)
+    ResponseEntity<Map<String, Object>> solicitudEventoYaResuelta() {
+        return error(HttpStatus.CONFLICT, "SOLICITUD_EVENTO_YA_RESUELTA");
+    }
+
     /** El multipart supera {@code spring.servlet.multipart.max-file-size}. */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     ResponseEntity<Map<String, Object>> imagenDemasiadoGrande() {
