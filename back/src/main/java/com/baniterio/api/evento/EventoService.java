@@ -140,6 +140,22 @@ public class EventoService {
         return aDetalle(usuarioId, e);
     }
 
+    /** Edita un evento. Solo el administrador o quien lo creó → si no, {@link SinPermisoEventoException}. */
+    @Transactional
+    public EventoDetalle editar(Long usuarioId, Long eventoId, GuardarEventoRequest req) {
+        Evento e = cargar(eventoId);
+        if (!puedeGestionar(usuarioId, e)) {
+            throw new SinPermisoEventoException();
+        }
+        e.setNombre(req.nombre().trim());
+        e.setDescripcion(vacioANull(req.descripcion()));
+        e.setLugar(vacioANull(req.lugar()));
+        e.setFecha(req.fecha());
+        e.setFechaFin(req.fechaFin());
+        eventos.save(e);
+        return aDetalle(usuarioId, e);
+    }
+
     EventoDetalle aDetalle(Long usuarioId, Evento e) {
         Usuario creador = e.getCreadoPor();
         var creadoPor = creador == null ? null

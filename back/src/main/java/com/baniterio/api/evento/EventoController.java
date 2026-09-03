@@ -10,6 +10,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -48,5 +49,11 @@ public class EventoController {
     public EventoDetalle crear(@AuthenticationPrincipal UsuarioPrincipal principal,
             @Valid @RequestBody GuardarEventoRequest req) {
         return eventoService.crear(principal.id(), req);
+    }
+
+    @PutMapping("/{id}")
+    public EventoDetalle editar(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long id, @Valid @RequestBody GuardarEventoRequest req) {
+        return eventoService.editar(principal.id(), id, req);
     }
 }
