@@ -13,6 +13,8 @@ sealed class Screen {
     data object Eventos : Screen()
     data object EventoDetalle : Screen()
     data object EditorEvento : Screen()
+    data object Cuentas : Screen()
+    data object CuentaDetalle : Screen()
     data object AdminIndex : Screen()
     data object AdminSolicitudes : Screen()
     data object AdminPermisos : Screen()
