@@ -1,5 +1,6 @@
 package com.baniterio.api.identidad;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 
@@ -63,6 +64,10 @@ public class Evento {
 
     @Column(name = "fecha_fin")
     private LocalDate fechaFin;
+
+    /** Cuota máxima del evento en euros (la fija un administrador). {@code null} = sin cuota. */
+    @Column(name = "cuota_maxima", precision = 7, scale = 2)
+    private BigDecimal cuotaMaxima;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "creado_por")

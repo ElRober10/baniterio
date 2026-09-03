@@ -1,5 +1,6 @@
 package com.baniterio.api.evento.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
@@ -10,8 +11,8 @@ import java.time.LocalDate;
  */
 public record EventoDetalle(Long id, String nombre, String descripcion, String lugar,
                             LocalDate fecha, LocalDate fechaFin, boolean pasado,
-                            CuentaRef cuenta, CreadoPor creadoPor, boolean puedoEditar,
-                            boolean puedoBorrar, boolean borradoPendiente) {
+                            CuentaRef cuenta, BigDecimal cuotaMaxima, CreadoPor creadoPor,
+                            boolean puedoEditar, boolean puedoBorrar, boolean borradoPendiente) {
 
     public record CreadoPor(Long id, String nombre) {
     }
