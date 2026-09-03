@@ -24,6 +24,9 @@ import com.baniterio.app.theme.BaniterioTheme
 import com.baniterio.app.ui.admin.AdminIndexScreen
 import com.baniterio.app.ui.admin.AdminPermisosScreen
 import com.baniterio.app.ui.admin.AdminSolicitudesScreen
+import com.baniterio.app.ui.eventos.EditorEventoScreen
+import com.baniterio.app.ui.eventos.EventoDetalleScreen
+import com.baniterio.app.ui.eventos.EventosScreen
 import com.baniterio.app.ui.historia.HistoriaScreen
 import com.baniterio.app.ui.auth.desbloqueo.DesbloqueoScreen
 import com.baniterio.app.ui.auth.login.LoginScreen
@@ -43,6 +46,9 @@ private const val CLAVE_PANEL = "Panel"
 private const val CLAVE_HISTORIA = "Historia"
 private const val CLAVE_MIEMBROS = "Miembros"
 private const val CLAVE_EDITOR_PERFIL = "EditorPerfil"
+private const val CLAVE_EVENTOS = "Eventos"
+private const val CLAVE_EVENTO_DETALLE = "EventoDetalle"
+private const val CLAVE_EDITOR_EVENTO = "EditorEvento"
 private const val CLAVE_ADMIN_INDEX = "AdminIndex"
 private const val CLAVE_ADMIN_SOLICITUDES = "AdminSolicitudes"
 private const val CLAVE_ADMIN_PERMISOS = "AdminPermisos"
@@ -57,6 +63,9 @@ private fun Screen.aClave(): String = when (this) {
     Screen.Historia -> CLAVE_HISTORIA
     Screen.Miembros -> CLAVE_MIEMBROS
     Screen.EditorPerfil -> CLAVE_EDITOR_PERFIL
+    Screen.Eventos -> CLAVE_EVENTOS
+    Screen.EventoDetalle -> CLAVE_EVENTO_DETALLE
+    Screen.EditorEvento -> CLAVE_EDITOR_EVENTO
     Screen.AdminIndex -> CLAVE_ADMIN_INDEX
     Screen.AdminSolicitudes -> CLAVE_ADMIN_SOLICITUDES
     Screen.AdminPermisos -> CLAVE_ADMIN_PERMISOS
@@ -71,6 +80,9 @@ private fun claveAScreen(clave: String): Screen = when (clave) {
     CLAVE_HISTORIA -> Screen.Historia
     CLAVE_MIEMBROS -> Screen.Miembros
     CLAVE_EDITOR_PERFIL -> Screen.EditorPerfil
+    CLAVE_EVENTOS -> Screen.Eventos
+    CLAVE_EVENTO_DETALLE -> Screen.EventoDetalle
+    CLAVE_EDITOR_EVENTO -> Screen.EditorEvento
     CLAVE_ADMIN_INDEX -> Screen.AdminIndex
     CLAVE_ADMIN_SOLICITUDES -> Screen.AdminSolicitudes
     CLAVE_ADMIN_PERMISOS -> Screen.AdminPermisos
@@ -100,6 +112,8 @@ fun App(
         if (deps.repo.usuarioActual == null &&
             (screen == Screen.CargandoSesion || screen == Screen.Panel || screen == Screen.Historia ||
                 screen == Screen.Miembros || screen == Screen.EditorPerfil ||
+                screen == Screen.Eventos || screen == Screen.EventoDetalle ||
+                screen == Screen.EditorEvento ||
                 screen == Screen.AdminIndex || screen == Screen.AdminSolicitudes ||
                 screen == Screen.AdminPermisos)
         ) {
@@ -122,6 +136,11 @@ fun App(
     // login (sin "atrás", trae aquí `CargandoSesion`) y "Editar" desde la propia
     // tarjeta. Este flag distingue a dónde volver y si se pinta el botón de volver.
     var editorObligatorio by rememberSaveable { mutableStateOf(false) }
+
+    // Sección Eventos: el id del evento que se está viendo y el que se está
+    // editando (null = crear uno nuevo). Fuera del Screen, como editorObligatorio.
+    var eventoSeleccionado by rememberSaveable { mutableStateOf<Long?>(null) }
+    var editorEventoId by rememberSaveable { mutableStateOf<Long?>(null) }
 
     fun ir(destino: Screen) {
         screenKey = destino.aClave()
@@ -221,6 +240,40 @@ fun App(
                             ir(if (iba) Screen.Panel else Screen.Miembros)
                         },
                         onVolver = { editorObligatorio = false; ir(Screen.Miembros) },
+                    )
+                }
+                is Screen.Eventos -> {
+                    BackHandler { ir(Screen.Panel) }
+                    EventosScreen(
+                        eventosRepo = deps.eventosRepo,
+                        onAbrirEvento = { id -> eventoSeleccionado = id; ir(Screen.EventoDetalle) },
+                        onCrear = { editorEventoId = null; ir(Screen.EditorEvento) },
+                        onVolver = { ir(Screen.Panel) },
+                    )
+                }
+                is Screen.EventoDetalle -> {
+                    BackHandler { ir(Screen.Eventos) }
+                    val id = eventoSeleccionado
+                    if (id == null) {
+                        LaunchedEffect(Unit) { ir(Screen.Eventos) }
+                    } else {
+                        EventoDetalleScreen(
+                            eventosRepo = deps.eventosRepo,
+                            eventoId = id,
+                            onEditar = { editorEventoId = id; ir(Screen.EditorEvento) },
+                            onBorrado = { ir(Screen.Eventos) },
+                            onVolver = { ir(Screen.Eventos) },
+                        )
+                    }
+                }
+                is Screen.EditorEvento -> {
+                    val volverA = if (editorEventoId != null) Screen.EventoDetalle else Screen.Eventos
+                    BackHandler { ir(volverA) }
+                    EditorEventoScreen(
+                        eventosRepo = deps.eventosRepo,
+                        eventoId = editorEventoId,
+                        onGuardado = { nuevoId -> eventoSeleccionado = nuevoId; ir(Screen.EventoDetalle) },
+                        onVolver = { ir(volverA) },
                     )
                 }
                 is Screen.AdminIndex -> {

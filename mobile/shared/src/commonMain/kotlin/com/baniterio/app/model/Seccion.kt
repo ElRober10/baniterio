@@ -11,7 +11,7 @@ data class Seccion(
 fun seccionesPanel(tieneAdmin: Boolean): List<Seccion> = buildList {
     add(Seccion("Historia", "Cómo nació el Bañiterio y qué significa su escudo.", destino = Screen.Historia))
     add(Seccion("Miembros", "Las tarjetas de los socios de la peña.", destino = Screen.Miembros))
-    add(Seccion("Eventos", "Calendario y organización de las quedadas y fiestas de la peña."))
+    add(Seccion("Eventos", "Calendario y organización de las quedadas y fiestas de la peña.", destino = Screen.Eventos))
     add(Seccion("Cuentas", "Ingresos, gastos y balance de la peña."))
     add(Seccion("Inventario", "Material y enseres que tiene la peña."))
     add(Seccion("Ropa", "Pedidos y tallas del vestuario de la peña."))
