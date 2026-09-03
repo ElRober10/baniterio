@@ -235,4 +235,81 @@ class AsistenciaIT extends IntegrationTest {
                 .body(Map.of())
                 .exchange().expectStatus().isNoContent();
     }
+
+    @Test
+    void anadir_a_mano_crea_fila_sin_usuario() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Evento e = sembrarEvento("IT-asis-add", LocalDate.now().plusDays(30), null);
+
+        http.post().uri("/api/v1/eventos/" + e.getId() + "/asistencias")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("nombre", "Primo de Juan", "estado", "APUNTADO"))
+                .exchange().expectStatus().isCreated()
+                .expectBody()
+                .jsonPath("$.nombre").isEqualTo("Primo de Juan")
+                .jsonPath("$.esManual").isEqualTo(true)
+                .jsonPath("$.estado").isEqualTo("APUNTADO");
+
+        assertThat(asistencias.findByEventoId(e.getId()))
+                .singleElement()
+                .satisfies(a -> {
+                    assertThat(a.getUsuario()).isNull();
+                    assertThat(a.getRegistradoPor()).isNotNull();
+                    assertThat(a.getNombre()).isEqualTo("Primo de Juan");
+                });
+    }
+
+    @Test
+    void anadir_a_mano_sin_permiso_403() {
+        Sesion otro = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sembrarEvento("IT-asis-add-403", LocalDate.now().plusDays(30), null);
+
+        http.post().uri("/api/v1/eventos/" + e.getId() + "/asistencias")
+                .header(AUTHORIZATION, "Bearer " + otro.token())
+                .body(Map.of("nombre", "Alguien", "estado", "APUNTADO"))
+                .exchange().expectStatus().isForbidden()
+                .expectBody().jsonPath("$.codigo").isEqualTo("SIN_PERMISO_EVENTO");
+    }
+
+    @Test
+    void quitar_a_mano_ok_204() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Usuario u = usuarios.findById(admin.id()).orElseThrow();
+        Evento e = sembrarEvento("IT-asis-del", LocalDate.now().plusDays(30), null);
+        var fila = asistencias.save(com.baniterio.api.identidad.AsistenciaEvento.builder()
+                .evento(e).nombre("Invitado").estado(EstadoAsistencia.APUNTADO).registradoPor(u).build());
+
+        http.delete().uri("/api/v1/eventos/" + e.getId() + "/asistencias/" + fila.getId())
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .exchange().expectStatus().isNoContent();
+
+        assertThat(asistencias.findById(fila.getId())).isEmpty();
+    }
+
+    @Test
+    void quitar_la_respuesta_de_un_usuario_es_409_ASISTENCIA_NO_MANUAL() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Sesion miembro = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sembrarEvento("IT-asis-del-409", LocalDate.now().plusDays(30), null);
+        http.put().uri("/api/v1/eventos/" + e.getId() + "/asistencia")
+                .header(AUTHORIZATION, "Bearer " + miembro.token())
+                .body(Map.of("estado", "APUNTADO")).exchange().expectStatus().isOk();
+        Long filaId = asistencias.findByEventoIdAndUsuarioId(e.getId(), miembro.id()).orElseThrow().getId();
+
+        http.delete().uri("/api/v1/eventos/" + e.getId() + "/asistencias/" + filaId)
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .exchange().expectStatus().isEqualTo(409)
+                .expectBody().jsonPath("$.codigo").isEqualTo("ASISTENCIA_NO_MANUAL");
+    }
+
+    @Test
+    void quitar_inexistente_404() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Evento e = sembrarEvento("IT-asis-del-404", LocalDate.now().plusDays(30), null);
+
+        http.delete().uri("/api/v1/eventos/" + e.getId() + "/asistencias/99999999")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .exchange().expectStatus().isNotFound()
+                .expectBody().jsonPath("$.codigo").isEqualTo("ASISTENCIA_NO_ENCONTRADA");
+    }
 }

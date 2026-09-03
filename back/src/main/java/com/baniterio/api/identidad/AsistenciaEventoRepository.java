@@ -13,6 +13,8 @@ public interface AsistenciaEventoRepository extends JpaRepository<AsistenciaEven
 
     Optional<AsistenciaEvento> findByEventoIdAndUsuarioId(Long eventoId, Long usuarioId);
 
+    Optional<AsistenciaEvento> findByIdAndEventoId(Long id, Long eventoId);
+
     List<AsistenciaEvento> findByEventoId(Long eventoId);
 
     long countByEventoIdAndEstado(Long eventoId, EstadoAsistencia estado);
