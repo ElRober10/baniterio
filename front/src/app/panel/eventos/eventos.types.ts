@@ -4,6 +4,12 @@
  * `*Request` = lo que enviamos.
  */
 
+/** La cuenta a la que pertenece un evento (ver sección Cuentas). */
+export interface CuentaRef {
+  id: number;
+  nombre: string;
+}
+
 export interface EventoResumen {
   id: number;
   nombre: string;
@@ -11,6 +17,7 @@ export interface EventoResumen {
   fechaFin: string | null;
   lugar: string | null;
   pasado: boolean;
+  cuenta: CuentaRef;
 }
 
 export interface EventoDetalle {
@@ -21,6 +28,7 @@ export interface EventoDetalle {
   fecha: string;
   fechaFin: string | null;
   pasado: boolean;
+  cuenta: CuentaRef;
   creadoPor: { id: number; nombre: string } | null;
   puedoEditar: boolean;
   puedoBorrar: boolean;
@@ -36,13 +44,19 @@ export interface ListaEventosResponse {
   puedeSolicitar: boolean;
 }
 
-/** Cuerpo de `POST` y `PUT` de un evento. `fechaFin` opcional. */
+/**
+ * Cuerpo de `POST` y `PUT` de un evento. `fechaFin` opcional. Para la cuenta:
+ * o `cuentaId` (una existente) o `cuentaNueva: true` (crea una con el nombre del
+ * evento), exactamente uno.
+ */
 export interface GuardarEventoRequest {
   nombre: string;
   descripcion: string | null;
   lugar: string | null;
   fecha: string; // yyyy-MM-dd
   fechaFin: string | null;
+  cuentaId: number | null;
+  cuentaNueva: boolean;
 }
 
 /** Códigos de error propios de eventos (ver ApiExceptionHandler.java). */
@@ -54,5 +68,7 @@ export type CodigoErrorEvento =
   | 'CREDITO_SIN_CONSUMIR'
   | 'SOLICITUD_EVENTO_NO_APLICA'
   | 'SOLICITUD_EVENTO_YA_RESUELTA'
+  | 'CUENTA_YA_EXISTE'
+  | 'CUENTA_NO_ENCONTRADA'
   | 'SIN_PERMISO'
   | 'VALIDACION';

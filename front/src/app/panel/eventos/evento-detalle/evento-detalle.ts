@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Volver } from '../../../shared/volver/volver';
 import { CodigoErrorEvento, EventoDetalle } from '../eventos.types';
 import { EventosService } from '../eventos.service';
@@ -14,7 +14,7 @@ import { EventosService } from '../eventos.service';
  */
 @Component({
   selector: 'app-evento-detalle',
-  imports: [Volver],
+  imports: [Volver, RouterLink],
   templateUrl: './evento-detalle.html',
   styleUrl: './evento-detalle.css',
 })

@@ -23,6 +23,14 @@
           @if (e.lugar) {
             <p class="mt-2 text-sm">{{ e.lugar }}</p>
           }
+          <p class="mt-2 text-sm text-muted">
+            Cuenta:
+            <a
+              [routerLink]="['/panel/cuentas', e.cuenta.id]"
+              class="text-gold-soft transition hover:underline"
+              >{{ e.cuenta.nombre }}</a
+            >
+          </p>
           @if (e.descripcion) {
             <p class="mt-4 whitespace-pre-line text-sm leading-relaxed">{{ e.descripcion }}</p>
           }
