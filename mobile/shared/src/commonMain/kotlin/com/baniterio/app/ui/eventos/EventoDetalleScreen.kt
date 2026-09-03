@@ -106,6 +106,7 @@ fun EventoDetalleScreen(
                         color = BaniterioColors.muted,
                     )
                     ev.lugar?.let { Text(it, color = BaniterioColors.muted) }
+                    Text("Cuenta: ${ev.cuenta.nombre}", color = BaniterioColors.muted)
                     ev.descripcion?.let {
                         Text(
                             it,

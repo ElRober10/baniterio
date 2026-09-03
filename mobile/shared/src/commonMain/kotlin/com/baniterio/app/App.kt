@@ -283,6 +283,7 @@ fun App(
                     BackHandler { ir(volverA) }
                     EditorEventoScreen(
                         eventosRepo = deps.eventosRepo,
+                        cuentasRepo = deps.cuentasRepo,
                         eventoId = editorEventoId,
                         onGuardado = { nuevoId -> eventoSeleccionado = nuevoId; ir(Screen.EventoDetalle) },
                         onVolver = { ir(volverA) },

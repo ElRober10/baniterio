@@ -64,6 +64,22 @@ class EventosRepositoryImplTest {
     }
 
     @Test
+    fun crear_incluye_la_cuenta_en_el_cuerpo() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = "{}")
+        r.crear(GuardarEventoRequest(nombre = "X", fecha = "2999-01-01", cuentaId = 7))
+        assertTrue(vistas[0].cuerpo.contains("\"cuentaId\":7"), vistas[0].cuerpo)
+    }
+
+    @Test
+    fun crear_con_cuenta_nueva_devuelve_error_tipado_si_el_nombre_existe() = runTest {
+        val (r, _) = repo(status = HttpStatusCode.Conflict,
+            cuerpoRespuesta = """{"codigo":"CUENTA_YA_EXISTE"}""")
+        val res = r.crear(GuardarEventoRequest(nombre = "San Miguel", fecha = "2999-01-01", cuentaNueva = true))
+        assertIs<ResultadoEvento.Error>(res)
+        assertEquals(CodigoErrorEvento.CUENTA_YA_EXISTE, res.codigo)
+    }
+
+    @Test
     fun crear_sin_credito_devuelve_error_tipado() = runTest {
         val (r, _) = repo(status = HttpStatusCode.Conflict,
             cuerpoRespuesta = """{"codigo":"SIN_CREDITO_EVENTO"}""")
