@@ -89,4 +89,49 @@ describe('EventosService', () => {
     expect(req.request.body).toEqual({ mensaje: 'quiero organizar la cena' });
     req.flush({ id: 1, estado: 'PENDIENTE' });
   });
+
+  it('responder() hace PUT a /eventos/:id/asistencia con el estado', () => {
+    service.responder(5, 'NO_VOY').subscribe();
+    const req = httpMock.expectOne(`${base}/eventos/5/asistencia`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ estado: 'NO_VOY' });
+    req.flush({});
+  });
+
+  it('mandarNotificacion() hace POST a /eventos/:id/notificacion con el texto', () => {
+    service.mandarNotificacion(5, 'nos vemos').subscribe();
+    const req = httpMock.expectOne(`${base}/eventos/5/notificacion`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ texto: 'nos vemos' });
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('mandarNotificacion() sin texto manda cuerpo vacío', () => {
+    service.mandarNotificacion(5).subscribe();
+    const req = httpMock.expectOne(`${base}/eventos/5/notificacion`);
+    expect(req.request.body).toEqual({});
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('anadirAsistente() hace POST a /eventos/:id/asistencias', () => {
+    service.anadirAsistente(5, 'Primo de Juan', 'APUNTADO').subscribe();
+    const req = httpMock.expectOne(`${base}/eventos/5/asistencias`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ nombre: 'Primo de Juan', estado: 'APUNTADO' });
+    req.flush({ id: 1, nombre: 'Primo de Juan', estado: 'APUNTADO', esManual: true });
+  });
+
+  it('quitarAsistente() hace DELETE a /eventos/:id/asistencias/:asistenciaId', () => {
+    service.quitarAsistente(5, 9).subscribe();
+    const req = httpMock.expectOne(`${base}/eventos/5/asistencias/9`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('pendientesRespuesta() hace GET a /eventos/pendientes-respuesta', () => {
+    service.pendientesRespuesta().subscribe();
+    const req = httpMock.expectOne(`${base}/eventos/pendientes-respuesta`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ eventos: [] });
+  });
 });

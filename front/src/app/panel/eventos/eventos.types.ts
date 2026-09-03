@@ -20,6 +20,32 @@ export interface EventoResumen {
   cuenta: CuentaRef;
 }
 
+/** Me apunto / No voy / En duda. */
+export type EstadoAsistencia = 'APUNTADO' | 'NO_VOY' | 'EN_DUDA';
+
+/**
+ * Bloque de asistencia dentro de `EventoDetalle` para el usuario que pregunta.
+ * `miAsistencia` = su respuesta o `null`. `notificacionReenviableAt` = ISO o
+ * `null` si nunca se ha mandado.
+ */
+export interface AsistenciaDetalle {
+  miAsistencia: EstadoAsistencia | null;
+  puedeNotificar: boolean;
+  notificacionReenviableAt: string | null;
+  apuntados: number;
+  noVoy: number;
+  enDuda: number;
+  sinContestar: number;
+}
+
+/** Fila devuelta al añadir un asistente a mano (`POST /eventos/{id}/asistencias`). */
+export interface AsistenciaResumen {
+  id: number;
+  nombre: string;
+  estado: EstadoAsistencia;
+  esManual: boolean;
+}
+
 export interface EventoDetalle {
   id: number;
   nombre: string;
@@ -34,6 +60,7 @@ export interface EventoDetalle {
   puedoEditar: boolean;
   puedoBorrar: boolean;
   borradoPendiente: boolean;
+  asistencia: AsistenciaDetalle;
 }
 
 /** `GET /api/v1/eventos?pagina=N`. */
@@ -73,5 +100,9 @@ export type CodigoErrorEvento =
   | 'SOLICITUD_EVENTO_YA_RESUELTA'
   | 'CUENTA_YA_EXISTE'
   | 'CUENTA_NO_ENCONTRADA'
+  | 'EVENTO_YA_PASADO'
+  | 'NOTIFICACION_REENVIO_PRONTO'
+  | 'ASISTENCIA_NO_ENCONTRADA'
+  | 'ASISTENCIA_NO_MANUAL'
   | 'SIN_PERMISO'
   | 'VALIDACION';
