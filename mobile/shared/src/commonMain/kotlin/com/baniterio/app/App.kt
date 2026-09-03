@@ -285,6 +285,7 @@ fun App(
                         eventosRepo = deps.eventosRepo,
                         cuentasRepo = deps.cuentasRepo,
                         eventoId = editorEventoId,
+                        esAdmin = deps.repo.usuarioActual?.let { it.rol == "ADMIN" || it.esSuperadmin } == true,
                         onGuardado = { nuevoId -> eventoSeleccionado = nuevoId; ir(Screen.EventoDetalle) },
                         onVolver = { ir(volverA) },
                     )

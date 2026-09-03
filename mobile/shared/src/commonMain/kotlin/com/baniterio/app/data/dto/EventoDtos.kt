@@ -32,6 +32,7 @@ data class EventoDetalle(
     val fechaFin: String? = null,
     val pasado: Boolean,
     val cuenta: CuentaRef,
+    val cuotaMaxima: Double? = null,
     val creadoPor: CreadoPor? = null,
     val puedoEditar: Boolean,
     val puedoBorrar: Boolean,
@@ -60,6 +61,8 @@ data class GuardarEventoRequest(
     val fechaFin: String? = null,
     val cuentaId: Long? = null,
     val cuentaNueva: Boolean = false,
+    /** Solo la aplica el backend si quien guarda es admin/superadmin. */
+    val cuotaMaxima: Double? = null,
 )
 
 /** Fila del bloque de administración "Solicitudes de evento". */

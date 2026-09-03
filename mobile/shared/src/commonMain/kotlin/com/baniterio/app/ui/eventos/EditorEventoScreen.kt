@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -27,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.baniterio.app.data.CuentasRepository
 import com.baniterio.app.data.EventosRepository
@@ -52,6 +54,7 @@ fun EditorEventoScreen(
     eventosRepo: EventosRepository,
     cuentasRepo: CuentasRepository,
     eventoId: Long?,
+    esAdmin: Boolean,
     onGuardado: (Long) -> Unit,
     onVolver: () -> Unit,
 ) {
@@ -66,6 +69,7 @@ fun EditorEventoScreen(
     var lugar by remember { mutableStateOf("") }
     var fecha by remember { mutableStateOf("") }
     var fechaFin by remember { mutableStateOf("") }
+    var cuotaMaxima by remember { mutableStateOf("") }
     var cuentas by remember { mutableStateOf<List<CuentaResumen>>(emptyList()) }
     // Cuenta elegida: un id de cuenta existente, o `cuentaNueva` para crear una
     // con el nombre del evento. Nunca las dos a la vez.
@@ -92,6 +96,7 @@ fun EditorEventoScreen(
                 lugar = r.dato.lugar ?: ""
                 fecha = r.dato.fecha
                 fechaFin = r.dato.fechaFin ?: ""
+                cuotaMaxima = r.dato.cuotaMaxima?.let { formatoImporte(it) } ?: ""
                 cuentaId = r.dato.cuenta.id
                 cuentaNueva = false
                 estado = EstadoEditorEvento.Listo
@@ -124,6 +129,15 @@ fun EditorEventoScreen(
             error = "Elige una cuenta."
             return
         }
+        var cuota: Double? = null
+        if (esAdmin && cuotaMaxima.isNotBlank()) {
+            val n = cuotaMaxima.trim().replace(',', '.').toDoubleOrNull()
+            if (n == null || n < 0.0) {
+                error = "La cuota máxima tiene que ser un número mayor o igual que 0."
+                return
+            }
+            cuota = n
+        }
         guardando = true
         scope.launch {
             val req = GuardarEventoRequest(
@@ -134,6 +148,7 @@ fun EditorEventoScreen(
                 fechaFin = fechaFin.ifBlank { null },
                 cuentaId = if (cuentaNueva) null else cuentaId,
                 cuentaNueva = cuentaNueva,
+                cuotaMaxima = cuota,
             )
             val r = if (eventoId != null) eventosRepo.editar(eventoId, req) else eventosRepo.crear(req)
             when (r) {
@@ -203,6 +218,15 @@ fun EditorEventoScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
 
+                    if (esAdmin) {
+                        OutlinedTextField(
+                            value = cuotaMaxima, onValueChange = { cuotaMaxima = it },
+                            label = { Text("Cuota máxima € (opcional)") }, singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+
                     SelectorCuenta(
                         cuentas = cuentas,
                         cuentaId = cuentaId,
@@ -260,6 +284,10 @@ private fun SelectorCuenta(
         )
     }
 }
+
+/** "26" si es entero, "26.5" si tiene decimales. Sin `String.format` (no está en common). */
+internal fun formatoImporte(v: Double): String =
+    if (v % 1.0 == 0.0) v.toLong().toString() else v.toString()
 
 @Composable
 private fun OpcionCuenta(texto: String, seleccionada: Boolean, onClick: () -> Unit) {
