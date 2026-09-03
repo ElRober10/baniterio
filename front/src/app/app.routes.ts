@@ -9,6 +9,8 @@ import { Login } from './auth/login/login';
 import { Panel } from './panel/panel';
 import { PanelInicio } from './panel/inicio/inicio';
 import { EditorPerfil } from './panel/miembros/editor-perfil/editor-perfil';
+import { CuentaDetalleComponent } from './panel/cuentas/cuenta-detalle/cuenta-detalle';
+import { Cuentas } from './panel/cuentas/cuentas';
 import { EditorEvento } from './panel/eventos/editor-evento/editor-evento';
 import { EventoDetalleComponent } from './panel/eventos/evento-detalle/evento-detalle';
 import { Eventos } from './panel/eventos/eventos';
@@ -39,6 +41,8 @@ export const routes: Routes = [
       { path: 'eventos/nuevo', component: EditorEvento, canActivate: [perfilCompletoGuard] },
       { path: 'eventos/:id/editar', component: EditorEvento, canActivate: [perfilCompletoGuard] },
       { path: 'eventos/:id', component: EventoDetalleComponent, canActivate: [perfilCompletoGuard] },
+      { path: 'cuentas', component: Cuentas, canActivate: [perfilCompletoGuard] },
+      { path: 'cuentas/:id', component: CuentaDetalleComponent, canActivate: [perfilCompletoGuard] },
       // Índice de administración: sin areaGuard (cualquier miembro lo abre); solo
       // pinta las secciones para las que tiene área.
       { path: 'administracion', component: AdminIndice, canActivate: [perfilCompletoGuard] },
