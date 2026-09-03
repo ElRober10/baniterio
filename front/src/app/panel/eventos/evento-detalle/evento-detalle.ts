@@ -1,20 +1,20 @@
+import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Volver } from '../../../shared/volver/volver';
-import { CodigoErrorEvento, EventoDetalle } from '../eventos.types';
+import { CodigoErrorEvento, EstadoAsistencia, EventoDetalle } from '../eventos.types';
 import { EventosService } from '../eventos.service';
 
 /**
- * Vista de un evento (solo lectura). Según los permisos que devuelve el backend
- * muestra "Gestionar" (`puedoEditar`) y "Borrar"/"Solicitar borrado"
- * (`puedoBorrar`). El texto del botón de borrado se decide de forma aproximada
- * por si el evento tiene `creadoPor`; el backend hace lo correcto igualmente
- * (204 = borrado real → vuelve a la lista; 202 = solicitud → aviso).
+ * Vista de un evento. Además de los datos y los botones de gestión
+ * (`puedoEditar`/`puedoBorrar`), lleva la parte de asistencia (pieza 3a):
+ * responder Me apunto / No voy / En duda, y —solo admin u organizador— mandar
+ * la notificación de convocatoria y añadir asistentes a mano.
  */
 @Component({
   selector: 'app-evento-detalle',
-  imports: [Volver, RouterLink],
+  imports: [Volver, RouterLink, DatePipe],
   templateUrl: './evento-detalle.html',
   styleUrl: './evento-detalle.css',
 })
@@ -27,6 +27,43 @@ export class EventoDetalleComponent implements OnInit {
   protected readonly evento = signal<EventoDetalle | null>(null);
   protected readonly aviso = signal('');
   private readonly id = Number(this.route.snapshot.paramMap.get('id'));
+
+  protected readonly opciones: { valor: EstadoAsistencia; texto: string }[] = [
+    { valor: 'APUNTADO', texto: 'Me apunto' },
+    { valor: 'NO_VOY', texto: 'No voy' },
+    { valor: 'EN_DUDA', texto: 'En duda' },
+  ];
+
+  // Diálogo "Mandar notificación".
+  protected readonly dialogoNotif = signal(false);
+  protected readonly textoNotif = signal('');
+  protected readonly enviandoNotif = signal(false);
+
+  // Bloque "Añadir a mano".
+  protected readonly nombreManual = signal('');
+  protected readonly estadoManual = signal<EstadoAsistencia>('APUNTADO');
+
+  /** `true` mientras no se pueda reenviar la notificación (último envío + 48 h aún en el futuro). */
+  protected readonly reenvioBloqueado = computed(() => {
+    const at = this.evento()?.asistencia.notificacionReenviableAt;
+    return at != null && new Date(at).getTime() > Date.now();
+  });
+
+  private valor(e: Event): string {
+    return (e.target as HTMLInputElement | HTMLSelectElement).value;
+  }
+
+  protected cambiarNombreManual(e: Event): void {
+    this.nombreManual.set(this.valor(e));
+  }
+
+  protected cambiarEstadoManual(e: Event): void {
+    this.estadoManual.set(this.valor(e) as EstadoAsistencia);
+  }
+
+  protected cambiarTextoNotif(e: Event): void {
+    this.textoNotif.set(this.valor(e));
+  }
 
   ngOnInit(): void {
     this.cargar();
@@ -66,6 +103,72 @@ export class EventoDetalleComponent implements OnInit {
         );
         this.cargar();
       },
+    });
+  }
+
+  protected responder(estado: EstadoAsistencia): void {
+    this.aviso.set('');
+    this.eventosService.responder(this.id, estado).subscribe({
+      next: (e) => this.evento.set(e),
+      error: (e: HttpErrorResponse) => {
+        const codigo = e.error?.codigo as CodigoErrorEvento | undefined;
+        this.aviso.set(
+          codigo === 'EVENTO_YA_PASADO'
+            ? 'El evento ya ha pasado, no se puede cambiar la respuesta.'
+            : 'No se pudo guardar tu respuesta.',
+        );
+      },
+    });
+  }
+
+  protected abrirDialogoNotif(): void {
+    this.textoNotif.set('');
+    this.dialogoNotif.set(true);
+  }
+
+  protected enviarNotif(): void {
+    this.enviandoNotif.set(true);
+    const texto = this.textoNotif().trim();
+    this.eventosService.mandarNotificacion(this.id, texto || undefined).subscribe({
+      next: () => {
+        this.enviandoNotif.set(false);
+        this.dialogoNotif.set(false);
+        this.aviso.set('Notificación enviada.');
+        this.cargar();
+      },
+      error: (e: HttpErrorResponse) => {
+        this.enviandoNotif.set(false);
+        this.dialogoNotif.set(false);
+        this.aviso.set(this.mensajeNotifError(e.error?.codigo));
+        this.cargar();
+      },
+    });
+  }
+
+  private mensajeNotifError(codigo: string | undefined): string {
+    if (codigo === 'NOTIFICACION_REENVIO_PRONTO') {
+      return 'Aún no se puede reenviar: hay que esperar 48 h desde el último envío.';
+    }
+    if (codigo === 'SIN_PERMISO_EVENTO') {
+      return 'No tienes permiso para mandar la notificación.';
+    }
+    return 'No se pudo enviar la notificación.';
+  }
+
+  protected anadirManual(): void {
+    const nombre = this.nombreManual().trim();
+    if (!nombre) {
+      return;
+    }
+    this.aviso.set('');
+    this.eventosService.anadirAsistente(this.id, nombre, this.estadoManual()).subscribe({
+      next: () => {
+        this.nombreManual.set('');
+        this.estadoManual.set('APUNTADO');
+        this.aviso.set(`«${nombre}» añadido.`);
+        this.cargar();
+      },
+      error: () => this.aviso.set('No se pudo añadir a esa persona.'),
     });
   }
 }
