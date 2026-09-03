@@ -2,7 +2,13 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { AprobarResultado, MiembroResumen, Rol, SolicitudResumen } from './admin.types';
+import {
+  AprobarResultado,
+  MiembroResumen,
+  Rol,
+  SolicitudEventoResumen,
+  SolicitudResumen,
+} from './admin.types';
 
 /**
  * Acciones del panel de administración contra /api/v1/admin/* (listar y resolver
@@ -57,5 +63,24 @@ export class AdminService {
 
   cambiarAreas(id: number, areas: string[]): Observable<void> {
     return this.http.put<void>(`${this.base}/admin/miembros/${id}/areas`, { areas });
+  }
+
+  // --- Solicitudes de evento (solo admin/superadmin; el backend exige rol) ---
+
+  listarSolicitudesEvento(estado = 'PENDIENTE'): Observable<SolicitudEventoResumen[]> {
+    return this.http.get<SolicitudEventoResumen[]>(`${this.base}/admin/solicitudes-evento`, {
+      params: { estado },
+    });
+  }
+
+  aprobarSolicitudEvento(id: number): Observable<void> {
+    return this.http.post<void>(`${this.base}/admin/solicitudes-evento/${id}/aprobar`, {});
+  }
+
+  rechazarSolicitudEvento(id: number, motivo?: string): Observable<void> {
+    return this.http.post<void>(
+      `${this.base}/admin/solicitudes-evento/${id}/rechazar`,
+      motivo ? { motivo } : {},
+    );
   }
 }

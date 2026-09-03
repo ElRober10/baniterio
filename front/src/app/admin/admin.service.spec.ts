@@ -145,4 +145,27 @@ describe('AdminService', () => {
     expect(req.request.body).toEqual({ areas: ['ADMIN_SOLICITUDES', 'ADMIN_PERMISOS'] });
     req.flush(null, { status: 204, statusText: 'No Content' });
   });
+
+  it('listarSolicitudesEvento() hace GET a /admin/solicitudes-evento con estado', () => {
+    service.listarSolicitudesEvento().subscribe();
+    const req = httpMock.expectOne((r) => r.url === `${base}/admin/solicitudes-evento`);
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('estado')).toBe('PENDIENTE');
+    req.flush([]);
+  });
+
+  it('aprobarSolicitudEvento(id) hace POST a /admin/solicitudes-evento/{id}/aprobar', () => {
+    service.aprobarSolicitudEvento(3).subscribe();
+    const req = httpMock.expectOne(`${base}/admin/solicitudes-evento/3/aprobar`);
+    expect(req.request.method).toBe('POST');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('rechazarSolicitudEvento(id, motivo) hace POST con el motivo', () => {
+    service.rechazarSolicitudEvento(3, 'tarde').subscribe();
+    const req = httpMock.expectOne(`${base}/admin/solicitudes-evento/3/rechazar`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ motivo: 'tarde' });
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
 });

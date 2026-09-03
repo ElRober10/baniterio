@@ -1,10 +1,12 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { AuthService } from '../../auth/auth.service';
 import { CodigoError } from '../../auth/auth.types';
 import { Volver } from '../../shared/volver/volver';
 import { AdminAvisosService } from '../admin-avisos.service';
 import { AdminService } from '../admin.service';
 import { SolicitudResumen } from '../admin.types';
+import { SolicitudesEvento } from '../solicitudes-evento/solicitudes-evento';
 
 /**
  * Mensajes en castellano para los códigos de error del backend en aprobar/rechazar.
@@ -38,13 +40,20 @@ const MENSAJES: Partial<Record<CodigoError, string>> = {
  */
 @Component({
   selector: 'app-admin-solicitudes',
-  imports: [Volver],
+  imports: [Volver, SolicitudesEvento],
   styleUrl: './solicitudes.css',
   templateUrl: './solicitudes.html',
 })
 export class AdminSolicitudes implements OnInit {
   private readonly adminService = inject(AdminService);
   private readonly avisos = inject(AdminAvisosService);
+  private readonly auth = inject(AuthService);
+
+  /** El bloque "Solicitudes de evento" solo lo ven admins de verdad, no un área concedida. */
+  protected readonly esAdmin = computed(() => {
+    const u = this.auth.usuarioActual();
+    return u?.rol === 'ADMIN' || u?.esSuperadmin === true;
+  });
 
   protected readonly solicitudes = signal<SolicitudResumen[]>([]);
   protected readonly estado = signal<'cargando' | 'lista' | 'error'>('cargando');
