@@ -1,12 +1,16 @@
 package com.baniterio.api.evento;
 
+import java.util.Map;
+
 import com.baniterio.api.auth.UsuarioPrincipal;
 import com.baniterio.api.evento.dto.EventoDetalle;
 import com.baniterio.api.evento.dto.GuardarEventoRequest;
 import com.baniterio.api.evento.dto.ListaEventosResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -55,5 +59,14 @@ public class EventoController {
     public EventoDetalle editar(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long id, @Valid @RequestBody GuardarEventoRequest req) {
         return eventoService.editar(principal.id(), id, req);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Object> borrar(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long id) {
+        ResultadoBorrado r = eventoService.borrar(principal.id(), id);
+        return r == ResultadoBorrado.BORRADO
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.accepted().body(Map.of("estado", "PENDIENTE"));
     }
 }

@@ -1,5 +1,6 @@
 package com.baniterio.api.evento;
 
+import java.time.Instant;
 import java.time.LocalDate;
 
 import com.baniterio.api.auth.ServicioPermisos;
@@ -16,6 +17,9 @@ import com.baniterio.api.identidad.SolicitudEventoRepository;
 import com.baniterio.api.identidad.TipoSolicitudEvento;
 import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
+import com.baniterio.api.push.Audiencia;
+import com.baniterio.api.push.AvisoPushEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -32,6 +36,7 @@ public class EventoService {
 
     static final int PAGINA = 8;
     private static final String SLUG_PENA = "baniterio";
+    private static final String TITULO_PUSH = "Eventos";
     private static final Sort ORDEN = Sort.by(Sort.Order.desc("fecha"), Sort.Order.desc("id"));
 
     private final EventoRepository eventos;
@@ -39,15 +44,17 @@ public class EventoService {
     private final ServicioPermisos permisos;
     private final PenaRepository penas;
     private final UsuarioRepository usuarios;
+    private final ApplicationEventPublisher publisher;
 
     public EventoService(EventoRepository eventos, SolicitudEventoRepository solicitudes,
                          ServicioPermisos permisos, PenaRepository penas,
-                         UsuarioRepository usuarios) {
+                         UsuarioRepository usuarios, ApplicationEventPublisher publisher) {
         this.eventos = eventos;
         this.solicitudes = solicitudes;
         this.permisos = permisos;
         this.penas = penas;
         this.usuarios = usuarios;
+        this.publisher = publisher;
     }
 
     private static String vacioANull(String s) {
@@ -154,6 +161,53 @@ public class EventoService {
         e.setFechaFin(req.fechaFin());
         eventos.save(e);
         return aDetalle(usuarioId, e);
+    }
+
+    /**
+     * Un administrador borra el evento directo (204). Un miembro que lo creó, si
+     * no es admin, no lo borra: se crea una {@code solicitud_evento} BORRAR y se
+     * avisa por push a los administradores (202). Si ya hay una BORRAR pendiente
+     * para ese evento → 409. Cualquier otro → 403.
+     */
+    @Transactional
+    public ResultadoBorrado borrar(Long usuarioId, Long eventoId) {
+        Evento e = cargar(eventoId);
+        boolean admin = permisos.esAdministrador(usuarioId);
+
+        if (admin) {
+            solicitudes.findByEventoIdAndTipoAndEstado(eventoId, TipoSolicitudEvento.BORRAR,
+                    EstadoSolicitud.PENDIENTE).ifPresent(sol -> {
+                sol.setEstado(EstadoSolicitud.APROBADA);
+                sol.setResueltaPor(usuarios.findById(usuarioId).orElseThrow());
+                sol.setResueltaAt(Instant.now());
+                sol.setEvento(null);
+                solicitudes.save(sol);
+                publisher.publishEvent(new AvisoPushEvent(
+                        new Audiencia.UsuarioUnico(sol.getSolicitante().getId()),
+                        TITULO_PUSH, "Se ha borrado el evento «" + e.getNombre() + "»."));
+            });
+            eventos.delete(e);
+            return ResultadoBorrado.BORRADO;
+        }
+
+        if (e.getCreadoPor() != null && e.getCreadoPor().getId().equals(usuarioId)) {
+            if (solicitudes.existsByEventoIdAndTipoAndEstado(eventoId, TipoSolicitudEvento.BORRAR,
+                    EstadoSolicitud.PENDIENTE)) {
+                throw new SolicitudEventoConflictoException("SOLICITUD_EVENTO_YA_PENDIENTE");
+            }
+            solicitudes.save(SolicitudEvento.builder()
+                    .pena(e.getPena())
+                    .solicitante(usuarios.findById(usuarioId).orElseThrow())
+                    .tipo(TipoSolicitudEvento.BORRAR)
+                    .evento(e)
+                    .estado(EstadoSolicitud.PENDIENTE)
+                    .build());
+            publisher.publishEvent(new AvisoPushEvent(new Audiencia.Administradores(),
+                    TITULO_PUSH, "Alguien quiere borrar el evento «" + e.getNombre() + "»."));
+            return ResultadoBorrado.SOLICITUD_CREADA;
+        }
+
+        throw new SinPermisoEventoException();
     }
 
     EventoDetalle aDetalle(Long usuarioId, Evento e) {
