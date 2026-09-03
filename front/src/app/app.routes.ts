@@ -9,6 +9,7 @@ import { Login } from './auth/login/login';
 import { Panel } from './panel/panel';
 import { PanelInicio } from './panel/inicio/inicio';
 import { EditorPerfil } from './panel/miembros/editor-perfil/editor-perfil';
+import { EventoDetalleComponent } from './panel/eventos/evento-detalle/evento-detalle';
 import { Eventos } from './panel/eventos/eventos';
 import { Miembros } from './panel/miembros/miembros';
 import { perfilCompletoGuard } from './panel/miembros/perfil-completo.guard';
@@ -33,6 +34,7 @@ export const routes: Routes = [
       { path: 'miembros/editar', component: EditorPerfil },
       { path: 'miembros', component: Miembros, canActivate: [perfilCompletoGuard] },
       { path: 'eventos', component: Eventos, canActivate: [perfilCompletoGuard] },
+      { path: 'eventos/:id', component: EventoDetalleComponent, canActivate: [perfilCompletoGuard] },
       // Índice de administración: sin areaGuard (cualquier miembro lo abre); solo
       // pinta las secciones para las que tiene área.
       { path: 'administracion', component: AdminIndice, canActivate: [perfilCompletoGuard] },

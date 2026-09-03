@@ -1,0 +1,75 @@
+<section class="mx-auto w-full max-w-2xl">
+  <div class="mb-4"><app-volver destino="/panel/eventos" /></div>
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <p class="text-sm text-muted">Cargando…</p>
+    }
+    @case ('error') {
+      <p class="text-sm text-red-300">No se ha podido cargar el evento.</p>
+    }
+    @case ('listo') {
+      @if (evento(); as e) {
+        <article class="carta-relieve rounded-2xl p-6">
+          <h1 class="font-display text-2xl font-extrabold" [class.opacity-70]="e.pasado">
+            {{ e.nombre }}
+          </h1>
+          <p class="mt-1 text-sm text-muted">
+            {{ e.fecha }}@if (e.fechaFin) { &nbsp;–&nbsp;{{ e.fechaFin }} }
+            @if (e.pasado) {
+              · <span class="uppercase tracking-wide">pasado</span>
+            }
+          </p>
+          @if (e.lugar) {
+            <p class="mt-2 text-sm">{{ e.lugar }}</p>
+          }
+          @if (e.descripcion) {
+            <p class="mt-4 whitespace-pre-line text-sm leading-relaxed">{{ e.descripcion }}</p>
+          }
+          @if (e.creadoPor) {
+            <p class="mt-4 text-xs text-muted">Creado por {{ e.creadoPor.nombre }}</p>
+          }
+        </article>
+
+        @if (aviso()) {
+          <p
+            role="status"
+            class="mt-4 rounded-xl border border-brand-bright/30 bg-brand/15 px-4 py-3 text-sm text-gold-soft"
+          >
+            {{ aviso() }}
+          </p>
+        }
+
+        @if (e.puedoEditar || e.puedoBorrar) {
+          <div class="mt-6 flex flex-wrap gap-3">
+            @if (e.puedoEditar) {
+              <button
+                type="button"
+                (click)="gestionar()"
+                class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark"
+              >
+                Gestionar
+              </button>
+            }
+            @if (e.puedoBorrar) {
+              <button
+                type="button"
+                (click)="borrar()"
+                [disabled]="e.borradoPendiente"
+                class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-red-400/50 hover:text-red-300 disabled:opacity-50"
+              >
+                @if (e.borradoPendiente) {
+                  Borrado pendiente de autorización
+                } @else if (e.creadoPor) {
+                  Solicitar borrado
+                } @else {
+                  Borrar
+                }
+              </button>
+            }
+          </div>
+        }
+      }
+    }
+  }
+</section>
