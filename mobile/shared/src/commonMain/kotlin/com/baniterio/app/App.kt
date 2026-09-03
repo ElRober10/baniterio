@@ -24,6 +24,8 @@ import com.baniterio.app.theme.BaniterioTheme
 import com.baniterio.app.ui.admin.AdminIndexScreen
 import com.baniterio.app.ui.admin.AdminPermisosScreen
 import com.baniterio.app.ui.admin.AdminSolicitudesScreen
+import com.baniterio.app.ui.cuentas.CuentaDetalleScreen
+import com.baniterio.app.ui.cuentas.CuentasScreen
 import com.baniterio.app.ui.eventos.EditorEventoScreen
 import com.baniterio.app.ui.eventos.EventoDetalleScreen
 import com.baniterio.app.ui.eventos.EventosScreen
@@ -49,6 +51,8 @@ private const val CLAVE_EDITOR_PERFIL = "EditorPerfil"
 private const val CLAVE_EVENTOS = "Eventos"
 private const val CLAVE_EVENTO_DETALLE = "EventoDetalle"
 private const val CLAVE_EDITOR_EVENTO = "EditorEvento"
+private const val CLAVE_CUENTAS = "Cuentas"
+private const val CLAVE_CUENTA_DETALLE = "CuentaDetalle"
 private const val CLAVE_ADMIN_INDEX = "AdminIndex"
 private const val CLAVE_ADMIN_SOLICITUDES = "AdminSolicitudes"
 private const val CLAVE_ADMIN_PERMISOS = "AdminPermisos"
@@ -66,6 +70,8 @@ private fun Screen.aClave(): String = when (this) {
     Screen.Eventos -> CLAVE_EVENTOS
     Screen.EventoDetalle -> CLAVE_EVENTO_DETALLE
     Screen.EditorEvento -> CLAVE_EDITOR_EVENTO
+    Screen.Cuentas -> CLAVE_CUENTAS
+    Screen.CuentaDetalle -> CLAVE_CUENTA_DETALLE
     Screen.AdminIndex -> CLAVE_ADMIN_INDEX
     Screen.AdminSolicitudes -> CLAVE_ADMIN_SOLICITUDES
     Screen.AdminPermisos -> CLAVE_ADMIN_PERMISOS
@@ -83,6 +89,8 @@ private fun claveAScreen(clave: String): Screen = when (clave) {
     CLAVE_EVENTOS -> Screen.Eventos
     CLAVE_EVENTO_DETALLE -> Screen.EventoDetalle
     CLAVE_EDITOR_EVENTO -> Screen.EditorEvento
+    CLAVE_CUENTAS -> Screen.Cuentas
+    CLAVE_CUENTA_DETALLE -> Screen.CuentaDetalle
     CLAVE_ADMIN_INDEX -> Screen.AdminIndex
     CLAVE_ADMIN_SOLICITUDES -> Screen.AdminSolicitudes
     CLAVE_ADMIN_PERMISOS -> Screen.AdminPermisos
@@ -114,6 +122,7 @@ fun App(
                 screen == Screen.Miembros || screen == Screen.EditorPerfil ||
                 screen == Screen.Eventos || screen == Screen.EventoDetalle ||
                 screen == Screen.EditorEvento ||
+                screen == Screen.Cuentas || screen == Screen.CuentaDetalle ||
                 screen == Screen.AdminIndex || screen == Screen.AdminSolicitudes ||
                 screen == Screen.AdminPermisos)
         ) {
@@ -141,6 +150,9 @@ fun App(
     // editando (null = crear uno nuevo). Fuera del Screen, como editorObligatorio.
     var eventoSeleccionado by rememberSaveable { mutableStateOf<Long?>(null) }
     var editorEventoId by rememberSaveable { mutableStateOf<Long?>(null) }
+
+    // Sección Cuentas: el id de la cuenta que se está viendo.
+    var cuentaSeleccionada by rememberSaveable { mutableStateOf<Long?>(null) }
 
     fun ir(destino: Screen) {
         screenKey = destino.aClave()
@@ -275,6 +287,27 @@ fun App(
                         onGuardado = { nuevoId -> eventoSeleccionado = nuevoId; ir(Screen.EventoDetalle) },
                         onVolver = { ir(volverA) },
                     )
+                }
+                is Screen.Cuentas -> {
+                    BackHandler { ir(Screen.Panel) }
+                    CuentasScreen(
+                        cuentasRepo = deps.cuentasRepo,
+                        onAbrirCuenta = { id -> cuentaSeleccionada = id; ir(Screen.CuentaDetalle) },
+                        onVolver = { ir(Screen.Panel) },
+                    )
+                }
+                is Screen.CuentaDetalle -> {
+                    BackHandler { ir(Screen.Cuentas) }
+                    val id = cuentaSeleccionada
+                    if (id == null) {
+                        LaunchedEffect(Unit) { ir(Screen.Cuentas) }
+                    } else {
+                        CuentaDetalleScreen(
+                            cuentasRepo = deps.cuentasRepo,
+                            cuentaId = id,
+                            onVolver = { ir(Screen.Cuentas) },
+                        )
+                    }
                 }
                 is Screen.AdminIndex -> {
                     BackHandler { ir(Screen.Panel) }
