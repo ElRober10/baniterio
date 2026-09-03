@@ -223,4 +223,30 @@ class EventoIT extends IntegrationTest {
                 .exchange().expectStatus().isEqualTo(409)
                 .expectBody().jsonPath("$.codigo").isEqualTo("SOLICITUD_EVENTO_YA_PENDIENTE");
     }
+
+    @Test
+    void miembro_solicita_credito_201_y_luego_no_puede_repetir_409() {
+        Sesion s = crearMiembro(RolMembresia.MIEMBRO);
+        http.post().uri("/api/v1/eventos/solicitudes")
+                .header(AUTHORIZATION, "Bearer " + s.token())
+                .body(Map.of("mensaje", "Quiero organizar la cena de Navidad"))
+                .exchange().expectStatus().isCreated()
+                .expectBody().jsonPath("$.estado").isEqualTo("PENDIENTE");
+
+        http.post().uri("/api/v1/eventos/solicitudes")
+                .header(AUTHORIZATION, "Bearer " + s.token())
+                .body(Map.of())
+                .exchange().expectStatus().isEqualTo(409)
+                .expectBody().jsonPath("$.codigo").isEqualTo("SOLICITUD_EVENTO_YA_PENDIENTE");
+    }
+
+    @Test
+    void admin_no_puede_solicitar_credito_409_NO_APLICA() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        http.post().uri("/api/v1/eventos/solicitudes")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of())
+                .exchange().expectStatus().isEqualTo(409)
+                .expectBody().jsonPath("$.codigo").isEqualTo("SOLICITUD_EVENTO_NO_APLICA");
+    }
 }
