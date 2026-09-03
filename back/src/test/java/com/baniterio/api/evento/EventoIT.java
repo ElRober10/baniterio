@@ -48,6 +48,9 @@ class EventoIT extends IntegrationTest {
     EventoRepository eventos;
 
     @Autowired
+    com.baniterio.api.identidad.SolicitudEventoRepository solicitudes;
+
+    @Autowired
     PasswordEncoder passwordEncoder;
 
     RestTestClient http;
@@ -175,5 +178,49 @@ class EventoIT extends IntegrationTest {
                 .body(Map.of("nombre", "no", "fecha", "2999-08-03"))
                 .exchange().expectStatus().isForbidden()
                 .expectBody().jsonPath("$.codigo").isEqualTo("SIN_PERMISO_EVENTO");
+    }
+
+    @Test
+    void admin_borra_evento_directo_204() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Evento e = sembrarEvento("IT-borra-admin", LocalDate.of(2999, 9, 1), null);
+
+        http.delete().uri("/api/v1/eventos/" + e.getId())
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .exchange().expectStatus().isNoContent();
+
+        assertThat(eventos.findById(e.getId())).isEmpty();
+    }
+
+    @Test
+    void creador_no_admin_pide_borrado_202_y_el_evento_sigue() {
+        Sesion miembro = crearMiembro(RolMembresia.MIEMBRO);
+        Usuario creador = usuarios.findById(miembro.id()).orElseThrow();
+        Evento e = sembrarEvento("IT-borra-solicitud", LocalDate.of(2999, 9, 2), creador);
+
+        http.delete().uri("/api/v1/eventos/" + e.getId())
+                .header(AUTHORIZATION, "Bearer " + miembro.token())
+                .exchange().expectStatus().isEqualTo(202)
+                .expectBody().jsonPath("$.estado").isEqualTo("PENDIENTE");
+
+        assertThat(eventos.findById(e.getId())).isPresent();
+        assertThat(solicitudes.existsByEventoIdAndTipoAndEstado(
+                e.getId(), com.baniterio.api.identidad.TipoSolicitudEvento.BORRAR,
+                com.baniterio.api.identidad.EstadoSolicitud.PENDIENTE)).isTrue();
+    }
+
+    @Test
+    void segunda_solicitud_de_borrado_del_mismo_evento_409() {
+        Sesion miembro = crearMiembro(RolMembresia.MIEMBRO);
+        Usuario creador = usuarios.findById(miembro.id()).orElseThrow();
+        Evento e = sembrarEvento("IT-borra-doble", LocalDate.of(2999, 9, 3), creador);
+
+        http.delete().uri("/api/v1/eventos/" + e.getId())
+                .header(AUTHORIZATION, "Bearer " + miembro.token())
+                .exchange().expectStatus().isEqualTo(202);
+        http.delete().uri("/api/v1/eventos/" + e.getId())
+                .header(AUTHORIZATION, "Bearer " + miembro.token())
+                .exchange().expectStatus().isEqualTo(409)
+                .expectBody().jsonPath("$.codigo").isEqualTo("SOLICITUD_EVENTO_YA_PENDIENTE");
     }
 }
