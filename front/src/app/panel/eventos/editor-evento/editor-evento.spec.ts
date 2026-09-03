@@ -2,13 +2,16 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
+import { AuthService } from '../../../auth/auth.service';
+import { UsuarioDto } from '../../../auth/auth.types';
 import { environment } from '../../../../environments/environment';
 import { EditorEvento } from './editor-evento';
 
 /**
  * Tests del editor de evento: modo crear (ruta sin id) hace POST; modo editar
- * (ruta con id) precarga con GET y luego hace PUT. El editor pide siempre la
- * lista de cuentas para el desplegable "Cuenta".
+ * (ruta con id) precarga con GET y luego hace PUT. El editor pide la lista de
+ * cuentas y, si el usuario es admin, muestra el campo "Cuota máxima".
  */
 describe('EditorEvento', () => {
   let fixture: ComponentFixture<EditorEvento>;
@@ -20,13 +23,26 @@ describe('EditorEvento', () => {
     { id: 2, nombre: 'San Miguel', descripcion: null },
   ];
 
-  function crear(id: string | null) {
+  function usuario(rol: 'ADMIN' | 'MIEMBRO'): UsuarioDto {
+    return {
+      id: 1,
+      nombre: 'Ada',
+      apellidos: 'Lovelace',
+      mote: null,
+      esSuperadmin: false,
+      rol,
+      areas: [],
+    };
+  }
+
+  function crear(id: string | null, rol: 'ADMIN' | 'MIEMBRO' = 'ADMIN') {
     TestBed.configureTestingModule({
       imports: [EditorEvento],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        { provide: AuthService, useValue: { asegurarYo: () => of(usuario(rol)) } },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: convertToParamMap(id ? { id } : {}) } },
@@ -39,7 +55,6 @@ describe('EditorEvento', () => {
 
   afterEach(() => httpMock.verify());
 
-  /** Responde al GET /cuentas que el editor dispara en ngOnInit. */
   function responderCuentas() {
     httpMock.expectOne(`${base}/cuentas`).flush(CUENTAS);
     fixture.detectChanges();
@@ -75,8 +90,35 @@ describe('EditorEvento', () => {
       fechaFin: null,
       cuentaId: 2,
       cuentaNueva: false,
+      cuotaMaxima: null,
     });
     req.flush({ id: 3 });
+  });
+
+  it('admin: al rellenar "Cuota máxima" la manda en el cuerpo', () => {
+    crear(null, 'ADMIN');
+    fixture.detectChanges();
+    responderCuentas();
+    escribir('nombre', 'San Miguel 2028');
+    escribir('fecha', '2028-09-25');
+    escribir('cuenta', '2');
+    escribir('cuotaMaxima', '26');
+    fixture.detectChanges();
+
+    (fixture.nativeElement as HTMLElement).querySelector('form')!.dispatchEvent(new Event('submit'));
+
+    const req = httpMock.expectOne(`${base}/eventos`);
+    expect(req.request.body.cuotaMaxima).toBe(26);
+    req.flush({ id: 5 });
+  });
+
+  it('miembro: no aparece el campo "Cuota máxima"', () => {
+    crear(null, 'MIEMBRO');
+    fixture.detectChanges();
+    responderCuentas();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[formControlName="cuotaMaxima"]'),
+    ).toBeNull();
   });
 
   it('modo crear: con "Otro evento" envía cuentaNueva', () => {
@@ -96,7 +138,7 @@ describe('EditorEvento', () => {
     req.flush({ id: 4 });
   });
 
-  it('modo editar: precarga la cuenta del evento y al enviar hace PUT', () => {
+  it('modo editar: precarga cuenta y cuota, y al enviar hace PUT', () => {
     crear('7');
     fixture.detectChanges();
     responderCuentas();
@@ -109,6 +151,7 @@ describe('EditorEvento', () => {
       fechaFin: '2026-09-26',
       pasado: false,
       cuenta: { id: 2, nombre: 'San Miguel' },
+      cuotaMaxima: 26,
       creadoPor: null,
       puedoEditar: true,
       puedoBorrar: true,
@@ -124,6 +167,7 @@ describe('EditorEvento', () => {
     expect(put.request.method).toBe('PUT');
     expect(put.request.body.nombre).toBe('San Miguel 2026');
     expect(put.request.body.cuentaId).toBe(2);
+    expect(put.request.body.cuotaMaxima).toBe(26);
     put.flush({ id: 7 });
   });
 

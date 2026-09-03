@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { AuthService } from '../../../auth/auth.service';
 import { Volver } from '../../../shared/volver/volver';
 import { CuentaResumen } from '../../cuentas/cuentas.types';
 import { CuentasService } from '../../cuentas/cuentas.service';
@@ -22,9 +23,10 @@ const CUENTA_NUEVA = '__nueva__';
 /**
  * Editor de evento. Sin `id` en la ruta → crear (`POST`); con `id` → editar
  * (`PUT`, precarga con `GET /eventos/:id`). Campos: nombre, descripción, lugar,
- * fecha (obligatoria), fecha fin (opcional) y cuenta (obligatoria: una existente
- * o "otro evento" para crear una nueva con el nombre del evento). La validación
- * de "fecha fin no anterior a fecha" también la hace el backend.
+ * fecha (obligatoria), fecha fin (opcional) y cuenta (obligatoria). La cuota
+ * máxima solo se ve/edita si el usuario es admin/superadmin (el backend también
+ * lo comprueba). La validación de "fecha fin no anterior a fecha" la hace el
+ * backend además del cliente.
  */
 @Component({
   selector: 'app-editor-evento',
@@ -36,6 +38,7 @@ export class EditorEvento implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly eventosService = inject(EventosService);
   private readonly cuentasService = inject(CuentasService);
+  private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -45,6 +48,7 @@ export class EditorEvento implements OnInit {
   protected readonly guardando = signal(false);
   protected readonly error = signal('');
   protected readonly cuentas = signal<CuentaResumen[]>([]);
+  protected readonly esAdmin = signal(false);
 
   protected readonly form = this.fb.nonNullable.group({
     nombre: ['', [Validators.required, Validators.maxLength(120)]],
@@ -53,9 +57,13 @@ export class EditorEvento implements OnInit {
     fecha: ['', Validators.required],
     fechaFin: [''],
     cuenta: ['', Validators.required],
+    cuotaMaxima: [''],
   });
 
   ngOnInit(): void {
+    this.auth.asegurarYo().subscribe((u) =>
+      this.esAdmin.set(u?.rol === 'ADMIN' || u?.esSuperadmin === true),
+    );
     this.cuentasService.listar().subscribe({
       next: (cuentas) => this.cuentas.set(cuentas),
     });
@@ -69,6 +77,7 @@ export class EditorEvento implements OnInit {
             fecha: e.fecha,
             fechaFin: e.fechaFin ?? '',
             cuenta: String(e.cuenta.id),
+            cuotaMaxima: e.cuotaMaxima != null ? String(e.cuotaMaxima) : '',
           }),
         error: () => this.error.set('No se ha podido cargar el evento.'),
       });
@@ -82,6 +91,19 @@ export class EditorEvento implements OnInit {
     }
     const v = this.form.getRawValue();
     const cuentaNueva = v.cuenta === CUENTA_NUEVA;
+
+    // El input es type="number": el value accessor puede dar number, string o null.
+    const cuotaRaw = String(v.cuotaMaxima ?? '').trim();
+    let cuotaMaxima: number | null = null;
+    if (this.esAdmin() && cuotaRaw) {
+      const n = Number(cuotaRaw.replace(',', '.'));
+      if (Number.isNaN(n) || n < 0) {
+        this.error.set('La cuota máxima tiene que ser un número mayor o igual que 0.');
+        return;
+      }
+      cuotaMaxima = n;
+    }
+
     const body: GuardarEventoRequest = {
       nombre: v.nombre.trim(),
       descripcion: v.descripcion.trim() || null,
@@ -90,6 +112,7 @@ export class EditorEvento implements OnInit {
       fechaFin: v.fechaFin || null,
       cuentaId: cuentaNueva ? null : Number(v.cuenta),
       cuentaNueva,
+      cuotaMaxima,
     };
     if (body.fechaFin && body.fechaFin < body.fecha) {
       this.error.set('La fecha de fin no puede ser anterior a la de inicio.');

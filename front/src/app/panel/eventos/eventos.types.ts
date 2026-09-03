@@ -29,6 +29,7 @@ export interface EventoDetalle {
   fechaFin: string | null;
   pasado: boolean;
   cuenta: CuentaRef;
+  cuotaMaxima: number | null;
   creadoPor: { id: number; nombre: string } | null;
   puedoEditar: boolean;
   puedoBorrar: boolean;
@@ -57,6 +58,8 @@ export interface GuardarEventoRequest {
   fechaFin: string | null;
   cuentaId: number | null;
   cuentaNueva: boolean;
+  /** Solo la aplica el backend si quien guarda es admin/superadmin. `null` = sin cuota / sin cambio. */
+  cuotaMaxima: number | null;
 }
 
 /** Códigos de error propios de eventos (ver ApiExceptionHandler.java). */

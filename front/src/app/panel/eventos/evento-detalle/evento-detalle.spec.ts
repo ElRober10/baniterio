@@ -44,6 +44,7 @@ describe('EventoDetalleComponent', () => {
       fechaFin: '2026-09-26',
       pasado: false,
       cuenta: { id: 2, nombre: 'San Miguel' },
+      cuotaMaxima: null,
       creadoPor: null,
       puedoEditar: false,
       puedoBorrar: false,
@@ -65,6 +66,14 @@ describe('EventoDetalleComponent', () => {
     expect(txt).toContain('Cuenta:');
     const enlace = (fixture.nativeElement as HTMLElement).querySelector('a[href="/panel/cuentas/2"]');
     expect(enlace).toBeTruthy();
+  });
+
+  it('muestra la cuota máxima si el evento la tiene', () => {
+    crear();
+    fixture.detectChanges();
+    responder({ cuotaMaxima: 26 });
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Cuota máxima: 26 €');
   });
 
   it('sin permisos no muestra botones de gestión', () => {
