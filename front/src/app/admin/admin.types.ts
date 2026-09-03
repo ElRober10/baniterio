@@ -63,3 +63,17 @@ export const AREAS: Record<Area, string> = {
  * `GET /api/v1/admin/pendientes`.
  */
 export type PendientesPorArea = Partial<Record<Area, number>>;
+
+/**
+ * Fila del bloque "Solicitudes de evento" (solo la ven admin/superadmin). Espejo
+ * de `SolicitudEventoResumen` del backend (`com.baniterio.api.evento.dto`).
+ */
+export interface SolicitudEventoResumen {
+  id: number;
+  tipo: 'CREAR' | 'BORRAR';
+  estado: string;
+  solicitante: { id: number; nombre: string; apellidos: string };
+  evento: { id: number; nombre: string; fecha: string } | null;
+  mensaje: string | null;
+  createdAt: string;
+}
