@@ -46,7 +46,8 @@ private sealed interface EstadoDetalle {
     data class Error(val mensaje: String) : EstadoDetalle
 }
 
-private val ESTADOS_ASISTENCIA = listOf(
+/** (valor de backend, etiqueta) de los tres estados de asistencia. */
+internal val ESTADOS_ASISTENCIA = listOf(
     "APUNTADO" to "Me apunto",
     "NO_VOY" to "No voy",
     "EN_DUDA" to "En duda",
