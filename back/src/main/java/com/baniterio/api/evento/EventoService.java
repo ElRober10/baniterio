@@ -22,7 +22,6 @@ import com.baniterio.api.push.AvisoPushEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +36,8 @@ public class EventoService {
     static final int PAGINA = 8;
     private static final String SLUG_PENA = "baniterio";
     private static final String TITULO_PUSH = "Eventos";
-    private static final Sort ORDEN = Sort.by(Sort.Order.desc("fecha"), Sort.Order.desc("id"));
+    /** Un evento se considera "pasado" cuando han transcurrido estos días desde su fecha (o fecha_fin). */
+    private static final int DIAS_PARA_PASADO = 3;
 
     private final EventoRepository eventos;
     private final SolicitudEventoRepository solicitudes;
@@ -67,9 +67,14 @@ public class EventoService {
                 .getId();
     }
 
+    /** Fecha mínima para que un evento siga contando como "futuro": {@code hoy - DIAS_PARA_PASADO}. */
+    private static LocalDate limiteFuturo() {
+        return LocalDate.now().minusDays(DIAS_PARA_PASADO);
+    }
+
     private static boolean esPasado(Evento e) {
-        LocalDate limite = e.getFechaFin() != null ? e.getFechaFin() : e.getFecha();
-        return limite.isBefore(LocalDate.now());
+        LocalDate fin = e.getFechaFin() != null ? e.getFechaFin() : e.getFecha();
+        return fin.isBefore(limiteFuturo());
     }
 
     Evento cargar(Long eventoId) {
@@ -98,8 +103,8 @@ public class EventoService {
 
     @Transactional(readOnly = true)
     public ListaEventosResponse listar(Long usuarioId, int pagina) {
-        Page<Evento> p = eventos.findByPenaId(penaId(),
-                PageRequest.of(Math.max(pagina, 0), PAGINA, ORDEN));
+        Page<Evento> p = eventos.listar(penaId(), limiteFuturo(),
+                PageRequest.of(Math.max(pagina, 0), PAGINA));
         var resumenes = p.getContent().stream()
                 .map(e -> new EventoResumen(e.getId(), e.getNombre(), e.getFecha(), e.getFechaFin(),
                         e.getLugar(), esPasado(e)))

@@ -86,12 +86,17 @@ panel de administración, con aviso push por medio.
 | `created_at` / `updated_at` | `timestamptz` NOT NULL DEFAULT now() | |
 
 - Índice: `idx_evento_pena_fecha (pena_id, fecha DESC)`.
-- **Pasado / futuro** a efectos de agrupar: un evento es "pasado" cuando
-  `COALESCE(fecha_fin, fecha) < CURRENT_DATE`; si no, es "próximo".
-- **Orden del listado:** `ORDER BY fecha DESC, id DESC`. Con este orden, los
-  próximos salen antes que los pasados de forma natural, y dentro de cada grupo
-  van de más reciente a más antiguo (lo pedido). No hace falta un `ORDER BY`
-  con `CASE`.
+- **Pasado / futuro** a efectos de agrupar: un evento es "pasado" cuando han
+  transcurrido **3 días** desde su fecha, es decir
+  `COALESCE(fecha_fin, fecha) < CURRENT_DATE - INTERVAL '3 days'`
+  (equivalente: `< hoy - 3`). El día +3 todavía cuenta como próximo; el +4 ya
+  es pasado. San Miguel (`fecha_fin` 26/09) pasa a "pasado" el 30/09.
+- **Orden del listado:** dos grupos. Primero los **próximos** (no pasados),
+  ordenados por `fecha` **ascendente** — primero el más cercano a llegar.
+  Detrás los **pasados**, por `fecha` **descendente** — de más reciente a más
+  antiguo. Desempate `id DESC`. Requiere `ORDER BY` con `CASE` (JPQL
+  `EventoRepository.listar(penaId, limite, pageable)`, con `limite = hoy - 3`);
+  el `Pageable` va **sin** `Sort`.
 
 ### `solicitud_evento` (V14)
 
@@ -165,7 +170,8 @@ Base `/api/v1`. Todas autenticadas.
 
 - `GET /eventos?pagina=0`
   → `{ eventos: EventoResumen[], pagina, totalPaginas, puedeCrear, puedeSolicitar }`
-  - `eventos`: página de 8, orden `fecha DESC, id DESC`.
+  - `eventos`: página de 8; próximos por `fecha` ascendente, luego pasados por
+    `fecha` descendente (ver "Orden del listado").
   - `EventoResumen`: `{ id, nombre, fecha, fechaFin, lugar, pasado }`.
   - `puedeCrear`: el usuario puede crear ya (admin, o crédito sin consumir).
   - `puedeSolicitar`: no puede crear pero puede pedir crédito (siempre `false`
