@@ -18,10 +18,27 @@ public record GuardarEventoRequest(
         @Size(max = 2000) String descripcion,
         @Size(max = 160) String lugar,
         @NotNull LocalDate fecha,
-        LocalDate fechaFin) {
+        LocalDate fechaFin,
+        Long cuentaId,
+        Boolean cuentaNueva) {
+
+    /** {@code true} si el request pide crear una cuenta nueva (campo opcional; ausente = no). */
+    public boolean quiereCuentaNueva() {
+        return Boolean.TRUE.equals(cuentaNueva);
+    }
 
     @AssertTrue(message = "La fecha de fin no puede ser anterior a la de inicio")
     public boolean isRangoDeFechasValido() {
         return fechaFin == null || fecha == null || !fechaFin.isBefore(fecha);
+    }
+
+    /**
+     * Hay que indicar la cuenta del evento: o una existente ({@code cuentaId}) o
+     * marcar {@code cuentaNueva} para crear una con el nombre del evento. Una y
+     * solo una de las dos.
+     */
+    @AssertTrue(message = "Indica una cuenta existente o crea una nueva, pero no ambas")
+    public boolean isCuentaValida() {
+        return quiereCuentaNueva() ^ (cuentaId != null);
     }
 }

@@ -1,6 +1,7 @@
 package com.baniterio.api.identidad;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,6 +26,7 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
      */
     @Query("""
             select e from Evento e
+            join fetch e.cuenta
             where e.pena.id = :penaId
             order by
               case when coalesce(e.fechaFin, e.fecha) >= :limite then 0 else 1 end,
@@ -33,4 +35,16 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
               e.id desc
             """)
     Page<Evento> listar(@Param("penaId") Long penaId, @Param("limite") LocalDate limite, Pageable pageable);
+
+    /**
+     * Eventos de la peña que aún no han pasado ({@code coalesce(fechaFin, fecha) >= limite}),
+     * con la cuenta cargada. Lo usa {@code CuentaService} para ordenar las cuentas por
+     * el evento futuro más próximo de cada una.
+     */
+    @Query("""
+            select e from Evento e
+            join fetch e.cuenta
+            where e.pena.id = :penaId and coalesce(e.fechaFin, e.fecha) >= :limite
+            """)
+    List<Evento> futuros(@Param("penaId") Long penaId, @Param("limite") LocalDate limite);
 }

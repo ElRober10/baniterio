@@ -44,6 +44,11 @@ public class Evento {
     @JoinColumn(name = "pena_id", nullable = false)
     private Pena pena;
 
+    /** Cuenta a la que va el dinero de este evento (ver V18). Obligatoria. */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "cuenta_id", nullable = false)
+    private Cuenta cuenta;
+
     @Column(nullable = false, length = 120)
     private String nombre;
 

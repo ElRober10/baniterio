@@ -4,13 +4,19 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 import com.baniterio.api.auth.ServicioPermisos;
+import com.baniterio.api.cuenta.CuentaConflictoException;
+import com.baniterio.api.cuenta.CuentaNoEncontradaException;
+import com.baniterio.api.evento.dto.CuentaRef;
 import com.baniterio.api.evento.dto.EventoDetalle;
 import com.baniterio.api.evento.dto.EventoResumen;
 import com.baniterio.api.evento.dto.GuardarEventoRequest;
 import com.baniterio.api.evento.dto.ListaEventosResponse;
+import com.baniterio.api.identidad.Cuenta;
+import com.baniterio.api.identidad.CuentaRepository;
 import com.baniterio.api.identidad.EstadoSolicitud;
 import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
+import com.baniterio.api.identidad.Pena;
 import com.baniterio.api.identidad.PenaRepository;
 import com.baniterio.api.identidad.SolicitudEvento;
 import com.baniterio.api.identidad.SolicitudEventoRepository;
@@ -41,16 +47,18 @@ public class EventoService {
 
     private final EventoRepository eventos;
     private final SolicitudEventoRepository solicitudes;
+    private final CuentaRepository cuentas;
     private final ServicioPermisos permisos;
     private final PenaRepository penas;
     private final UsuarioRepository usuarios;
     private final ApplicationEventPublisher publisher;
 
     public EventoService(EventoRepository eventos, SolicitudEventoRepository solicitudes,
-                         ServicioPermisos permisos, PenaRepository penas,
+                         CuentaRepository cuentas, ServicioPermisos permisos, PenaRepository penas,
                          UsuarioRepository usuarios, ApplicationEventPublisher publisher) {
         this.eventos = eventos;
         this.solicitudes = solicitudes;
+        this.cuentas = cuentas;
         this.permisos = permisos;
         this.penas = penas;
         this.usuarios = usuarios;
@@ -81,6 +89,25 @@ public class EventoService {
         return eventos.findById(eventoId).orElseThrow(EventoNoEncontradoException::new);
     }
 
+    /**
+     * La cuenta del evento a partir del request: o una cuenta existente de la peña
+     * ({@code cuentaId}), o una nueva con el nombre del evento ({@code cuentaNueva}).
+     * La validación de "una y solo una" ya la hace {@link GuardarEventoRequest}.
+     */
+    private Cuenta resolverCuenta(GuardarEventoRequest req) {
+        if (req.quiereCuentaNueva()) {
+            Pena pena = penas.findBySlug(SLUG_PENA).orElseThrow();
+            String nombre = req.nombre().trim();
+            if (cuentas.existsByPenaIdAndNombreIgnoreCase(pena.getId(), nombre)) {
+                throw new CuentaConflictoException();
+            }
+            return cuentas.save(Cuenta.builder().pena(pena).nombre(nombre).build());
+        }
+        return cuentas.findById(req.cuentaId())
+                .filter(c -> c.getPena().getId().equals(penaId()))
+                .orElseThrow(CuentaNoEncontradaException::new);
+    }
+
     /** Tiene un crédito CREAR aprobado sin consumir, o es administrador. */
     boolean puedeCrear(Long usuarioId) {
         return permisos.esAdministrador(usuarioId)
@@ -107,7 +134,7 @@ public class EventoService {
                 PageRequest.of(Math.max(pagina, 0), PAGINA));
         var resumenes = p.getContent().stream()
                 .map(e -> new EventoResumen(e.getId(), e.getNombre(), e.getFecha(), e.getFechaFin(),
-                        e.getLugar(), esPasado(e)))
+                        e.getLugar(), esPasado(e), aCuentaRef(e)))
                 .toList();
         return new ListaEventosResponse(resumenes, p.getNumber(), p.getTotalPages(),
                 puedeCrear(usuarioId), puedeSolicitar(usuarioId));
@@ -137,6 +164,7 @@ public class EventoService {
 
         Evento e = eventos.save(Evento.builder()
                 .pena(penas.findBySlug(SLUG_PENA).orElseThrow())
+                .cuenta(resolverCuenta(req))
                 .nombre(req.nombre().trim())
                 .descripcion(vacioANull(req.descripcion()))
                 .lugar(vacioANull(req.lugar()))
@@ -164,6 +192,7 @@ public class EventoService {
         e.setLugar(vacioANull(req.lugar()));
         e.setFecha(req.fecha());
         e.setFechaFin(req.fechaFin());
+        e.setCuenta(resolverCuenta(req));
         eventos.save(e);
         return aDetalle(usuarioId, e);
     }
@@ -248,6 +277,11 @@ public class EventoService {
         return sol.getId();
     }
 
+    private static CuentaRef aCuentaRef(Evento e) {
+        Cuenta c = e.getCuenta();
+        return new CuentaRef(c.getId(), c.getNombre());
+    }
+
     EventoDetalle aDetalle(Long usuarioId, Evento e) {
         Usuario creador = e.getCreadoPor();
         var creadoPor = creador == null ? null
@@ -256,7 +290,7 @@ public class EventoService {
         boolean borradoPendiente = solicitudes.existsByEventoIdAndTipoAndEstado(
                 e.getId(), TipoSolicitudEvento.BORRAR, EstadoSolicitud.PENDIENTE);
         return new EventoDetalle(e.getId(), e.getNombre(), e.getDescripcion(), e.getLugar(),
-                e.getFecha(), e.getFechaFin(), esPasado(e), creadoPor, gestiona, gestiona,
-                borradoPendiente);
+                e.getFecha(), e.getFechaFin(), esPasado(e), aCuentaRef(e), creadoPor, gestiona,
+                gestiona, borradoPendiente);
     }
 }
