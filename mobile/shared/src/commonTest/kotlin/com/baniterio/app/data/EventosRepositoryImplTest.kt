@@ -71,6 +71,13 @@ class EventosRepositoryImplTest {
     }
 
     @Test
+    fun crear_incluye_la_cuota_maxima_si_se_pasa() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = "{}")
+        r.crear(GuardarEventoRequest(nombre = "X", fecha = "2999-01-01", cuentaId = 7, cuotaMaxima = 26.0))
+        assertTrue(vistas[0].cuerpo.contains("\"cuotaMaxima\":26"), vistas[0].cuerpo)
+    }
+
+    @Test
     fun crear_con_cuenta_nueva_devuelve_error_tipado_si_el_nombre_existe() = runTest {
         val (r, _) = repo(status = HttpStatusCode.Conflict,
             cuerpoRespuesta = """{"codigo":"CUENTA_YA_EXISTE"}""")
