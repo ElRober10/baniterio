@@ -42,6 +42,7 @@ describe('EventoDetalleComponent', () => {
     noVoy: 0,
     enDuda: 0,
     sinContestar: 0,
+    ficha: { llevaFicha: false, diasEvento: [], miFicha: null },
   };
 
   function responder(extra: Record<string, unknown> = {}) {
@@ -251,5 +252,56 @@ describe('EventoDetalleComponent', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain(
       '4 apuntados · 2 en duda · 7 sin contestar',
     );
+  });
+
+  const fichaSanMiguel = {
+    llevaFicha: true,
+    diasEvento: ['2026-09-25', '2026-09-26'],
+    miFicha: null,
+  };
+
+  function flushCatalogo() {
+    httpMock
+      .expectOne(`${base}/bebidas/catalogo`)
+      .flush({ alcohol: [{ id: 1, nombre: 'Barceló' }], refresco: [{ id: 10, nombre: 'Coca-Cola' }] });
+  }
+
+  it('evento de San Miguel: tras "Me apunto" aparece la ficha; evento normal: no', () => {
+    crear();
+    fixture.detectChanges();
+    responder({ asistencia: { miAsistencia: 'APUNTADO', ficha: fichaSanMiguel } });
+    flushCatalogo();
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-ficha-bebida')).toBeTruthy();
+  });
+
+  it('evento normal no pide catálogo ni pinta la ficha', () => {
+    crear();
+    fixture.detectChanges();
+    responder({ asistencia: { miAsistencia: 'APUNTADO' } });
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-ficha-bebida')).toBeNull();
+  });
+
+  it('al guardar la ficha hace PUT /eventos/5/ficha-bebida y muestra la cuota', () => {
+    crear();
+    fixture.detectChanges();
+    responder({ asistencia: { miAsistencia: 'APUNTADO', ficha: fichaSanMiguel } });
+    flushCatalogo();
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    const refresco = el.querySelector('#fb-refresco') as HTMLSelectElement;
+    refresco.value = '10';
+    refresco.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    (el.querySelector('app-ficha-bebida form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+
+    const put = httpMock.expectOne(`${base}/eventos/5/ficha-bebida`);
+    expect(put.request.method).toBe('PUT');
+    put.flush({ modalidad: 'COMPLETA', cuota: 26, cuotaPendiente: false });
+    responder({ asistencia: { miAsistencia: 'APUNTADO', ficha: fichaSanMiguel } });
+    fixture.detectChanges();
+    expect(el.textContent).toContain('Tu cuota: 26 €');
   });
 });

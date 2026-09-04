@@ -65,6 +65,26 @@
             {{ e.asistencia.apuntados }} apuntados · {{ e.asistencia.enDuda }} en duda ·
             {{ e.asistencia.sinContestar }} sin contestar
           </p>
+
+          @if (mostrarFicha() && catalogo(); as cat) {
+            <app-ficha-bebida
+              [catalogo]="cat"
+              [dias]="e.asistencia.ficha.diasEvento"
+              [fichaActual]="e.asistencia.ficha.miFicha"
+              [enDuda]="e.asistencia.miAsistencia === 'EN_DUDA'"
+              (guardar)="guardarFicha($event)"
+            />
+            @if (e.asistencia.ficha.miFicha?.bebidaPendiente) {
+              <p class="mt-2 text-xs text-gold-soft">
+                Alguna de tus bebidas está pendiente de que un admin la acepte.
+              </p>
+            }
+            @if (resultadoFicha()) {
+              <p role="status" class="mt-2 text-sm font-semibold text-gold-soft">
+                {{ resultadoFicha() }}
+              </p>
+            }
+          }
         </article>
 
         @if (aviso()) {
@@ -155,15 +175,26 @@
                     <option [value]="o.valor">{{ o.texto }}</option>
                   }
                 </select>
-                <button
-                  type="button"
-                  (click)="anadirManual()"
-                  [disabled]="!nombreManual().trim()"
-                  class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-brand-bright/60 disabled:opacity-50"
-                >
-                  Añadir
-                </button>
+                @if (!fichaEnAltaManual()) {
+                  <button
+                    type="button"
+                    (click)="anadirManual()"
+                    [disabled]="!nombreManual().trim()"
+                    class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-brand-bright/60 disabled:opacity-50"
+                  >
+                    Añadir
+                  </button>
+                }
               </div>
+              @if (fichaEnAltaManual() && catalogo(); as cat) {
+                <app-ficha-bebida
+                  [catalogo]="cat"
+                  [dias]="e.asistencia.ficha.diasEvento"
+                  [enDuda]="estadoManual() === 'EN_DUDA'"
+                  textoBoton="Añadir con su ficha"
+                  (guardar)="anadirConFicha($event)"
+                />
+              }
             </div>
           </div>
         }

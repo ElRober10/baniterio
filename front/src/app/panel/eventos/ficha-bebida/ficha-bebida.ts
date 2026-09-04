@@ -19,6 +19,7 @@ export class FichaBebida implements OnInit {
   @Input({ required: true }) dias!: string[];
   @Input() fichaActual: FichaBebidaMia | null = null;
   @Input() enDuda = false;
+  @Input() textoBoton = 'Guardar ficha';
   @Output() guardar = new EventEmitter<FichaBebidaBody>();
 
   protected readonly OTRA = OTRA;
