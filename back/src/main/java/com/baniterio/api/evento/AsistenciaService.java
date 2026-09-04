@@ -107,8 +107,10 @@ public class AsistenciaService {
      * Manda (o reenvía) la notificación de convocatoria. Solo un administrador o
      * quien organiza el evento; evento pasado → {@link EventoYaPasadoException};
      * reenvío antes de 48 h desde el último envío → {@link NotificacionReenvioProntoException}.
-     * Registra el envío y publica un push a {@link Audiencia.SinRespuestaEvento}
-     * (toda la peña menos quien ya respondió).
+     * Registra el envío y publica el push: la primera convocatoria va a toda la
+     * peña ({@link Audiencia.TodaLaPena}, incluido quien la manda y quien ya haya
+     * respondido); los reenvíos van solo a quien todavía no ha contestado
+     * ({@link Audiencia.SinRespuestaEvento}).
      */
     @Transactional
     public void mandarNotificacion(Long usuarioId, Long eventoId, String texto) {
@@ -117,12 +119,14 @@ public class AsistenciaService {
             throw new SinPermisoEventoException();
         }
         exigirNoPasado(e);
-        notificaciones.findFirstByEventoIdOrderByEnviadaAtDesc(eventoId).ifPresent(ultima -> {
+        var ultima = notificaciones.findFirstByEventoIdOrderByEnviadaAtDesc(eventoId);
+        ultima.ifPresent(n -> {
             Instant limite = Instant.now().minus(HORAS_ENTRE_ENVIOS, ChronoUnit.HOURS);
-            if (ultima.getEnviadaAt().isAfter(limite)) {
+            if (n.getEnviadaAt().isAfter(limite)) {
                 throw new NotificacionReenvioProntoException();
             }
         });
+        boolean primeraVez = ultima.isEmpty();
         String limpio = (texto == null || texto.isBlank()) ? null : texto.trim();
         notificaciones.save(NotificacionEvento.builder()
                 .evento(e)
@@ -131,8 +135,10 @@ public class AsistenciaService {
                 .build());
         String cuerpo = limpio != null ? limpio
                 : "«" + e.getNombre() + "» — ¿te apuntas? Entra en la app y responde.";
-        publisher.publishEvent(new AvisoPushEvent(
-                new Audiencia.SinRespuestaEvento(eventoId), TITULO_PUSH, cuerpo));
+        Audiencia audiencia = primeraVez
+                ? new Audiencia.TodaLaPena()
+                : new Audiencia.SinRespuestaEvento(eventoId);
+        publisher.publishEvent(new AvisoPushEvent(audiencia, TITULO_PUSH, cuerpo));
     }
 
     /**
