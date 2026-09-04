@@ -40,6 +40,8 @@ public class ManejadorAvisoPush {
             List<Long> usuarios = resolutor.resolver(e.audiencia());
             List<Dispositivo> disp = dispositivos.findByUsuarioIdIn(usuarios);
             if (disp.isEmpty()) {
+                log.info("Aviso push \"{}\": {} usuario(s) en la audiencia, ninguno con dispositivo registrado",
+                        e.titulo(), usuarios.size());
                 return;
             }
             List<String> tokens = disp.stream().map(Dispositivo::getToken).toList();

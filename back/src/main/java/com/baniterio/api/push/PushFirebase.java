@@ -45,15 +45,27 @@ public class PushFirebase implements ServicioPush {
                 BatchResponse resp = envio.enviar(mensaje);
                 List<SendResponse> respuestas = resp.getResponses();
                 for (int j = 0; j < respuestas.size(); j++) {
-                    if (esTokenMuerto(respuestas.get(j))) {
+                    SendResponse r = respuestas.get(j);
+                    if (esTokenMuerto(r)) {
                         muertos.add(lote.get(j));
+                    } else if (!r.isSuccessful() && r.getException() != null) {
+                        log.warn("[push:fcm] token …{} falló: code={} · {}",
+                                sufijo(lote.get(j)), r.getException().getMessagingErrorCode(),
+                                r.getException().getMessage());
                     }
                 }
+                log.info("[push:fcm] \"{}\" — {} enviados, {} fallidos de {} tokens",
+                        titulo, resp.getSuccessCount(), resp.getFailureCount(), lote.size());
             } catch (Exception e) {
                 log.error("Fallo enviando lote de push ({} tokens): {}", lote.size(), e.toString());
             }
         }
         return muertos;
+    }
+
+    /** Últimos 6 caracteres del token, para poder cruzarlo con la tabla sin loguearlo entero. */
+    private static String sufijo(String token) {
+        return token.length() <= 6 ? token : token.substring(token.length() - 6);
     }
 
     private boolean esTokenMuerto(SendResponse r) {
