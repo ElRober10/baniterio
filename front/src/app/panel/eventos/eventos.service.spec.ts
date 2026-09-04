@@ -134,4 +134,64 @@ describe('EventosService', () => {
     expect(req.request.method).toBe('GET');
     req.flush({ eventos: [] });
   });
+
+  it('catalogoBebidas() hace GET a /bebidas/catalogo', () => {
+    service.catalogoBebidas().subscribe();
+    const req = httpMock.expectOne(`${base}/bebidas/catalogo`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ alcohol: [], refresco: [] });
+  });
+
+  it('guardarFichaBebida() hace PUT a /eventos/:id/ficha-bebida', () => {
+    const body = {
+      estado: 'APUNTADO' as const,
+      alcoholBebidaId: null,
+      alcoholOtra: null,
+      refrescoBebidaId: 3,
+      refrescoOtra: null,
+      alternativa: 'NADA' as const,
+      cervezaEspecial: null,
+      embarazada: false,
+      asisteDia1: true,
+      asisteDia2: true,
+    };
+    service.guardarFichaBebida(5, body).subscribe();
+    const req = httpMock.expectOne(`${base}/eventos/5/ficha-bebida`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual(body);
+    req.flush({ modalidad: 'COMPLETA', cuota: 26, cuotaPendiente: false });
+  });
+
+  it('anadirAsistente() con ficha la manda en el cuerpo', () => {
+    const ficha = {
+      estado: 'APUNTADO' as const,
+      alcoholBebidaId: null,
+      alcoholOtra: null,
+      refrescoBebidaId: 3,
+      refrescoOtra: null,
+      alternativa: 'NADA' as const,
+      cervezaEspecial: null,
+      embarazada: false,
+      asisteDia1: true,
+      asisteDia2: true,
+    };
+    service.anadirAsistente(5, 'Primo', 'APUNTADO', ficha).subscribe();
+    const req = httpMock.expectOne(`${base}/eventos/5/asistencias`);
+    expect(req.request.body).toEqual({ nombre: 'Primo', estado: 'APUNTADO', ficha });
+    req.flush({ id: 1, nombre: 'Primo', estado: 'APUNTADO', esManual: true, cuota: 26, modalidad: 'COMPLETA' });
+  });
+
+  it('bebidasPendientes() hace GET a /bebidas con estado=PENDIENTE', () => {
+    service.bebidasPendientes().subscribe();
+    const req = httpMock.expectOne((r) => r.url === `${base}/bebidas`);
+    expect(req.request.params.get('estado')).toBe('PENDIENTE');
+    req.flush([]);
+  });
+
+  it('aceptarBebida() hace POST a /bebidas/:id/aceptar', () => {
+    service.aceptarBebida(3).subscribe();
+    const req = httpMock.expectOne(`${base}/bebidas/3/aceptar`);
+    expect(req.request.method).toBe('POST');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
 });

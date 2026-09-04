@@ -4,9 +4,13 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   AsistenciaResumen,
+  BebidaPendiente,
+  CatalogoBebidas,
   EstadoAsistencia,
   EventoDetalle,
   EventoResumen,
+  FichaBebidaBody,
+  FichaBebidaResponse,
   GuardarEventoRequest,
   ListaEventosResponse,
 } from './eventos.types';
@@ -66,15 +70,17 @@ export class EventosService {
     );
   }
 
-  /** Añade a mano a alguien sin app (invitado). */
+  /** Añade a mano a alguien sin app (invitado). `ficha` obligatoria en San Miguel. */
   anadirAsistente(
     id: number,
     nombre: string,
     estado: EstadoAsistencia,
+    ficha?: FichaBebidaBody,
   ): Observable<AsistenciaResumen> {
     return this.http.post<AsistenciaResumen>(`${this.base}/eventos/${id}/asistencias`, {
       nombre,
       estado,
+      ...(ficha ? { ficha } : {}),
     });
   }
 
@@ -87,5 +93,32 @@ export class EventosService {
     return this.http.get<{ eventos: EventoResumen[] }>(
       `${this.base}/eventos/pendientes-respuesta`,
     );
+  }
+
+  // --- Ficha de bebida y catálogo (pieza 3b) ---
+
+  /** Las dos listas de bebidas aceptadas para los desplegables de la ficha. */
+  catalogoBebidas(): Observable<CatalogoBebidas> {
+    return this.http.get<CatalogoBebidas>(`${this.base}/bebidas/catalogo`);
+  }
+
+  /** Guarda mi ficha de bebida para un evento de San Miguel; devuelve la cuota. */
+  guardarFichaBebida(id: number, body: FichaBebidaBody): Observable<FichaBebidaResponse> {
+    return this.http.put<FichaBebidaResponse>(`${this.base}/eventos/${id}/ficha-bebida`, body);
+  }
+
+  /** Bebidas propuestas con "Otra…" a la espera de aprobación (solo admin). */
+  bebidasPendientes(): Observable<BebidaPendiente[]> {
+    return this.http.get<BebidaPendiente[]>(`${this.base}/bebidas`, {
+      params: { estado: 'PENDIENTE' },
+    });
+  }
+
+  aceptarBebida(id: number): Observable<void> {
+    return this.http.post<void>(`${this.base}/bebidas/${id}/aceptar`, {});
+  }
+
+  rechazarBebida(id: number): Observable<void> {
+    return this.http.post<void>(`${this.base}/bebidas/${id}/rechazar`, {});
   }
 }
