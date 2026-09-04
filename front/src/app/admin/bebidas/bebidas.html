@@ -1,0 +1,60 @@
+<section class="mx-auto w-full max-w-3xl">
+  <div class="mb-6"><app-volver destino="/panel/administracion" /></div>
+
+  <h1 class="font-display text-2xl font-extrabold leading-tight">Bebidas propuestas</h1>
+  <p class="mt-2 text-sm leading-relaxed text-muted">
+    Bebidas que alguien ha escrito en "Otra…" en su ficha de San Miguel. Al aceptarlas
+    empiezan a salir en los desplegables.
+  </p>
+
+  @if (aviso()) {
+    <p role="status" class="mt-4 text-sm text-gold-soft">{{ aviso() }}</p>
+  }
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <p class="mt-6 text-sm text-muted">Cargando…</p>
+    }
+    @case ('error') {
+      <p class="mt-6 text-sm text-red-300">No se ha podido cargar.</p>
+    }
+    @case ('lista') {
+      @if (pendientes().length === 0) {
+        <p class="mt-6 rounded-2xl border border-outline bg-panel p-6 text-sm text-muted">
+          No hay bebidas pendientes de revisar.
+        </p>
+      } @else {
+        <ul class="mt-6 space-y-3">
+          @for (b of pendientes(); track b.id) {
+            <li
+              class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-outline bg-panel p-4"
+            >
+              <div>
+                <p class="font-semibold">{{ b.nombre }}</p>
+                <p class="text-xs text-muted">
+                  {{ tipoTexto(b.tipo) }}@if (b.propuestaPor) { · lo propuso {{ b.propuestaPor.nombre }} }
+                </p>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  (click)="aceptar(b)"
+                  class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark"
+                >
+                  Aceptar
+                </button>
+                <button
+                  type="button"
+                  (click)="rechazar(b)"
+                  class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-red-400/50 hover:text-red-300"
+                >
+                  Rechazar
+                </button>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    }
+  }
+</section>

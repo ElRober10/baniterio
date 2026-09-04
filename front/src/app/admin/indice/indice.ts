@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../auth/auth.service';
 import { Volver } from '../../shared/volver/volver';
@@ -51,6 +51,12 @@ export class AdminIndice implements OnInit {
 
   /** Secciones que este usuario puede abrir, según sus áreas. */
   protected readonly disponibles = SECCIONES_ADMIN.filter((s) => this.auth.tieneArea(s.area));
+
+  /** "Bebidas" es de admins de verdad, no de un área concedida. */
+  protected readonly esAdmin = computed(() => {
+    const u = this.auth.usuarioActual();
+    return u?.rol === 'ADMIN' || u?.esSuperadmin === true;
+  });
 
   ngOnInit(): void {
     this.avisos.refrescar();

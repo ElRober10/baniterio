@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { areaGuard } from './admin/area.guard';
+import { AdminBebidas } from './admin/bebidas/bebidas';
 import { AdminIndice } from './admin/indice/indice';
 import { AdminPermisos } from './admin/permisos/permisos';
 import { AdminSolicitudes } from './admin/solicitudes/solicitudes';
@@ -62,6 +63,13 @@ export const routes: Routes = [
         path: 'administracion/permisos',
         component: AdminPermisos,
         canActivate: [perfilCompletoGuard, respuestaPendienteGuard, areaGuard('ADMIN_PERMISOS')],
+      },
+      // Bebidas propuestas: cualquier admin/superadmin (no un área); el propio
+      // componente rebota a /panel si no lo eres.
+      {
+        path: 'administracion/bebidas',
+        component: AdminBebidas,
+        canActivate: [perfilCompletoGuard, respuestaPendienteGuard],
       },
     ],
   },
