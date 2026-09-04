@@ -289,6 +289,12 @@ private fun SelectorCuenta(
 internal fun formatoImporte(v: Double): String =
     if (v % 1.0 == 0.0) v.toLong().toString() else v.toString()
 
+/** "2026-09-25" (ISO del backend) -> "25-09-2026". Deja igual lo que no encaje. */
+internal fun formatoFecha(iso: String): String {
+    val p = iso.split("-")
+    return if (p.size == 3) "${p[2]}-${p[1]}-${p[0]}" else iso
+}
+
 @Composable
 private fun OpcionCuenta(texto: String, seleccionada: Boolean, onClick: () -> Unit) {
     Row(

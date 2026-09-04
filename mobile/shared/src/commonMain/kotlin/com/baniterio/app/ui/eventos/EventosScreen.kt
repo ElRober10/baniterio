@@ -193,6 +193,6 @@ private fun TarjetaEvento(e: EventoResumen, onClick: () -> Unit) {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = BaniterioColors.muted)
             }
         }
-        Text(e.fecha, style = MaterialTheme.typography.bodySmall, color = BaniterioColors.muted)
+        Text(formatoFecha(e.fecha), style = MaterialTheme.typography.bodySmall, color = BaniterioColors.muted)
     }
 }

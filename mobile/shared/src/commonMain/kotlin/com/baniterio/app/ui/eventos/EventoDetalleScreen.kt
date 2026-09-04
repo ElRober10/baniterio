@@ -127,13 +127,13 @@ fun EventoDetalleScreen(
                     )
                     Text(
                         buildString {
-                            append(ev.fecha)
-                            ev.fechaFin?.let { append(" – ").append(it) }
+                            append(formatoFecha(ev.fecha))
+                            ev.fechaFin?.let { append(" – ").append(formatoFecha(it)) }
+                            ev.lugar?.let { append("  ·  ").append(it) }
                             if (ev.pasado) append("  ·  PASADO")
                         },
                         color = BaniterioColors.muted,
                     )
-                    ev.lugar?.let { Text(it, color = BaniterioColors.muted) }
                     Text("Cuenta: ${ev.cuenta.nombre}", color = BaniterioColors.muted)
                     ev.cuotaMaxima?.let {
                         Text("Cuota máxima: ${formatoImporte(it)} €", color = BaniterioColors.muted)
