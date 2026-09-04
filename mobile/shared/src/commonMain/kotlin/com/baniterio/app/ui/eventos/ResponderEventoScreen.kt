@@ -99,22 +99,21 @@ fun ResponderEventoScreen(
                     )
                     Text(
                         buildString {
-                            append(ev.fecha)
-                            ev.fechaFin?.let { append(" – ").append(it) }
+                            append(formatoFecha(ev.fecha))
+                            ev.fechaFin?.let { append(" – ").append(formatoFecha(it)) }
+                            ev.lugar?.let { append("  ·  ").append(it) }
                         },
                         color = BaniterioColors.muted,
                     )
-                    ev.lugar?.let { Text(it, color = BaniterioColors.muted) }
 
                     val pend = ficha
                     if (pend != null) {
-                        Text("Ya casi: dinos qué vas a beber.",
-                            color = MaterialTheme.colorScheme.onBackground)
                         FichaBebidaForm(
                             catalogo = pend.second,
                             dias = pend.first.asistencia.ficha.diasEvento,
                             fichaActual = pend.first.asistencia.ficha.miFicha,
                             enDuda = pend.first.asistencia.miAsistencia == "EN_DUDA",
+                            textoBoton = "Responder",
                             onGuardar = { body ->
                                 scope.launch {
                                     when (asistenciaRepo.guardarFicha(ev.id, body)) {
