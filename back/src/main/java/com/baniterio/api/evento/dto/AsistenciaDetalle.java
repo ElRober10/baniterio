@@ -8,9 +8,12 @@ import java.time.Instant;
  * no ha respondido. {@code puedeNotificar} pinta el botón "Mandar notificación"
  * (admin u organizador y evento no pasado). {@code notificacionReenviableAt} es
  * cuándo se podrá reenviar (último envío + 48 h), o {@code null} si nunca se ha
- * mandado. Los recuentos son para la cabecera del detalle.
+ * mandado. Los recuentos son para la cabecera del detalle. {@code ficha} es el
+ * sub-bloque de la ficha de bebida (pieza 3b); {@code ficha.llevaFicha=false} en
+ * los eventos que no son de San Miguel.
  */
 public record AsistenciaDetalle(String miAsistencia, boolean puedeNotificar,
                                 Instant notificacionReenviableAt,
-                                int apuntados, int noVoy, int enDuda, int sinContestar) {
+                                int apuntados, int noVoy, int enDuda, int sinContestar,
+                                FichaBebidaDetalle ficha) {
 }

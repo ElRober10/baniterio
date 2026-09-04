@@ -53,11 +53,12 @@ public class EventoService {
     private final UsuarioRepository usuarios;
     private final ApplicationEventPublisher publisher;
     private final AsistenciaService asistencias;
+    private final FichaBebidaService fichaBebida;
 
     public EventoService(EventoRepository eventos, SolicitudEventoRepository solicitudes,
                          CuentaRepository cuentas, ServicioPermisos permisos, PenaRepository penas,
                          UsuarioRepository usuarios, ApplicationEventPublisher publisher,
-                         AsistenciaService asistencias) {
+                         AsistenciaService asistencias, FichaBebidaService fichaBebida) {
         this.eventos = eventos;
         this.solicitudes = solicitudes;
         this.cuentas = cuentas;
@@ -66,10 +67,19 @@ public class EventoService {
         this.usuarios = usuarios;
         this.publisher = publisher;
         this.asistencias = asistencias;
+        this.fichaBebida = fichaBebida;
     }
 
     private static String vacioANull(String s) {
         return (s == null || s.isBlank()) ? null : s.trim();
+    }
+
+    /** Cambió el valor de la cuota máxima (comparando por número, no por escala). */
+    private static boolean cuotaMaximaCambio(java.math.BigDecimal antes, java.math.BigDecimal ahora) {
+        if (antes == null || ahora == null) {
+            return antes != ahora;
+        }
+        return antes.compareTo(ahora) != 0;
     }
 
     Long penaId() {
@@ -189,6 +199,7 @@ public class EventoService {
         if (!puedeGestionar(usuarioId, e)) {
             throw new SinPermisoEventoException();
         }
+        java.math.BigDecimal cuotaAntes = e.getCuotaMaxima();
         e.setNombre(req.nombre().trim());
         e.setDescripcion(vacioANull(req.descripcion()));
         e.setLugar(vacioANull(req.lugar()));
@@ -200,6 +211,11 @@ public class EventoService {
             e.setCuotaMaxima(req.cuotaMaxima());
         }
         eventos.save(e);
+        // Si cambió la cuota máxima de un evento con ficha (San Miguel), se recalculan
+        // las cuotas de todas las fichas de bebida.
+        if (cuotaMaximaCambio(cuotaAntes, e.getCuotaMaxima()) && e.getCuenta().isLlevaFichaBebida()) {
+            fichaBebida.recalcularCuotas(e.getId());
+        }
         return aDetalle(usuarioId, e);
     }
 
