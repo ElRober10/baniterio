@@ -201,6 +201,16 @@ public class ApiExceptionHandler {
         return error(HttpStatus.CONFLICT, "ASISTENCIA_NO_MANUAL");
     }
 
+    @ExceptionHandler(com.baniterio.api.evento.BebidaNoEncontradaException.class)
+    ResponseEntity<Map<String, Object>> bebidaNoEncontrada() {
+        return error(HttpStatus.NOT_FOUND, "BEBIDA_NO_ENCONTRADA");
+    }
+
+    @ExceptionHandler(com.baniterio.api.evento.EventoSinFichaException.class)
+    ResponseEntity<Map<String, Object>> eventoSinFicha() {
+        return error(HttpStatus.CONFLICT, "EVENTO_SIN_FICHA");
+    }
+
     @ExceptionHandler(com.baniterio.api.cuenta.CuentaNoEncontradaException.class)
     ResponseEntity<Map<String, Object>> cuentaNoEncontrada() {
         return error(HttpStatus.NOT_FOUND, "CUENTA_NO_ENCONTRADA");
