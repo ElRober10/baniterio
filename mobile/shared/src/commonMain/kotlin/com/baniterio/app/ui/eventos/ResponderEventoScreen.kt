@@ -22,7 +22,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.baniterio.app.data.AsistenciaRepository
+import com.baniterio.app.data.BebidaRepository
 import com.baniterio.app.data.ResultadoAsistencia
+import com.baniterio.app.data.ResultadoBebida
+import com.baniterio.app.data.dto.CatalogoBebidasDto
+import com.baniterio.app.data.dto.EventoDetalle
 import com.baniterio.app.data.dto.EventoResumen
 import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.theme.BaniterioWordmark
@@ -43,14 +47,19 @@ private sealed interface EstadoResponder {
 @Composable
 fun ResponderEventoScreen(
     asistenciaRepo: AsistenciaRepository,
+    bebidaRepo: BebidaRepository,
     onTerminado: () -> Unit,
 ) {
     var estado by remember { mutableStateOf<EstadoResponder>(EstadoResponder.Cargando) }
     var enviando by remember { mutableStateOf(false) }
     var aviso by remember { mutableStateOf<String?>(null) }
+    // Cuando la respuesta de un evento de San Miguel pide ficha, se guarda aquí
+    // (detalle + catálogo) y se pinta el formulario en vez de los 3 botones.
+    var ficha by remember { mutableStateOf<Pair<EventoDetalle, CatalogoBebidasDto>?>(null) }
     val scope = rememberCoroutineScope()
 
     suspend fun cargar() {
+        ficha = null
         when (val r = asistenciaRepo.pendientes()) {
             is ResultadoAsistencia.Exito ->
                 if (r.dato.isEmpty()) onTerminado() else estado = EstadoResponder.Lista(r.dato)
@@ -96,29 +105,60 @@ fun ResponderEventoScreen(
                         color = BaniterioColors.muted,
                     )
                     ev.lugar?.let { Text(it, color = BaniterioColors.muted) }
-                    Text("¿Vas a ir?", color = MaterialTheme.colorScheme.onBackground)
 
-                    ESTADOS_ASISTENCIA.forEach { (valor, texto) ->
-                        Button(
-                            enabled = !enviando,
-                            onClick = {
-                                enviando = true
-                                aviso = null
+                    val pend = ficha
+                    if (pend != null) {
+                        Text("Ya casi: dinos qué vas a beber.",
+                            color = MaterialTheme.colorScheme.onBackground)
+                        FichaBebidaForm(
+                            catalogo = pend.second,
+                            dias = pend.first.asistencia.ficha.diasEvento,
+                            fichaActual = pend.first.asistencia.ficha.miFicha,
+                            enDuda = pend.first.asistencia.miAsistencia == "EN_DUDA",
+                            onGuardar = { body ->
                                 scope.launch {
-                                    when (val r = asistenciaRepo.responder(ev.id, valor)) {
-                                        is ResultadoAsistencia.Exito -> {}
-                                        is ResultadoAsistencia.Error -> aviso = r.mensaje
+                                    when (asistenciaRepo.guardarFicha(ev.id, body)) {
+                                        is ResultadoAsistencia.Exito -> cargar()
+                                        is ResultadoAsistencia.Error ->
+                                            aviso = "No se pudo guardar la ficha."
                                     }
-                                    enviando = false
-                                    cargar()
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = BaniterioColors.brand,
-                                contentColor = BaniterioColors.gold,
-                            ),
-                        ) { Text(texto, fontWeight = FontWeight.Bold) }
+                        )
+                    } else {
+                        Text("¿Vas a ir?", color = MaterialTheme.colorScheme.onBackground)
+                        ESTADOS_ASISTENCIA.forEach { (valor, texto) ->
+                            Button(
+                                enabled = !enviando,
+                                onClick = {
+                                    enviando = true
+                                    aviso = null
+                                    scope.launch {
+                                        when (val r = asistenciaRepo.responder(ev.id, valor)) {
+                                            is ResultadoAsistencia.Exito ->
+                                                if (valor != "NO_VOY" && r.dato.asistencia.ficha.llevaFicha) {
+                                                    when (val c = bebidaRepo.catalogo()) {
+                                                        is ResultadoBebida.Exito -> ficha = r.dato to c.dato
+                                                        is ResultadoBebida.Error -> cargar()
+                                                    }
+                                                } else {
+                                                    cargar()
+                                                }
+                                            is ResultadoAsistencia.Error -> {
+                                                aviso = r.mensaje
+                                                cargar()
+                                            }
+                                        }
+                                        enviando = false
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = BaniterioColors.brand,
+                                    contentColor = BaniterioColors.gold,
+                                ),
+                            ) { Text(texto, fontWeight = FontWeight.Bold) }
+                        }
                     }
 
                     if (e.pendientes.size > 1) {

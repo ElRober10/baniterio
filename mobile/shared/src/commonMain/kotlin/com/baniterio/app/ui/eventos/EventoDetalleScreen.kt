@@ -30,10 +30,13 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.baniterio.app.data.AsistenciaRepository
+import com.baniterio.app.data.BebidaRepository
 import com.baniterio.app.data.BorradoEvento
 import com.baniterio.app.data.EventosRepository
 import com.baniterio.app.data.ResultadoAsistencia
+import com.baniterio.app.data.ResultadoBebida
 import com.baniterio.app.data.ResultadoEvento
+import com.baniterio.app.data.dto.CatalogoBebidasDto
 import com.baniterio.app.data.dto.EventoDetalle
 import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.theme.BaniterioWordmark
@@ -57,6 +60,7 @@ internal val ESTADOS_ASISTENCIA = listOf(
 fun EventoDetalleScreen(
     eventosRepo: EventosRepository,
     asistenciaRepo: AsistenciaRepository,
+    bebidaRepo: BebidaRepository,
     eventoId: Long,
     onEditar: () -> Unit,
     onBorrado: () -> Unit,
@@ -69,12 +73,19 @@ fun EventoDetalleScreen(
     var textoNotif by remember { mutableStateOf("") }
     var nombreManual by remember { mutableStateOf("") }
     var estadoManual by remember { mutableStateOf("APUNTADO") }
+    var catalogo by remember { mutableStateOf<CatalogoBebidasDto?>(null) }
+    var resultadoFicha by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(eventoId, intento) {
         estado = EstadoDetalle.Cargando
         estado = when (val r = eventosRepo.detalle(eventoId)) {
-            is ResultadoEvento.Exito -> EstadoDetalle.Cargado(r.dato)
+            is ResultadoEvento.Exito -> {
+                if (r.dato.asistencia.ficha.llevaFicha && catalogo == null) {
+                    (bebidaRepo.catalogo() as? ResultadoBebida.Exito)?.let { catalogo = it.dato }
+                }
+                EstadoDetalle.Cargado(r.dato)
+            }
             is ResultadoEvento.Error -> EstadoDetalle.Error(r.mensaje)
         }
     }
@@ -179,6 +190,35 @@ fun EventoDetalleScreen(
                     style = MaterialTheme.typography.bodySmall,
                 )
 
+                val cat = catalogo
+                val miEstado = ev.asistencia.miAsistencia
+                if (ev.asistencia.ficha.llevaFicha && cat != null &&
+                    (miEstado == "APUNTADO" || miEstado == "EN_DUDA")
+                ) {
+                    FichaBebidaForm(
+                        catalogo = cat,
+                        dias = ev.asistencia.ficha.diasEvento,
+                        fichaActual = ev.asistencia.ficha.miFicha,
+                        enDuda = miEstado == "EN_DUDA",
+                        onGuardar = { body ->
+                            scope.launch {
+                                when (val r = asistenciaRepo.guardarFicha(eventoId, body)) {
+                                    is ResultadoAsistencia.Exito -> {
+                                        resultadoFicha = r.dato.cuota?.let {
+                                            "Tu cuota: ${formatoImporte(it)} € (${r.dato.modalidad})"
+                                        } ?: "Cuota pendiente de que se fije la cuota máxima."
+                                        intento++
+                                    }
+                                    is ResultadoAsistencia.Error -> resultadoFicha = r.mensaje
+                                }
+                            }
+                        },
+                    )
+                    resultadoFicha?.let {
+                        Text(it, color = BaniterioColors.gold, fontWeight = FontWeight.Bold)
+                    }
+                }
+
                 aviso?.let { Text(it, color = BaniterioColors.gold) }
 
                 if (ev.puedoEditar) {
@@ -261,23 +301,44 @@ fun EventoDetalleScreen(
                             ) { Text(texto) }
                         }
                     }
-                    Button(
-                        enabled = nombreManual.isNotBlank(),
-                        onClick = {
-                            val nombre = nombreManual.trim()
-                            scope.launch {
-                                when (val r = asistenciaRepo.anadir(eventoId, nombre, estadoManual)) {
-                                    is ResultadoAsistencia.Exito -> {
-                                        nombreManual = ""
-                                        estadoManual = "APUNTADO"
-                                        aviso = "«$nombre» añadido."
-                                        intento++
-                                    }
-                                    is ResultadoAsistencia.Error -> aviso = r.mensaje
+                    val fichaEnAlta = ev.asistencia.ficha.llevaFicha && cat != null &&
+                        (estadoManual == "APUNTADO" || estadoManual == "EN_DUDA")
+
+                    fun anadirAMano(ficha: com.baniterio.app.data.dto.FichaBebidaBody?) {
+                        val nombre = nombreManual.trim()
+                        if (nombre.isEmpty()) {
+                            aviso = "Escribe el nombre."
+                            return
+                        }
+                        scope.launch {
+                            when (val r = asistenciaRepo.anadir(eventoId, nombre, estadoManual, ficha)) {
+                                is ResultadoAsistencia.Exito -> {
+                                    nombreManual = ""
+                                    estadoManual = "APUNTADO"
+                                    aviso = r.dato.cuota?.let { "«$nombre» añadido — cuota ${formatoImporte(it)} €." }
+                                        ?: "«$nombre» añadido."
+                                    intento++
                                 }
+                                is ResultadoAsistencia.Error -> aviso = r.mensaje
                             }
-                        },
-                    ) { Text("Añadir") }
+                        }
+                    }
+
+                    if (fichaEnAlta && cat != null) {
+                        FichaBebidaForm(
+                            catalogo = cat,
+                            dias = ev.asistencia.ficha.diasEvento,
+                            fichaActual = null,
+                            enDuda = estadoManual == "EN_DUDA",
+                            onGuardar = { anadirAMano(it) },
+                            textoBoton = "Añadir con su ficha",
+                        )
+                    } else {
+                        Button(
+                            enabled = nombreManual.isNotBlank(),
+                            onClick = { anadirAMano(null) },
+                        ) { Text("Añadir") }
+                    }
                 }
             }
         }

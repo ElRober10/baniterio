@@ -19,4 +19,5 @@ sealed class Screen {
     data object AdminIndex : Screen()
     data object AdminSolicitudes : Screen()
     data object AdminPermisos : Screen()
+    data object AdminBebidas : Screen()
 }
