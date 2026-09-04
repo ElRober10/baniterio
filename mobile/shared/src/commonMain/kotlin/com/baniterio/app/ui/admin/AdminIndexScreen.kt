@@ -34,6 +34,7 @@ import com.baniterio.app.theme.BaniterioWordmark
 @Composable
 fun AdminIndexScreen(
     areas: List<String>,
+    esAdmin: Boolean,
     adminRepo: AdminRepository,
     onAbrir: (Screen) -> Unit,
     onVolver: () -> Unit,
@@ -91,7 +92,16 @@ fun AdminIndexScreen(
             )
             Spacer(Modifier.height(16.dp))
         }
-        if (areas.none { it == "ADMIN_SOLICITUDES" || it == "ADMIN_PERMISOS" }) {
+        if (esAdmin) {
+            TarjetaAdmin(
+                nombre = "Bebidas",
+                descripcion = "Acepta o rechaza las bebidas que la gente propone en la ficha de San Miguel.",
+                cuenta = 0,
+                onClick = { onAbrir(Screen.AdminBebidas) },
+            )
+            Spacer(Modifier.height(16.dp))
+        }
+        if (!esAdmin && areas.none { it == "ADMIN_SOLICITUDES" || it == "ADMIN_PERMISOS" }) {
             Text(
                 text = "No tienes ninguna sección de administración disponible.",
                 color = BaniterioColors.muted,

@@ -21,6 +21,7 @@ import com.baniterio.app.data.Dependencias
 import com.baniterio.app.nav.Screen
 import com.baniterio.app.nav.SolicitudPrecarga
 import com.baniterio.app.theme.BaniterioTheme
+import com.baniterio.app.ui.admin.AdminBebidasScreen
 import com.baniterio.app.ui.admin.AdminIndexScreen
 import com.baniterio.app.ui.admin.AdminPermisosScreen
 import com.baniterio.app.ui.admin.AdminSolicitudesScreen
@@ -58,6 +59,7 @@ private const val CLAVE_CUENTA_DETALLE = "CuentaDetalle"
 private const val CLAVE_ADMIN_INDEX = "AdminIndex"
 private const val CLAVE_ADMIN_SOLICITUDES = "AdminSolicitudes"
 private const val CLAVE_ADMIN_PERMISOS = "AdminPermisos"
+private const val CLAVE_ADMIN_BEBIDAS = "AdminBebidas"
 
 private fun Screen.aClave(): String = when (this) {
     Screen.Desbloqueo -> CLAVE_DESBLOQUEO
@@ -78,6 +80,7 @@ private fun Screen.aClave(): String = when (this) {
     Screen.AdminIndex -> CLAVE_ADMIN_INDEX
     Screen.AdminSolicitudes -> CLAVE_ADMIN_SOLICITUDES
     Screen.AdminPermisos -> CLAVE_ADMIN_PERMISOS
+    Screen.AdminBebidas -> CLAVE_ADMIN_BEBIDAS
 }
 
 private fun claveAScreen(clave: String): Screen = when (clave) {
@@ -98,6 +101,7 @@ private fun claveAScreen(clave: String): Screen = when (clave) {
     CLAVE_ADMIN_INDEX -> Screen.AdminIndex
     CLAVE_ADMIN_SOLICITUDES -> Screen.AdminSolicitudes
     CLAVE_ADMIN_PERMISOS -> Screen.AdminPermisos
+    CLAVE_ADMIN_BEBIDAS -> Screen.AdminBebidas
     else -> Screen.Login
 }
 
@@ -128,7 +132,7 @@ fun App(
                 screen == Screen.EventoDetalle || screen == Screen.EditorEvento ||
                 screen == Screen.Cuentas || screen == Screen.CuentaDetalle ||
                 screen == Screen.AdminIndex || screen == Screen.AdminSolicitudes ||
-                screen == Screen.AdminPermisos)
+                screen == Screen.AdminPermisos || screen == Screen.AdminBebidas)
         ) {
             screenKey = if (deps.almacen.hayCredenciales) CLAVE_DESBLOQUEO else CLAVE_LOGIN
         }
@@ -274,6 +278,7 @@ fun App(
                     // convocatoria por contestar, va al panel.
                     ResponderEventoScreen(
                         asistenciaRepo = deps.asistenciaRepo,
+                        bebidaRepo = deps.bebidaRepo,
                         onTerminado = { ir(Screen.Panel) },
                     )
                 }
@@ -286,6 +291,7 @@ fun App(
                         EventoDetalleScreen(
                             eventosRepo = deps.eventosRepo,
                             asistenciaRepo = deps.asistenciaRepo,
+                            bebidaRepo = deps.bebidaRepo,
                             eventoId = id,
                             onEditar = { editorEventoId = id; ir(Screen.EditorEvento) },
                             onBorrado = { ir(Screen.Eventos) },
@@ -330,6 +336,7 @@ fun App(
                     BackHandler { ir(Screen.Panel) }
                     AdminIndexScreen(
                         areas = deps.repo.usuarioActual?.areas ?: emptyList(),
+                        esAdmin = deps.repo.usuarioActual?.let { it.rol == "ADMIN" || it.esSuperadmin } == true,
                         adminRepo = deps.adminRepo,
                         onAbrir = { ir(it) },
                         onVolver = { ir(Screen.Panel) },
@@ -349,6 +356,13 @@ fun App(
                     AdminPermisosScreen(
                         adminRepo = deps.adminRepo,
                         miId = deps.repo.usuarioActual?.id,
+                        onVolver = { ir(Screen.AdminIndex) },
+                    )
+                }
+                is Screen.AdminBebidas -> {
+                    BackHandler { ir(Screen.AdminIndex) }
+                    AdminBebidasScreen(
+                        bebidaRepo = deps.bebidaRepo,
                         onVolver = { ir(Screen.AdminIndex) },
                     )
                 }
