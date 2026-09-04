@@ -3,8 +3,27 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Volver } from '../../../shared/volver/volver';
-import { CodigoErrorEvento, EstadoAsistencia, EventoDetalle } from '../eventos.types';
+import {
+  CatalogoBebidas,
+  CodigoErrorEvento,
+  EstadoAsistencia,
+  EventoDetalle,
+  FichaBebidaBody,
+} from '../eventos.types';
 import { EventosService } from '../eventos.service';
+import { FichaBebida } from '../ficha-bebida/ficha-bebida';
+
+/** Texto legible de la modalidad de peñista. */
+function modalidadTexto(m: string): string {
+  return (
+    {
+      COMPLETA: 'peña completa',
+      SOLO_CERVEZA: 'solo cerveza',
+      UN_DIA: 'un día',
+      EMBARAZADA: 'embarazada',
+    }[m] ?? m
+  );
+}
 
 /**
  * Vista de un evento. Además de los datos y los botones de gestión
@@ -14,7 +33,7 @@ import { EventosService } from '../eventos.service';
  */
 @Component({
   selector: 'app-evento-detalle',
-  imports: [Volver, RouterLink, DatePipe],
+  imports: [Volver, RouterLink, DatePipe, FichaBebida],
   templateUrl: './evento-detalle.html',
   styleUrl: './evento-detalle.css',
 })
@@ -42,6 +61,30 @@ export class EventoDetalleComponent implements OnInit {
   // Bloque "Añadir a mano".
   protected readonly nombreManual = signal('');
   protected readonly estadoManual = signal<EstadoAsistencia>('APUNTADO');
+
+  // Ficha de bebida (San Miguel).
+  protected readonly catalogo = signal<CatalogoBebidas | null>(null);
+  protected readonly resultadoFicha = signal('');
+
+  /** La ficha se muestra en un evento de San Miguel al que ya he respondido Me apunto / En duda. */
+  protected readonly mostrarFicha = computed(() => {
+    const a = this.evento()?.asistencia;
+    return (
+      !!a?.ficha.llevaFicha &&
+      (a.miAsistencia === 'APUNTADO' || a.miAsistencia === 'EN_DUDA') &&
+      this.catalogo() != null
+    );
+  });
+
+  /** En el alta manual sale la ficha si el evento es de San Miguel y el estado elegido la pide. */
+  protected readonly fichaEnAltaManual = computed(() => {
+    const lleva = this.evento()?.asistencia.ficha.llevaFicha;
+    return (
+      !!lleva &&
+      this.catalogo() != null &&
+      (this.estadoManual() === 'APUNTADO' || this.estadoManual() === 'EN_DUDA')
+    );
+  });
 
   /** `true` mientras no se pueda reenviar la notificación (último envío + 48 h aún en el futuro). */
   protected readonly reenvioBloqueado = computed(() => {
@@ -75,8 +118,46 @@ export class EventoDetalleComponent implements OnInit {
       next: (e) => {
         this.evento.set(e);
         this.estado.set('listo');
+        if (e.asistencia.ficha.llevaFicha && this.catalogo() == null) {
+          this.eventosService.catalogoBebidas().subscribe((c) => this.catalogo.set(c));
+        }
       },
       error: () => this.estado.set('error'),
+    });
+  }
+
+  protected guardarFicha(body: FichaBebidaBody): void {
+    this.resultadoFicha.set('');
+    this.eventosService.guardarFichaBebida(this.id, body).subscribe({
+      next: (r) => {
+        this.resultadoFicha.set(
+          r.cuota != null
+            ? `Tu cuota: ${r.cuota} € (${modalidadTexto(r.modalidad)})`
+            : 'Cuota pendiente de que se fije la cuota máxima del evento.',
+        );
+        this.cargar();
+      },
+      error: () => this.resultadoFicha.set('No se pudo guardar la ficha.'),
+    });
+  }
+
+  protected anadirConFicha(ficha: FichaBebidaBody): void {
+    const nombre = this.nombreManual().trim();
+    if (!nombre) {
+      this.aviso.set('Escribe el nombre antes de guardar la ficha.');
+      return;
+    }
+    this.aviso.set('');
+    this.eventosService.anadirAsistente(this.id, nombre, this.estadoManual(), ficha).subscribe({
+      next: (r) => {
+        this.nombreManual.set('');
+        this.estadoManual.set('APUNTADO');
+        this.aviso.set(
+          r.cuota != null ? `«${nombre}» añadido — cuota ${r.cuota} €.` : `«${nombre}» añadido.`,
+        );
+        this.cargar();
+      },
+      error: () => this.aviso.set('No se pudo añadir a esa persona.'),
     });
   }
 

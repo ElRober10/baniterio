@@ -37,6 +37,18 @@ describe('Responder', () => {
     cuenta: { id: 2, nombre: 'San Miguel' },
   });
 
+  const detalle = (llevaFicha: boolean, miAsistencia = 'APUNTADO') => ({
+    id: 1,
+    asistencia: {
+      miAsistencia,
+      ficha: {
+        llevaFicha,
+        diasEvento: llevaFicha ? ['2026-09-25', '2026-09-26'] : [],
+        miFicha: null,
+      },
+    },
+  });
+
   it('pinta el primer evento pendiente', () => {
     crear();
     fixture.detectChanges();
@@ -65,7 +77,7 @@ describe('Responder', () => {
     const put = httpMock.expectOne(`${base}/eventos/1/asistencia`);
     expect(put.request.method).toBe('PUT');
     expect(put.request.body).toEqual({ estado: 'APUNTADO' });
-    put.flush({});
+    put.flush(detalle(false));
 
     httpMock.expectOne(`${base}/eventos/pendientes-respuesta`).flush({ eventos: [] });
   });
@@ -75,5 +87,56 @@ describe('Responder', () => {
     fixture.detectChanges();
     httpMock.expectOne(`${base}/eventos/pendientes-respuesta`).flush({ eventos: [] });
     expect(navSpy).toHaveBeenCalledWith('/panel');
+  });
+
+  it('evento de San Miguel: tras "Me apunto" muestra la ficha antes de avanzar', () => {
+    crear();
+    fixture.detectChanges();
+    httpMock
+      .expectOne(`${base}/eventos/pendientes-respuesta`)
+      .flush({ eventos: [evento(1, 'San Miguel')] });
+    fixture.detectChanges();
+
+    Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Me apunto')
+      ?.dispatchEvent(new Event('click'));
+
+    httpMock.expectOne(`${base}/eventos/1/asistencia`).flush(detalle(true));
+    httpMock
+      .expectOne(`${base}/bebidas/catalogo`)
+      .flush({ alcohol: [], refresco: [{ id: 10, nombre: 'Coca-Cola' }] });
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('app-ficha-bebida')).toBeTruthy();
+
+    const refresco = el.querySelector('#fb-refresco') as HTMLSelectElement;
+    refresco.value = '10';
+    refresco.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    (el.querySelector('app-ficha-bebida form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+
+    httpMock.expectOne(`${base}/eventos/1/ficha-bebida`).flush({
+      modalidad: 'COMPLETA',
+      cuota: 26,
+      cuotaPendiente: false,
+    });
+    httpMock.expectOne(`${base}/eventos/pendientes-respuesta`).flush({ eventos: [] });
+  });
+
+  it('"No voy" avanza sin pedir ficha', () => {
+    crear();
+    fixture.detectChanges();
+    httpMock
+      .expectOne(`${base}/eventos/pendientes-respuesta`)
+      .flush({ eventos: [evento(1, 'San Miguel')] });
+    fixture.detectChanges();
+
+    Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'No voy')
+      ?.dispatchEvent(new Event('click'));
+
+    httpMock.expectOne(`${base}/eventos/1/asistencia`).flush(detalle(true));
+    httpMock.expectOne(`${base}/eventos/pendientes-respuesta`).flush({ eventos: [] });
   });
 });
