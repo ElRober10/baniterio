@@ -285,6 +285,25 @@ class EventoIT extends IntegrationTest {
     }
 
     @Test
+    void admin_editar_reenviando_la_cuota_la_conserva() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Evento e = sembrarEvento("IT-cuota-edit", LocalDate.of(2999, 8, 5), null);
+        e.setCuotaMaxima(new BigDecimal("26.00"));
+        eventos.save(e);
+
+        // El editor precarga la cuota y la reenvía aunque solo cambie el nombre.
+        http.put().uri("/api/v1/eventos/" + e.getId())
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("nombre", "IT-cuota-edit-2", "fecha", "2999-08-05",
+                        "cuentaId", cuenta().getId(), "cuotaMaxima", 26))
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.cuotaMaxima").isEqualTo(26);
+
+        assertThat(eventos.findById(e.getId()).orElseThrow().getCuotaMaxima())
+                .isEqualByComparingTo(new BigDecimal("26.00"));
+    }
+
+    @Test
     void editar_cambia_la_cuenta_del_evento() {
         Sesion admin = crearMiembro(RolMembresia.ADMIN);
         Evento e = sembrarEvento("IT-cambia-cuenta", LocalDate.of(2999, 8, 10), null);
