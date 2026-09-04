@@ -36,6 +36,30 @@ body {
 }
 
 /*
+  Feedback de pulsado para TODOS los botones: al presionar se hunden un pelín.
+  Antes no había ninguna señal de "he pulsado". `transform` ya entra en la
+  utilidad `transition` de Tailwind, así que los botones que la llevan lo
+  animan suave; al resto le damos una transición mínima aquí.
+*/
+button {
+  transition-property: color, background-color, border-color, transform, box-shadow, opacity;
+  transition-duration: 150ms;
+}
+
+button:not(:disabled):active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
+  button:not(:disabled):active {
+    transform: none;
+  }
+}
+
+/*
   Relieve "3D" de las cartas de miembro (rejilla y editor): sombra proyectada
   teñida de morado —en fondo oscuro la negra no se ve—, degradado vertical en la
   cara (luz arriba, sombra abajo) y un bisel de 1px con filo claro arriba y
