@@ -13,6 +13,7 @@ class Dependencias(
     val perfilRepo: PerfilRepository,
     val eventosRepo: EventosRepository,
     val asistenciaRepo: AsistenciaRepository,
+    val bebidaRepo: BebidaRepository,
     val cuentasRepo: CuentasRepository,
 )
 
@@ -34,6 +35,7 @@ fun crearDependencias(almacen: AlmacenCredenciales): Dependencias {
         perfilRepo = PerfilRepositoryImpl(http, sesion),
         eventosRepo = EventosRepositoryImpl(http, sesion),
         asistenciaRepo = AsistenciaRepositoryImpl(http, sesion),
+        bebidaRepo = BebidaRepositoryImpl(http, sesion),
         cuentasRepo = CuentasRepositoryImpl(http, sesion),
     )
 }

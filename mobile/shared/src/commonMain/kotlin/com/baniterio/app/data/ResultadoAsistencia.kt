@@ -12,6 +12,7 @@ enum class CodigoErrorAsistencia {
     SIN_PERMISO_EVENTO,
     ASISTENCIA_NO_MANUAL,
     ASISTENCIA_NO_ENCONTRADA,
+    EVENTO_SIN_FICHA,
     SIN_CONEXION,
     DESCONOCIDO;
 
@@ -22,6 +23,7 @@ enum class CodigoErrorAsistencia {
             "SIN_PERMISO_EVENTO" -> SIN_PERMISO_EVENTO
             "ASISTENCIA_NO_MANUAL" -> ASISTENCIA_NO_MANUAL
             "ASISTENCIA_NO_ENCONTRADA" -> ASISTENCIA_NO_ENCONTRADA
+            "EVENTO_SIN_FICHA" -> EVENTO_SIN_FICHA
             else -> DESCONOCIDO
         }
     }
@@ -33,6 +35,7 @@ enum class CodigoErrorAsistencia {
             SIN_PERMISO_EVENTO -> "No tienes permiso para esto."
             ASISTENCIA_NO_MANUAL -> "Esa respuesta no se puede quitar."
             ASISTENCIA_NO_ENCONTRADA -> "Esa persona ya no está en la lista."
+            EVENTO_SIN_FICHA -> "Este evento no lleva ficha de bebida."
             SIN_CONEXION -> "No se pudo conectar con el servidor."
             DESCONOCIDO -> "Algo ha ido mal. Inténtalo de nuevo."
         }

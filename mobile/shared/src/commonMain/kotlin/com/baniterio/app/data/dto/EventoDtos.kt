@@ -35,6 +35,54 @@ data class AsistenciaDetalleDto(
     val noVoy: Int = 0,
     val enDuda: Int = 0,
     val sinContestar: Int = 0,
+    val ficha: FichaBebidaBloqueDto = FichaBebidaBloqueDto(),
+)
+
+/** Sub-bloque `asistencia.ficha` de [EventoDetalle] (pieza 3b, San Miguel). */
+@Serializable
+data class FichaBebidaBloqueDto(
+    val llevaFicha: Boolean = false,
+    val diasEvento: List<String> = emptyList(),
+    val miFicha: FichaBebidaMiaDto? = null,
+)
+
+@Serializable
+data class FichaBebidaMiaDto(
+    val alcoholBebidaId: Long? = null,
+    val alcohol: String? = null,
+    val refrescoBebidaId: Long? = null,
+    val refresco: String? = null,
+    val alternativa: String = "NADA",
+    val cervezaEspecial: String? = null,
+    val embarazada: Boolean = false,
+    val asisteDia1: Boolean = true,
+    val asisteDia2: Boolean = true,
+    val modalidad: String = "COMPLETA",
+    val cuota: Double? = null,
+    val cuotaPendiente: Boolean = false,
+    val bebidaPendiente: Boolean = false,
+)
+
+/** Cuerpo de `PUT /eventos/{id}/ficha-bebida` y de la parte `ficha` del alta manual. */
+@Serializable
+data class FichaBebidaBody(
+    val estado: String,
+    val alcoholBebidaId: Long? = null,
+    val alcoholOtra: String? = null,
+    val refrescoBebidaId: Long? = null,
+    val refrescoOtra: String? = null,
+    val alternativa: String = "NADA",
+    val cervezaEspecial: String? = null,
+    val embarazada: Boolean = false,
+    val asisteDia1: Boolean = true,
+    val asisteDia2: Boolean = true,
+)
+
+@Serializable
+data class FichaBebidaResponseDto(
+    val modalidad: String,
+    val cuota: Double? = null,
+    val cuotaPendiente: Boolean = false,
 )
 
 /** Detalle de un evento (`GET /eventos/{id}`). */
@@ -63,13 +111,19 @@ data class AsistenciaResumenDto(
     val nombre: String,
     val estado: String,
     val esManual: Boolean,
+    val cuota: Double? = null,
+    val modalidad: String? = null,
 )
 
 @Serializable
 data class ResponderAsistenciaBody(val estado: String)
 
 @Serializable
-data class AnadirAsistenteBody(val nombre: String, val estado: String)
+data class AnadirAsistenteBody(
+    val nombre: String,
+    val estado: String,
+    val ficha: FichaBebidaBody? = null,
+)
 
 @Serializable
 data class MandarNotificacionBody(val texto: String? = null)
