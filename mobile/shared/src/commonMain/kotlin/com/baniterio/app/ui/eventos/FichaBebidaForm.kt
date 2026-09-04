@@ -132,13 +132,24 @@ fun FichaBebidaForm(
 
         if (dosDias) {
             Text("¿Qué días vas?", color = BaniterioColors.muted)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = dia1, onCheckedChange = { dia1 = it })
-                Text(formatoFecha(dias[0]), color = MaterialTheme.colorScheme.onBackground)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = dia2, onCheckedChange = { dia2 = it })
-                Text(formatoFecha(dias[1]), color = MaterialTheme.colorScheme.onBackground)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(checked = dia1, onCheckedChange = { dia1 = it })
+                    Text(formatoFecha(dias[0]), color = MaterialTheme.colorScheme.onBackground)
+                }
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(checked = dia2, onCheckedChange = { dia2 = it })
+                    Text(formatoFecha(dias[1]), color = MaterialTheme.colorScheme.onBackground)
+                }
             }
         }
 
