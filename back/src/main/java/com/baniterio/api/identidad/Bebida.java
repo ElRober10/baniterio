@@ -7,6 +7,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -21,38 +23,38 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Una cuenta de la peña (fila de la tabla {@code cuenta}, ver V16). Agrupa el
- * dinero de un evento que se repite cada año: una sola cuenta "San Miguel"
- * aunque el evento se cree cada año. De momento solo nombre y descripción; los
- * movimientos llegan en una tarea posterior. Mismo patrón JPA + Lombok que
- * {@link Evento}.
+ * Una bebida del catálogo de la ficha de San Miguel (fila de {@code bebida}, ver
+ * V22). Las {@code ACEPTADA} salen en los desplegables; las {@code PENDIENTE} las
+ * ha propuesto alguien con "Otra…" y esperan a que un admin las acepte o rechace.
+ * {@code propuestaPor} es {@code null} en las sembradas.
  */
 @Entity
-@Table(name = "cuenta")
+@Table(name = "bebida")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Cuenta {
+public class Bebida {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "pena_id", nullable = false)
-    private Pena pena;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    private TipoBebida tipo;
 
-    @Column(nullable = false, length = 120)
+    @Column(nullable = false, length = 80)
     private String nombre;
 
-    @Column(length = 2000)
-    private String descripcion;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    private EstadoBebida estado;
 
-    /** {@code true} si los eventos de esta cuenta llevan ficha de bebida + cuota (San Miguel). Ver V22. */
-    @Column(name = "lleva_ficha_bebida", nullable = false)
-    private boolean llevaFichaBebida;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "propuesta_por_id")
+    private Usuario propuestaPor;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
