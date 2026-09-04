@@ -5,6 +5,8 @@ import com.baniterio.app.data.dto.AsistenciaResumenDto
 import com.baniterio.app.data.dto.ErrorResponse
 import com.baniterio.app.data.dto.EventoDetalle
 import com.baniterio.app.data.dto.EventoResumen
+import com.baniterio.app.data.dto.FichaBebidaBody
+import com.baniterio.app.data.dto.FichaBebidaResponseDto
 import com.baniterio.app.data.dto.MandarNotificacionBody
 import com.baniterio.app.data.dto.PendientesRespuestaDto
 import com.baniterio.app.data.dto.ResponderAsistenciaBody
@@ -53,17 +55,29 @@ class AsistenciaRepositoryImpl(
         eventoId: Long,
         nombre: String,
         estado: String,
+        ficha: FichaBebidaBody?,
     ): ResultadoAsistencia<AsistenciaResumenDto> = peticion {
         http.post("$API_BASE_URL/eventos/$eventoId/asistencias") {
             auth()
             contentType(ContentType.Application.Json)
-            setBody(AnadirAsistenteBody(nombre, estado))
+            setBody(AnadirAsistenteBody(nombre, estado, ficha))
         }.body()
     }
 
     override suspend fun quitar(eventoId: Long, asistenciaId: Long): ResultadoAsistencia<Unit> = peticion {
         http.delete("$API_BASE_URL/eventos/$eventoId/asistencias/$asistenciaId") { auth() }
             .bodyAsText().let { }
+    }
+
+    override suspend fun guardarFicha(
+        eventoId: Long,
+        body: FichaBebidaBody,
+    ): ResultadoAsistencia<FichaBebidaResponseDto> = peticion {
+        http.put("$API_BASE_URL/eventos/$eventoId/ficha-bebida") {
+            auth()
+            contentType(ContentType.Application.Json)
+            setBody(body)
+        }.body()
     }
 
     override suspend fun pendientes(): ResultadoAsistencia<List<EventoResumen>> = peticion {
