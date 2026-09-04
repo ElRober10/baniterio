@@ -93,9 +93,13 @@ export class EditorEvento implements OnInit {
     const cuentaNueva = v.cuenta === CUENTA_NUEVA;
 
     // El input es type="number": el value accessor puede dar number, string o null.
+    // No se condiciona al check de admin del cliente (que en un F5 puede no haber
+    // resuelto aún y borraría la cuota): el backend ignora este campo si quien
+    // guarda no es admin. El campo solo se PINTA para admins, así que un no-admin
+    // reenvía el valor precargado y el backend lo conserva.
     const cuotaRaw = String(v.cuotaMaxima ?? '').trim();
     let cuotaMaxima: number | null = null;
-    if (this.esAdmin() && cuotaRaw) {
+    if (cuotaRaw) {
       const n = Number(cuotaRaw.replace(',', '.'));
       if (Number.isNaN(n) || n < 0) {
         this.error.set('La cuota máxima tiene que ser un número mayor o igual que 0.');
