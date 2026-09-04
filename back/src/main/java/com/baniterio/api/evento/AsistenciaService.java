@@ -9,6 +9,8 @@ import java.util.List;
 
 import com.baniterio.api.evento.dto.AsistenciaDetalle;
 import com.baniterio.api.evento.dto.AsistenciaResumen;
+import com.baniterio.api.evento.dto.FichaBebidaRequest;
+import com.baniterio.api.evento.dto.FichaBebidaResponse;
 import com.baniterio.api.identidad.AsistenciaEvento;
 import com.baniterio.api.identidad.AsistenciaEventoRepository;
 import com.baniterio.api.identidad.EstadoAsistencia;
@@ -48,11 +50,13 @@ public class AsistenciaService {
     private final ServicioPermisos permisos;
     private final ApplicationEventPublisher publisher;
     private final ResolutorAudiencia resolutor;
+    private final FichaBebidaService fichaBebida;
 
     public AsistenciaService(AsistenciaEventoRepository asistencias,
                              NotificacionEventoRepository notificaciones, EventoRepository eventos,
                              UsuarioRepository usuarios, PenaRepository penas, ServicioPermisos permisos,
-                             ApplicationEventPublisher publisher, ResolutorAudiencia resolutor) {
+                             ApplicationEventPublisher publisher, ResolutorAudiencia resolutor,
+                             FichaBebidaService fichaBebida) {
         this.asistencias = asistencias;
         this.notificaciones = notificaciones;
         this.eventos = eventos;
@@ -61,6 +65,7 @@ public class AsistenciaService {
         this.permisos = permisos;
         this.publisher = publisher;
         this.resolutor = resolutor;
+        this.fichaBebida = fichaBebida;
     }
 
     /** Un administrador de verdad, o quien organiza (creó) el evento. */
@@ -137,7 +142,7 @@ public class AsistenciaService {
      */
     @Transactional
     public AsistenciaResumen anadirAMano(Long usuarioId, Long eventoId, String nombre,
-                                         EstadoAsistencia estado) {
+                                         EstadoAsistencia estado, FichaBebidaRequest ficha) {
         Evento e = cargar(eventoId);
         if (!puedeGestionar(usuarioId, e)) {
             throw new SinPermisoEventoException();
@@ -149,7 +154,15 @@ public class AsistenciaService {
                 .estado(estado)
                 .registradoPor(registrador)
                 .build());
-        return aResumen(a);
+
+        FichaBebidaResponse fr = null;
+        boolean llevaFicha = e.getCuenta().isLlevaFichaBebida()
+                && (estado == EstadoAsistencia.APUNTADO || estado == EstadoAsistencia.EN_DUDA);
+        if (llevaFicha && ficha != null) {
+            fr = fichaBebida.guardarAMano(usuarioId, eventoId, a, ficha);
+        }
+        return new AsistenciaResumen(a.getId(), nombre.trim(), a.getEstado(), true,
+                fr != null ? fr.cuota() : null, fr != null ? fr.modalidad() : null);
     }
 
     /**
@@ -170,11 +183,6 @@ public class AsistenciaService {
             throw new AsistenciaNoManualException();
         }
         asistencias.delete(a);
-    }
-
-    private static AsistenciaResumen aResumen(AsistenciaEvento a) {
-        String nombre = a.getUsuario() != null ? a.getUsuario().getNombre() : a.getNombre();
-        return new AsistenciaResumen(a.getId(), nombre, a.getEstado(), a.getUsuario() == null);
     }
 
     /**
@@ -198,7 +206,7 @@ public class AsistenciaService {
         int enDuda = (int) asistencias.countByEventoIdAndEstado(eventoId, EstadoAsistencia.EN_DUDA);
         int sinContestar = resolutor.resolver(new Audiencia.SinRespuestaEvento(eventoId)).size();
         return new AsistenciaDetalle(miAsistencia, puedeNotificar, reenviableAt,
-                apuntados, noVoy, enDuda, sinContestar);
+                apuntados, noVoy, enDuda, sinContestar, fichaBebida.detalleDe(usuarioId, e));
     }
 
     /**

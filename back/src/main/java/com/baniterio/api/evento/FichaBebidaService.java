@@ -2,7 +2,9 @@ package com.baniterio.api.evento;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
+import com.baniterio.api.evento.dto.FichaBebidaDetalle;
 import com.baniterio.api.evento.dto.FichaBebidaRequest;
 import com.baniterio.api.evento.dto.FichaBebidaResponse;
 import com.baniterio.api.identidad.Alternativa;
@@ -11,6 +13,7 @@ import com.baniterio.api.identidad.AsistenciaEventoRepository;
 import com.baniterio.api.identidad.Bebida;
 import com.baniterio.api.identidad.BebidaRepository;
 import com.baniterio.api.identidad.EstadoAsistencia;
+import com.baniterio.api.identidad.EstadoBebida;
 import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
 import com.baniterio.api.identidad.FichaBebida;
@@ -112,8 +115,8 @@ public class FichaBebidaService {
                 ? req.cervezaEspecial().trim() : null;
 
         boolean dosDias = esDeDosDias(e);
-        boolean dia1 = dosDias ? req.vaDia1() : true;
-        boolean dia2 = dosDias ? req.vaDia2() : true;
+        boolean dia1 = !dosDias || req.vaDia1();
+        boolean dia2 = !dosDias || req.vaDia2();
 
         var calc = CalculadoraCuota.calcular(e.getCuotaMaxima(), embarazada, dia1, dia2,
                 alcohol != null, alternativa);
@@ -152,5 +155,39 @@ public class FichaBebidaService {
     private static boolean esDeDosDias(Evento e) {
         return e.getFechaFin() != null
                 && ChronoUnit.DAYS.between(e.getFecha(), e.getFechaFin()) == 1;
+    }
+
+    /**
+     * El bloque de ficha que va dentro de {@code EventoDetalle.asistencia} para el
+     * usuario que pregunta. {@code llevaFicha=false} si el evento no es de San
+     * Miguel; {@code miFicha} null si aún no la ha rellenado.
+     */
+    @Transactional(readOnly = true)
+    public FichaBebidaDetalle detalleDe(Long usuarioId, Evento e) {
+        if (!e.getCuenta().isLlevaFichaBebida()) {
+            return new FichaBebidaDetalle(false, List.of(), null);
+        }
+        List<LocalDate> dias = esDeDosDias(e)
+                ? List.of(e.getFecha(), e.getFechaFin())
+                : List.of(e.getFecha());
+        FichaBebidaDetalle.MiFicha mia = asistencias.findByEventoIdAndUsuarioId(e.getId(), usuarioId)
+                .flatMap(a -> fichas.findByAsistenciaId(a.getId()))
+                .map(FichaBebidaService::aMiFicha)
+                .orElse(null);
+        return new FichaBebidaDetalle(true, dias, mia);
+    }
+
+    private static FichaBebidaDetalle.MiFicha aMiFicha(FichaBebida f) {
+        Bebida al = f.getAlcohol();
+        Bebida re = f.getRefresco();
+        boolean bebidaPendiente = (al != null && al.getEstado() != EstadoBebida.ACEPTADA)
+                || re.getEstado() != EstadoBebida.ACEPTADA;
+        return new FichaBebidaDetalle.MiFicha(
+                al != null ? al.getId() : null,
+                al != null ? al.getNombre() : "No bebo alcohol",
+                re.getId(), re.getNombre(),
+                f.getAlternativa().name(), f.getCervezaEspecial(),
+                f.isEmbarazada(), f.isAsisteDia1(), f.isAsisteDia2(),
+                f.getModalidad().name(), f.getCuota(), f.getCuota() == null, bebidaPendiente);
     }
 }

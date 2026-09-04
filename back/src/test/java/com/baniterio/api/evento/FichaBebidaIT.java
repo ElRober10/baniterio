@@ -225,4 +225,70 @@ class FichaBebidaIT extends IntegrationTest {
                 .jsonPath("$.cuota").doesNotExist()
                 .jsonPath("$.cuotaPendiente").isEqualTo(true);
     }
+
+    @Test
+    void detalle_del_evento_trae_mi_ficha_y_los_dias() {
+        Sesion s = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sanMiguel(new BigDecimal("26"));
+        Map<String, Object> ficha = fichaBase();
+        ficha.put("asisteDia2", false);
+        putFicha(s, e.getId(), ficha).expectStatus().isOk();
+
+        http.get().uri("/api/v1/eventos/" + e.getId())
+                .header(AUTHORIZATION, "Bearer " + s.token())
+                .exchange().expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.asistencia.ficha.llevaFicha").isEqualTo(true)
+                .jsonPath("$.asistencia.ficha.diasEvento.length()").isEqualTo(2)
+                .jsonPath("$.asistencia.ficha.miFicha.modalidad").isEqualTo("UN_DIA")
+                .jsonPath("$.asistencia.ficha.miFicha.cuota").isEqualTo(14.00);
+    }
+
+    @Test
+    void detalle_de_evento_normal_ficha_llevaFicha_false() {
+        Sesion s = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = eventos.save(Evento.builder().pena(pena()).cuenta(cuenta("Chuletas Santas"))
+                .nombre("IT-ficha-normal").fecha(LocalDate.now().plusDays(20)).build());
+
+        http.get().uri("/api/v1/eventos/" + e.getId())
+                .header(AUTHORIZATION, "Bearer " + s.token())
+                .exchange().expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.asistencia.ficha.llevaFicha").isEqualTo(false)
+                .jsonPath("$.asistencia.ficha.miFicha").doesNotExist();
+    }
+
+    @Test
+    void anadir_a_mano_con_ficha_calcula_la_cuota() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Evento e = sanMiguel(new BigDecimal("26"));
+        Map<String, Object> ficha = fichaBase();
+
+        http.post().uri("/api/v1/eventos/" + e.getId() + "/asistencias")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("nombre", "Primo de Juan", "estado", "APUNTADO", "ficha", ficha))
+                .exchange().expectStatus().isCreated()
+                .expectBody()
+                .jsonPath("$.cuota").isEqualTo(26.00)
+                .jsonPath("$.modalidad").isEqualTo("COMPLETA");
+    }
+
+    @Test
+    void cambiar_la_cuota_maxima_recalcula_las_fichas() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Evento e = sanMiguel(new BigDecimal("26"));
+        putFicha(admin, e.getId(), fichaBase()).expectStatus().isOk()
+                .expectBody().jsonPath("$.cuota").isEqualTo(26.00);
+
+        http.put().uri("/api/v1/eventos/" + e.getId())
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("nombre", e.getNombre(), "fecha", e.getFecha().toString(),
+                        "fechaFin", e.getFechaFin().toString(),
+                        "cuentaId", cuenta("San Miguel").getId(), "cuotaMaxima", 30))
+                .exchange().expectStatus().isOk();
+
+        var a = asistencias.findByEventoIdAndUsuarioId(e.getId(), admin.id()).orElseThrow();
+        assertThat(fichas.findByAsistenciaId(a.getId()).orElseThrow().getCuota())
+                .isEqualByComparingTo("30.00");
+    }
 }

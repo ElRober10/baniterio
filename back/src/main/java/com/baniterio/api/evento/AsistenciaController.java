@@ -63,7 +63,7 @@ public class AsistenciaController {
     @ResponseStatus(HttpStatus.CREATED)
     public AsistenciaResumen anadir(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long id, @Valid @RequestBody AnadirAsistenteRequest req) {
-        return asistenciaService.anadirAMano(principal.id(), id, req.nombre(), req.estado());
+        return asistenciaService.anadirAMano(principal.id(), id, req.nombre(), req.estado(), req.ficha());
     }
 
     @DeleteMapping("/{id}/asistencias/{asistenciaId}")
