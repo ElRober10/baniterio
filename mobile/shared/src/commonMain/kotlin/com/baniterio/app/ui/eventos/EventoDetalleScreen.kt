@@ -102,6 +102,8 @@ fun EventoDetalleScreen(
             }
             is EstadoDetalle.Cargado -> {
                 val ev = e.evento
+                var verAsistentes by remember { mutableStateOf(false) }
+                var verPago by remember { mutableStateOf(false) }
                 Column(
                     modifier = Modifier.fillMaxWidth()
                         .relieveDeCarta(RoundedCornerShape(18.dp))
@@ -219,7 +221,34 @@ fun EventoDetalleScreen(
                         )
                     }
 
+                    if (ev.asistencia.ficha.llevaFicha) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = { verAsistentes = true }) {
+                                Text("Listado de asistentes")
+                            }
+                            if (ev.asistencia.ficha.miFicha?.cuota != null) {
+                                OutlinedButton(onClick = { verPago = true }) { Text("He pagado") }
+                            }
+                        }
+                    }
+
                     aviso?.let { Text(it, color = BaniterioColors.gold) }
+
+                    if (verAsistentes) {
+                        ListadoAsistentesDialog(eventoId, eventosRepo, onCerrar = { verAsistentes = false })
+                    }
+                    if (verPago) {
+                        HePagadoDialog(
+                            eventoId = eventoId,
+                            repo = eventosRepo,
+                            onEnviar = {
+                                verPago = false
+                                // TODO(pagos): cuando se defina el modelo de pagos, mandar 'it' al backend.
+                                aviso = "Pago enviado. Un administrador lo confirmará."
+                            },
+                            onCerrar = { verPago = false },
+                        )
+                    }
 
                     if (ev.puedoEditar || ev.puedoBorrar) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
