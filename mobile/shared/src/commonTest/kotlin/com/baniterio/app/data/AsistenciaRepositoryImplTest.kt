@@ -51,7 +51,7 @@ class AsistenciaRepositoryImplTest {
     private val detalleJson = """
         {"id":1,"nombre":"San Miguel","fecha":"2999-01-01","pasado":false,
          "cuenta":{"id":2,"nombre":"San Miguel"},"puedoEditar":false,"puedoBorrar":false,
-         "borradoPendiente":false,
+         "oculto":false,
          "asistencia":{"miAsistencia":"APUNTADO","puedeNotificar":false,
            "apuntados":1,"noVoy":0,"enDuda":0,"sinContestar":3}}
     """.trimIndent()
@@ -120,14 +120,16 @@ class AsistenciaRepositoryImplTest {
     }
 
     @Test
-    fun pendientes_hace_get_y_devuelve_la_lista() = runTest {
+    fun pendientes_hace_get_y_devuelve_la_lista_con_para_quien_es() = runTest {
         val (r, vistas) = repo(cuerpoRespuesta = """
-            {"eventos":[{"id":5,"nombre":"San Miguel","fecha":"2999-01-01","pasado":false,
-              "cuenta":{"id":2,"nombre":"San Miguel"}}]}
+            {"eventos":[{"evento":{"id":5,"nombre":"San Miguel","fecha":"2999-01-01","pasado":false,
+              "cuenta":{"id":2,"nombre":"San Miguel"}},"paraUsuario":{"id":1,"nombre":"Ada"}}]}
         """.trimIndent())
         val res = r.pendientes()
-        assertIs<ResultadoAsistencia.Exito<List<*>>>(res)
+        assertIs<ResultadoAsistencia.Exito<List<com.baniterio.app.data.dto.PendienteRespuestaDto>>>(res)
         assertEquals(1, res.dato.size)
+        assertEquals(1L, res.dato[0].paraUsuario.id)
+        assertEquals("San Miguel", res.dato[0].evento.nombre)
         assertEquals("GET", vistas[0].metodo)
         assertEquals("/api/v1/eventos/pendientes-respuesta", vistas[0].path)
     }

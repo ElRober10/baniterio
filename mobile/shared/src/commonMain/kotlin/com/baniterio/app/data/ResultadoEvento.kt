@@ -5,9 +5,6 @@ sealed class ResultadoEvento<out T> {
     data class Error(val codigo: CodigoErrorEvento, val mensaje: String) : ResultadoEvento<Nothing>()
 }
 
-/** Qué pasó al pedir un borrado: se borró de verdad o quedó una solicitud pendiente. */
-enum class BorradoEvento { BORRADO, SOLICITUD_CREADA }
-
 enum class CodigoErrorEvento {
     EVENTO_NO_ENCONTRADO,
     SIN_PERMISO_EVENTO,

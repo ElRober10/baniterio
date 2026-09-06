@@ -1,23 +1,24 @@
 package com.baniterio.app.ui.eventos
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,18 +26,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.baniterio.app.data.AsistenciaRepository
-import com.baniterio.app.data.BebidaRepository
-import com.baniterio.app.data.BorradoEvento
 import com.baniterio.app.data.EventosRepository
-import com.baniterio.app.data.ResultadoAsistencia
-import com.baniterio.app.data.ResultadoBebida
 import com.baniterio.app.data.ResultadoEvento
-import com.baniterio.app.data.dto.CatalogoBebidasDto
 import com.baniterio.app.data.dto.EventoDetalle
 import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.theme.BaniterioWordmark
@@ -56,11 +53,15 @@ internal val ESTADOS_ASISTENCIA = listOf(
     "EN_DUDA" to "En duda",
 )
 
+/**
+ * Vista de un evento: sus datos, el recuento de asistentes y —según los permisos
+ * que devuelve el backend— los botones de gestión y borrado. La parte de
+ * asistencia (responder, ficha de bebida, convocatoria, añadir a mano) se movió
+ * a [AsistenciaEventoScreen] mientras se rediseña.
+ */
 @Composable
 fun EventoDetalleScreen(
     eventosRepo: EventosRepository,
-    asistenciaRepo: AsistenciaRepository,
-    bebidaRepo: BebidaRepository,
     eventoId: Long,
     onEditar: () -> Unit,
     onBorrado: () -> Unit,
@@ -69,23 +70,12 @@ fun EventoDetalleScreen(
     var estado by remember { mutableStateOf<EstadoDetalle>(EstadoDetalle.Cargando) }
     var aviso by remember { mutableStateOf<String?>(null) }
     var intento by remember { mutableStateOf(0) }
-    var dialogoNotif by remember { mutableStateOf(false) }
-    var textoNotif by remember { mutableStateOf("") }
-    var nombreManual by remember { mutableStateOf("") }
-    var estadoManual by remember { mutableStateOf("APUNTADO") }
-    var catalogo by remember { mutableStateOf<CatalogoBebidasDto?>(null) }
-    var resultadoFicha by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(eventoId, intento) {
         estado = EstadoDetalle.Cargando
         estado = when (val r = eventosRepo.detalle(eventoId)) {
-            is ResultadoEvento.Exito -> {
-                if (r.dato.asistencia.ficha.llevaFicha && catalogo == null) {
-                    (bebidaRepo.catalogo() as? ResultadoBebida.Exito)?.let { catalogo = it.dato }
-                }
-                EstadoDetalle.Cargado(r.dato)
-            }
+            is ResultadoEvento.Exito -> EstadoDetalle.Cargado(r.dato)
             is ResultadoEvento.Error -> EstadoDetalle.Error(r.mensaje)
         }
     }
@@ -118,6 +108,14 @@ fun EventoDetalleScreen(
                         .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
+                    if (ev.oculto) {
+                        Text(
+                            "OCULTO (BORRADO)",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = BaniterioColors.error,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
                     Text(
                         ev.nombre,
                         style = MaterialTheme.typography.headlineSmall,
@@ -135,8 +133,68 @@ fun EventoDetalleScreen(
                         color = BaniterioColors.muted,
                     )
                     Text("Cuenta: ${ev.cuenta.nombre}", color = BaniterioColors.muted)
-                    ev.cuotaMaxima?.let {
-                        Text("Cuota máxima: ${formatoImporte(it)} €", color = BaniterioColors.muted)
+                    val cuotas = remember(ev) {
+                        listOfNotNull(
+                            ev.cuotaCubatas?.let { "Cubatas" to it },
+                            ev.cuotaCervezas?.let { "Cervezas" to it },
+                            ev.cuotaCubatas1Dia?.let { "Cubatas 1 día" to it },
+                            ev.cuotaCervezas1Dia?.let { "Cervezas 1 día" to it },
+                            ev.cuotaEmbarazada?.let { "Embarazada" to it },
+                        )
+                    }
+                    if (cuotas.isNotEmpty()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(BaniterioColors.brand.copy(alpha = 0.10f))
+                                .border(1.dp, BaniterioColors.outline.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Text(
+                                "CUOTAS A PAGAR",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = BaniterioColors.goldSoft,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            // 3 cajas por fila fijas; la fila incompleta (si sobran 1 o 2) se
+                            // centra, igual que en la web (evento-detalle.html).
+                            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                                val espaciado = 8.dp
+                                val anchoCaja = (maxWidth - espaciado * 2) / 3
+                                Column(verticalArrangement = Arrangement.spacedBy(espaciado)) {
+                                    cuotas.chunked(3).forEach { fila ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = if (fila.size == 3) {
+                                                Arrangement.spacedBy(espaciado)
+                                            } else {
+                                                Arrangement.spacedBy(espaciado, Alignment.CenterHorizontally)
+                                            },
+                                        ) {
+                                            fila.forEach { (etiqueta, importe) ->
+                                                CajaCuota(etiqueta, importe, Modifier.width(anchoCaja))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    ev.asistencia.ficha.miFicha?.let { f ->
+                        if (f.cuota != null) {
+                            Text(
+                                "Tu cuota: ${formatoImporte(f.cuota)} €",
+                                color = MaterialTheme.colorScheme.onBackground,
+                            )
+                        } else if (f.cuotaPendiente) {
+                            Text(
+                                "Tu cuota está pendiente de que se fije la cuota máxima del evento.",
+                                color = BaniterioColors.muted,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
                     }
                     ev.descripcion?.let {
                         Text(
@@ -152,225 +210,79 @@ fun EventoDetalleScreen(
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
-                }
-
-                if (!ev.pasado) {
-                    Text("¿Vas a ir?", fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ESTADOS_ASISTENCIA.forEach { (valor, texto) ->
-                            val elegido = ev.asistencia.miAsistencia == valor
-                            OutlinedButton(
-                                onClick = {
-                                    scope.launch {
-                                        when (val r = asistenciaRepo.responder(eventoId, valor)) {
-                                            is ResultadoAsistencia.Exito ->
-                                                estado = EstadoDetalle.Cargado(r.dato)
-                                            is ResultadoAsistencia.Error -> aviso = r.mensaje
-                                        }
-                                    }
-                                },
-                                colors = if (elegido) {
-                                    ButtonDefaults.outlinedButtonColors(
-                                        containerColor = BaniterioColors.brand,
-                                        contentColor = BaniterioColors.gold,
-                                    )
-                                } else {
-                                    ButtonDefaults.outlinedButtonColors()
-                                },
-                            ) { Text(texto) }
-                        }
-                    }
-                }
-
-                Text(
-                    "${ev.asistencia.apuntados} apuntados · ${ev.asistencia.enDuda} en duda · " +
-                        "${ev.asistencia.sinContestar} sin contestar",
-                    color = BaniterioColors.muted,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-
-                val cat = catalogo
-                val miEstado = ev.asistencia.miAsistencia
-                if (ev.asistencia.ficha.llevaFicha && cat != null &&
-                    (miEstado == "APUNTADO" || miEstado == "EN_DUDA")
-                ) {
-                    FichaBebidaForm(
-                        catalogo = cat,
-                        dias = ev.asistencia.ficha.diasEvento,
-                        fichaActual = ev.asistencia.ficha.miFicha,
-                        enDuda = miEstado == "EN_DUDA",
-                        onGuardar = { body ->
-                            scope.launch {
-                                when (val r = asistenciaRepo.guardarFicha(eventoId, body)) {
-                                    is ResultadoAsistencia.Exito -> {
-                                        resultadoFicha = r.dato.cuota?.let {
-                                            "Tu cuota: ${formatoImporte(it)} € (${r.dato.modalidad})"
-                                        } ?: "Cuota pendiente de que se fije la cuota máxima."
-                                        intento++
-                                    }
-                                    is ResultadoAsistencia.Error -> resultadoFicha = r.mensaje
-                                }
-                            }
-                        },
-                    )
-                    resultadoFicha?.let {
-                        Text(it, color = BaniterioColors.gold, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                aviso?.let { Text(it, color = BaniterioColors.gold) }
-
-                if (ev.puedoEditar) {
-                    Button(
-                        onClick = onEditar,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = BaniterioColors.brand,
-                            contentColor = BaniterioColors.gold,
-                        ),
-                    ) { Text("Gestionar", fontWeight = FontWeight.Bold) }
-                }
-                if (ev.puedoBorrar) {
-                    OutlinedButton(
-                        enabled = !ev.borradoPendiente,
-                        onClick = {
-                            scope.launch {
-                                when (val r = eventosRepo.borrar(eventoId)) {
-                                    is ResultadoEvento.Exito ->
-                                        if (r.dato == BorradoEvento.BORRADO) {
-                                            onBorrado()
-                                        } else {
-                                            aviso = "Solicitud de borrado enviada. Un administrador tiene que autorizarla."
-                                            intento++
-                                        }
-                                    is ResultadoEvento.Error -> aviso = r.mensaje
-                                }
-                            }
-                        },
-                    ) {
+                    if (ev.asistencia.notificacionMandada) {
                         Text(
-                            when {
-                                ev.borradoPendiente -> "Borrado pendiente de autorización"
-                                ev.creadoPor != null -> "Solicitar borrado"
-                                else -> "Borrar"
-                            },
+                            "${ev.asistencia.apuntados} apuntados · ${ev.asistencia.enDuda} en duda · " +
+                                "${ev.asistencia.sinContestar} sin contestar",
+                            color = BaniterioColors.muted,
+                            style = MaterialTheme.typography.bodySmall,
                         )
                     }
-                }
 
-                if (ev.puedoEditar) {
-                    Text("Convocatoria", fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground)
-                    if (ev.asistencia.puedeNotificar) {
-                        Button(
-                            onClick = { textoNotif = ""; dialogoNotif = true },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = BaniterioColors.brand,
-                                contentColor = BaniterioColors.gold,
-                            ),
-                        ) { Text("Mandar notificación", fontWeight = FontWeight.Bold) }
-                    } else {
-                        Text("El evento ya ha pasado: no se pueden mandar notificaciones.",
-                            color = BaniterioColors.muted, style = MaterialTheme.typography.bodySmall)
-                    }
+                    aviso?.let { Text(it, color = BaniterioColors.gold) }
 
-                    Text("Añadir a mano", fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground)
-                    Text("Para invitados o gente sin la app.",
-                        color = BaniterioColors.muted, style = MaterialTheme.typography.bodySmall)
-                    OutlinedTextField(
-                        value = nombreManual,
-                        onValueChange = { nombreManual = it },
-                        label = { Text("Nombre") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ESTADOS_ASISTENCIA.forEach { (valor, texto) ->
-                            val elegido = estadoManual == valor
-                            OutlinedButton(
-                                onClick = { estadoManual = valor },
-                                colors = if (elegido) {
-                                    ButtonDefaults.outlinedButtonColors(
+                    if (ev.puedoEditar || ev.puedoBorrar) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (ev.puedoEditar) {
+                                Button(
+                                    onClick = onEditar,
+                                    colors = ButtonDefaults.buttonColors(
                                         containerColor = BaniterioColors.brand,
                                         contentColor = BaniterioColors.gold,
-                                    )
-                                } else {
-                                    ButtonDefaults.outlinedButtonColors()
-                                },
-                            ) { Text(texto) }
-                        }
-                    }
-                    val fichaEnAlta = ev.asistencia.ficha.llevaFicha && cat != null &&
-                        (estadoManual == "APUNTADO" || estadoManual == "EN_DUDA")
-
-                    fun anadirAMano(ficha: com.baniterio.app.data.dto.FichaBebidaBody?) {
-                        val nombre = nombreManual.trim()
-                        if (nombre.isEmpty()) {
-                            aviso = "Escribe el nombre."
-                            return
-                        }
-                        scope.launch {
-                            when (val r = asistenciaRepo.anadir(eventoId, nombre, estadoManual, ficha)) {
-                                is ResultadoAsistencia.Exito -> {
-                                    nombreManual = ""
-                                    estadoManual = "APUNTADO"
-                                    aviso = r.dato.cuota?.let { "«$nombre» añadido — cuota ${formatoImporte(it)} €." }
-                                        ?: "«$nombre» añadido."
-                                    intento++
-                                }
-                                is ResultadoAsistencia.Error -> aviso = r.mensaje
+                                    ),
+                                ) { Text("Editar", fontWeight = FontWeight.Bold) }
+                            }
+                            if (ev.puedoBorrar && !ev.oculto) {
+                                OutlinedButton(
+                                    onClick = {
+                                        scope.launch {
+                                            when (val r = eventosRepo.ocultar(eventoId)) {
+                                                is ResultadoEvento.Exito -> onBorrado()
+                                                is ResultadoEvento.Error -> aviso = r.mensaje
+                                            }
+                                        }
+                                    },
+                                ) { Text("Borrar") }
+                            }
+                            if (ev.puedoBorrar && ev.oculto) {
+                                OutlinedButton(
+                                    onClick = {
+                                        scope.launch {
+                                            when (val r = eventosRepo.recuperar(eventoId)) {
+                                                is ResultadoEvento.Exito -> {
+                                                    aviso = "Evento recuperado."
+                                                    intento++
+                                                }
+                                                is ResultadoEvento.Error -> aviso = r.mensaje
+                                            }
+                                        }
+                                    },
+                                ) { Text("Recuperar") }
                             }
                         }
-                    }
-
-                    if (fichaEnAlta && cat != null) {
-                        FichaBebidaForm(
-                            catalogo = cat,
-                            dias = ev.asistencia.ficha.diasEvento,
-                            fichaActual = null,
-                            enDuda = estadoManual == "EN_DUDA",
-                            onGuardar = { anadirAMano(it) },
-                            textoBoton = "Añadir con su ficha",
-                        )
-                    } else {
-                        Button(
-                            enabled = nombreManual.isNotBlank(),
-                            onClick = { anadirAMano(null) },
-                        ) { Text("Añadir") }
                     }
                 }
             }
         }
     }
+}
 
-    if (dialogoNotif) {
-        AlertDialog(
-            onDismissRequest = { dialogoNotif = false },
-            title = { Text("Mandar notificación") },
-            text = {
-                OutlinedTextField(
-                    value = textoNotif,
-                    onValueChange = { textoNotif = it },
-                    label = { Text("Texto (opcional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    val t = textoNotif
-                    dialogoNotif = false
-                    scope.launch {
-                        when (val r = asistenciaRepo.mandarNotificacion(eventoId, t)) {
-                            is ResultadoAsistencia.Exito -> { aviso = "Notificación enviada."; intento++ }
-                            is ResultadoAsistencia.Error -> { aviso = r.mensaje; intento++ }
-                        }
-                    }
-                }) { Text("Enviar") }
-            },
-            dismissButton = {
-                TextButton(onClick = { dialogoNotif = false }) { Text("Cancelar") }
-            },
+/** Una caja de la rejilla de "Cuotas a pagar" del detalle de evento. */
+@Composable
+private fun CajaCuota(etiqueta: String, importe: Double, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(BaniterioColors.brand.copy(alpha = 0.15f))
+            .padding(vertical = 8.dp, horizontal = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(etiqueta, style = MaterialTheme.typography.labelSmall, color = BaniterioColors.muted)
+        Text(
+            "${formatoImporte(importe)} €",
+            style = MaterialTheme.typography.titleMedium,
+            color = BaniterioColors.goldSoft,
+            fontWeight = FontWeight.Bold,
         )
     }
 }

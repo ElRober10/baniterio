@@ -31,6 +31,7 @@ data class AsistenciaDetalleDto(
     val miAsistencia: String? = null,
     val puedeNotificar: Boolean = false,
     val notificacionReenviableAt: String? = null,
+    val notificacionMandada: Boolean = false,
     val apuntados: Int = 0,
     val noVoy: Int = 0,
     val enDuda: Int = 0,
@@ -63,7 +64,11 @@ data class FichaBebidaMiaDto(
     val bebidaPendiente: Boolean = false,
 )
 
-/** Cuerpo de `PUT /eventos/{id}/ficha-bebida` y de la parte `ficha` del alta manual. */
+/**
+ * Cuerpo de `PUT /eventos/{id}/ficha-bebida` y de la parte `ficha` del alta
+ * manual. `paraUsuarioId` solo se usa en el `PUT` directo (ver
+ * [ResponderAsistenciaBody]); el alta manual no lo necesita.
+ */
 @Serializable
 data class FichaBebidaBody(
     val estado: String,
@@ -76,6 +81,7 @@ data class FichaBebidaBody(
     val embarazada: Boolean = false,
     val asisteDia1: Boolean = true,
     val asisteDia2: Boolean = true,
+    val paraUsuarioId: Long? = null,
 )
 
 @Serializable
@@ -96,11 +102,17 @@ data class EventoDetalle(
     val fechaFin: String? = null,
     val pasado: Boolean,
     val cuenta: CuentaRef,
-    val cuotaMaxima: Double? = null,
+    /** Las 5 cuotas del evento; `null` mientras un admin no las ponga. */
+    val cuotaCubatas: Double? = null,
+    val cuotaCervezas: Double? = null,
+    val cuotaCubatas1Dia: Double? = null,
+    val cuotaCervezas1Dia: Double? = null,
+    val cuotaEmbarazada: Double? = null,
     val creadoPor: CreadoPor? = null,
     val puedoEditar: Boolean,
     val puedoBorrar: Boolean,
-    val borradoPendiente: Boolean,
+    /** `true` si el evento está "borrado" (oculto, recuperable). */
+    val oculto: Boolean,
     val asistencia: AsistenciaDetalleDto = AsistenciaDetalleDto(),
 )
 
@@ -115,8 +127,12 @@ data class AsistenciaResumenDto(
     val modalidad: String? = null,
 )
 
+/**
+ * `paraUsuarioId` es `null` para responder por uno mismo, o la pareja/hijo con
+ * cuenta propia por quien se responde (ver `VinculoFamiliarService` en el back).
+ */
 @Serializable
-data class ResponderAsistenciaBody(val estado: String)
+data class ResponderAsistenciaBody(val estado: String, val paraUsuarioId: Long? = null)
 
 @Serializable
 data class AnadirAsistenteBody(
@@ -128,9 +144,21 @@ data class AnadirAsistenteBody(
 @Serializable
 data class MandarNotificacionBody(val texto: String? = null)
 
+/** Persona por quien es un pendiente: uno mismo, o pareja/hijo con cuenta por quien se responde. */
+@Serializable
+data class ParaUsuarioDto(val id: Long, val nombre: String)
+
+/** Un evento pendiente y por quién es (ver [ParaUsuarioDto]). */
+@Serializable
+data class PendienteRespuestaDto(val evento: EventoResumen, val paraUsuario: ParaUsuarioDto)
+
 /** `GET /eventos/pendientes-respuesta`. */
 @Serializable
-data class PendientesRespuestaDto(val eventos: List<EventoResumen> = emptyList())
+data class PendientesRespuestaDto(val eventos: List<PendienteRespuestaDto> = emptyList())
+
+/** `GET /eventos/ocultos`: los eventos "borrados" (ocultos, recuperables). Solo admin/superadmin. */
+@Serializable
+data class EventosOcultosResponse(val eventos: List<EventoResumen> = emptyList())
 
 @Serializable
 data class ListaEventosResponse(
@@ -154,8 +182,13 @@ data class GuardarEventoRequest(
     val fechaFin: String? = null,
     val cuentaId: Long? = null,
     val cuentaNueva: Boolean = false,
-    /** Solo la aplica el backend si quien guarda es admin/superadmin. */
-    val cuotaMaxima: Double? = null,
+    /**
+     * Única cuota que se pone a mano; el backend deriva las otras 4 de esta
+     * (cervezas = cubatas−10 · 1 día cubatas = cubatas/2+1 · 1 día cervezas =
+     * cervezas/2+1 · embarazada = 5 fijo). Solo la aplica si quien guarda es
+     * admin/superadmin.
+     */
+    val cuotaCubatas: Double? = null,
 )
 
 /** Fila del bloque de administración "Solicitudes de evento". */

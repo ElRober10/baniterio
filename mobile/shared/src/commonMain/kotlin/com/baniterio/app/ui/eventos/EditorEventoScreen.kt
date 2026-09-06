@@ -69,7 +69,7 @@ fun EditorEventoScreen(
     var lugar by remember { mutableStateOf("") }
     var fecha by remember { mutableStateOf("") }
     var fechaFin by remember { mutableStateOf("") }
-    var cuotaMaxima by remember { mutableStateOf("") }
+    var cuotaCubatas by remember { mutableStateOf("") }
     var cuentas by remember { mutableStateOf<List<CuentaResumen>>(emptyList()) }
     // Cuenta elegida: un id de cuenta existente, o `cuentaNueva` para crear una
     // con el nombre del evento. Nunca las dos a la vez.
@@ -96,7 +96,7 @@ fun EditorEventoScreen(
                 lugar = r.dato.lugar ?: ""
                 fecha = r.dato.fecha
                 fechaFin = r.dato.fechaFin ?: ""
-                cuotaMaxima = r.dato.cuotaMaxima?.let { formatoImporte(it) } ?: ""
+                cuotaCubatas = r.dato.cuotaCubatas?.let { formatoImporte(it) } ?: ""
                 cuentaId = r.dato.cuenta.id
                 cuentaNueva = false
                 estado = EstadoEditorEvento.Listo
@@ -129,15 +129,23 @@ fun EditorEventoScreen(
             error = "Elige una cuenta."
             return
         }
-        var cuota: Double? = null
-        if (esAdmin && cuotaMaxima.isNotBlank()) {
-            val n = cuotaMaxima.trim().replace(',', '.').toDoubleOrNull()
-            if (n == null || n < 0.0) {
-                error = "La cuota máxima tiene que ser un número mayor o igual que 0."
-                return
+        // No se condiciona a `esAdmin` con un `return` temprano: los campos solo se
+        // PINTAN para admins, así que un no-admin reenvía "" y aquí sale null (el
+        // backend además ignora este campo si quien guarda no es admin).
+        fun numeroCuota(raw: String, etiqueta: String): Double? {
+            if (!esAdmin || raw.isBlank()) {
+                return null
             }
-            cuota = n
+            val n = raw.trim().replace(',', '.').toDoubleOrNull()
+            if (n == null || n < 0.0) {
+                error = "La cuota de $etiqueta tiene que ser un número mayor o igual que 0."
+                return null
+            }
+            return n
         }
+        val cubatas = numeroCuota(cuotaCubatas, "cubatas")
+        if (error != null) return
+
         guardando = true
         scope.launch {
             val req = GuardarEventoRequest(
@@ -148,7 +156,7 @@ fun EditorEventoScreen(
                 fechaFin = fechaFin.ifBlank { null },
                 cuentaId = if (cuentaNueva) null else cuentaId,
                 cuentaNueva = cuentaNueva,
-                cuotaMaxima = cuota,
+                cuotaCubatas = cubatas,
             )
             val r = if (eventoId != null) eventosRepo.editar(eventoId, req) else eventosRepo.crear(req)
             when (r) {
@@ -219,9 +227,16 @@ fun EditorEventoScreen(
                     )
 
                     if (esAdmin) {
+                        Text(
+                            "Cuota (opcional). Las demás (cervezas, 1 día, embarazada) se " +
+                                "calculan solas a partir de esta al guardar. Si se deja vacía, " +
+                                "no se muestra ninguna.",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = BaniterioColors.muted,
+                        )
                         OutlinedTextField(
-                            value = cuotaMaxima, onValueChange = { cuotaMaxima = it },
-                            label = { Text("Cuota máxima € (opcional)") }, singleLine = true,
+                            value = cuotaCubatas, onValueChange = { cuotaCubatas = it },
+                            label = { Text("Cubatas €") }, singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             modifier = Modifier.fillMaxWidth(),
                         )

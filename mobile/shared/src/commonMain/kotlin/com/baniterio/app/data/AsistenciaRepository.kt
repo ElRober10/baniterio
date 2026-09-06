@@ -2,9 +2,9 @@ package com.baniterio.app.data
 
 import com.baniterio.app.data.dto.AsistenciaResumenDto
 import com.baniterio.app.data.dto.EventoDetalle
-import com.baniterio.app.data.dto.EventoResumen
 import com.baniterio.app.data.dto.FichaBebidaBody
 import com.baniterio.app.data.dto.FichaBebidaResponseDto
+import com.baniterio.app.data.dto.PendienteRespuestaDto
 
 /**
  * Asistencia a eventos (pieza 3a): responder Me apunto / No voy / En duda,
@@ -13,7 +13,15 @@ import com.baniterio.app.data.dto.FichaBebidaResponseDto
  * Miguel) son la pieza 3b. Misma mecánica que [EventosRepository].
  */
 interface AsistenciaRepository {
-    suspend fun responder(eventoId: Long, estado: String): ResultadoAsistencia<EventoDetalle>
+    /**
+     * Respuesta a un evento: la propia, o —si `paraUsuarioId` es la pareja
+     * (vínculo aceptado) o un hijo con cuenta propia— en su nombre.
+     */
+    suspend fun responder(
+        eventoId: Long,
+        estado: String,
+        paraUsuarioId: Long? = null,
+    ): ResultadoAsistencia<EventoDetalle>
     suspend fun mandarNotificacion(eventoId: Long, texto: String?): ResultadoAsistencia<Unit>
     suspend fun anadir(
         eventoId: Long,
@@ -22,9 +30,11 @@ interface AsistenciaRepository {
         ficha: FichaBebidaBody? = null,
     ): ResultadoAsistencia<AsistenciaResumenDto>
     suspend fun quitar(eventoId: Long, asistenciaId: Long): ResultadoAsistencia<Unit>
-    suspend fun pendientes(): ResultadoAsistencia<List<EventoResumen>>
 
-    /** Guarda mi ficha de bebida para un evento de San Miguel; devuelve la cuota. */
+    /** Pendientes propios y los de quien se pueda responder en su nombre (pareja/hijos con cuenta). */
+    suspend fun pendientes(): ResultadoAsistencia<List<PendienteRespuestaDto>>
+
+    /** Guarda una ficha de bebida (la propia o la de `body.paraUsuarioId`); devuelve la cuota. */
     suspend fun guardarFicha(
         eventoId: Long,
         body: FichaBebidaBody,

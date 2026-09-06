@@ -1,5 +1,12 @@
 package com.baniterio.app
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +36,7 @@ import com.baniterio.app.ui.cuentas.CuentaDetalleScreen
 import com.baniterio.app.ui.cuentas.CuentasScreen
 import com.baniterio.app.ui.eventos.EditorEventoScreen
 import com.baniterio.app.ui.eventos.EventoDetalleScreen
+import com.baniterio.app.ui.eventos.EventosOcultosScreen
 import com.baniterio.app.ui.eventos.EventosScreen
 import com.baniterio.app.ui.eventos.ResponderEventoScreen
 import com.baniterio.app.ui.historia.HistoriaScreen
@@ -54,6 +62,7 @@ private const val CLAVE_EVENTOS = "Eventos"
 private const val CLAVE_RESPONDER_EVENTO = "ResponderEvento"
 private const val CLAVE_EVENTO_DETALLE = "EventoDetalle"
 private const val CLAVE_EDITOR_EVENTO = "EditorEvento"
+private const val CLAVE_EVENTOS_OCULTOS = "EventosOcultos"
 private const val CLAVE_CUENTAS = "Cuentas"
 private const val CLAVE_CUENTA_DETALLE = "CuentaDetalle"
 private const val CLAVE_ADMIN_INDEX = "AdminIndex"
@@ -75,6 +84,7 @@ private fun Screen.aClave(): String = when (this) {
     Screen.ResponderEvento -> CLAVE_RESPONDER_EVENTO
     Screen.EventoDetalle -> CLAVE_EVENTO_DETALLE
     Screen.EditorEvento -> CLAVE_EDITOR_EVENTO
+    Screen.EventosOcultos -> CLAVE_EVENTOS_OCULTOS
     Screen.Cuentas -> CLAVE_CUENTAS
     Screen.CuentaDetalle -> CLAVE_CUENTA_DETALLE
     Screen.AdminIndex -> CLAVE_ADMIN_INDEX
@@ -96,6 +106,7 @@ private fun claveAScreen(clave: String): Screen = when (clave) {
     CLAVE_RESPONDER_EVENTO -> Screen.ResponderEvento
     CLAVE_EVENTO_DETALLE -> Screen.EventoDetalle
     CLAVE_EDITOR_EVENTO -> Screen.EditorEvento
+    CLAVE_EVENTOS_OCULTOS -> Screen.EventosOcultos
     CLAVE_CUENTAS -> Screen.Cuentas
     CLAVE_CUENTA_DETALLE -> Screen.CuentaDetalle
     CLAVE_ADMIN_INDEX -> Screen.AdminIndex
@@ -130,6 +141,7 @@ fun App(
                 screen == Screen.Miembros || screen == Screen.EditorPerfil ||
                 screen == Screen.Eventos || screen == Screen.ResponderEvento ||
                 screen == Screen.EventoDetalle || screen == Screen.EditorEvento ||
+                screen == Screen.EventosOcultos ||
                 screen == Screen.Cuentas || screen == Screen.CuentaDetalle ||
                 screen == Screen.AdminIndex || screen == Screen.AdminSolicitudes ||
                 screen == Screen.AdminPermisos || screen == Screen.AdminBebidas)
@@ -181,7 +193,18 @@ fun App(
                 .safeDrawingPadding(),
             color = MaterialTheme.colorScheme.background,
         ) {
-            when (screen) {
+            // Animación de cambio de pantalla: la vieja se desvanece subiendo, la
+            // nueva entra desde abajo con fundido. Mismo efecto que en la web
+            // (styles.css, View Transitions API).
+            AnimatedContent(
+                targetState = screen,
+                transitionSpec = {
+                    (fadeIn(tween(220)) + slideInVertically(tween(220)) { alto -> alto / 12 })
+                        .togetherWith(fadeOut(tween(150)) + slideOutVertically(tween(150)) { alto -> -alto / 12 })
+                },
+                label = "pantalla",
+            ) { pantalla ->
+            when (pantalla) {
                 is Screen.Desbloqueo -> DesbloqueoScreen(
                     repo = deps.repo,
                     almacen = deps.almacen,
@@ -268,9 +291,19 @@ fun App(
                     BackHandler { ir(Screen.Panel) }
                     EventosScreen(
                         eventosRepo = deps.eventosRepo,
+                        esAdmin = deps.repo.usuarioActual?.let { it.rol == "ADMIN" || it.esSuperadmin } == true,
                         onAbrirEvento = { id -> eventoSeleccionado = id; ir(Screen.EventoDetalle) },
                         onCrear = { editorEventoId = null; ir(Screen.EditorEvento) },
+                        onVerOcultos = { ir(Screen.EventosOcultos) },
                         onVolver = { ir(Screen.Panel) },
+                    )
+                }
+                is Screen.EventosOcultos -> {
+                    BackHandler { ir(Screen.Eventos) }
+                    EventosOcultosScreen(
+                        eventosRepo = deps.eventosRepo,
+                        onAbrirEvento = { id -> eventoSeleccionado = id; ir(Screen.EventoDetalle) },
+                        onVolver = { ir(Screen.Eventos) },
                     )
                 }
                 is Screen.ResponderEvento -> {
@@ -279,6 +312,7 @@ fun App(
                     ResponderEventoScreen(
                         asistenciaRepo = deps.asistenciaRepo,
                         bebidaRepo = deps.bebidaRepo,
+                        miUsuarioId = deps.repo.usuarioActual?.id,
                         onTerminado = { ir(Screen.Panel) },
                     )
                 }
@@ -290,8 +324,6 @@ fun App(
                     } else {
                         EventoDetalleScreen(
                             eventosRepo = deps.eventosRepo,
-                            asistenciaRepo = deps.asistenciaRepo,
-                            bebidaRepo = deps.bebidaRepo,
                             eventoId = id,
                             onEditar = { editorEventoId = id; ir(Screen.EditorEvento) },
                             onBorrado = { ir(Screen.Eventos) },
@@ -366,6 +398,7 @@ fun App(
                         onVolver = { ir(Screen.AdminIndex) },
                     )
                 }
+            }
             }
         }
     }
