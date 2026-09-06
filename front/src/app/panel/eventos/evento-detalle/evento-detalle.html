@@ -11,6 +11,11 @@
     @case ('listo') {
       @if (evento(); as e) {
         <article class="carta-relieve rounded-2xl p-6">
+          @if (e.oculto) {
+            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-red-300">
+              Oculto (borrado)
+            </p>
+          }
           <h1 class="font-display text-2xl font-extrabold" [class.opacity-70]="e.pasado">
             {{ e.nombre }}
           </h1>
@@ -31,9 +36,86 @@
               >{{ e.cuenta.nombre }}</a
             >
           </p>
-          @if (e.cuotaMaxima != null) {
-            <p class="mt-1 text-sm text-muted">Cuota máxima: {{ e.cuotaMaxima }} €</p>
+          @if (hayCuotas()) {
+            <div class="mt-3 rounded-xl border border-outline/40 bg-brand/10 p-4">
+              <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gold-soft">
+                Cuotas a pagar
+              </p>
+              <div class="flex flex-wrap justify-center gap-2">
+                @if (e.cuotaCubatas != null) {
+                  <div class="w-[calc(33.333%-0.4rem)] rounded-lg bg-brand/15 px-3 py-2 text-center">
+                    <p class="text-[11px] text-muted">Cubatas</p>
+                    <p class="font-display text-base font-bold text-gold-soft">{{ e.cuotaCubatas }} €</p>
+                  </div>
+                }
+                @if (e.cuotaCervezas != null) {
+                  <div class="w-[calc(33.333%-0.4rem)] rounded-lg bg-brand/15 px-3 py-2 text-center">
+                    <p class="text-[11px] text-muted">Cervezas</p>
+                    <p class="font-display text-base font-bold text-gold-soft">{{ e.cuotaCervezas }} €</p>
+                  </div>
+                }
+                @if (e.cuotaCubatas1Dia != null) {
+                  <div class="w-[calc(33.333%-0.4rem)] rounded-lg bg-brand/15 px-3 py-2 text-center">
+                    <p class="text-[11px] text-muted">Cubatas 1 día</p>
+                    <p class="font-display text-base font-bold text-gold-soft">{{ e.cuotaCubatas1Dia }} €</p>
+                  </div>
+                }
+                @if (e.cuotaCervezas1Dia != null) {
+                  <div class="w-[calc(33.333%-0.4rem)] rounded-lg bg-brand/15 px-3 py-2 text-center">
+                    <p class="text-[11px] text-muted">Cervezas 1 día</p>
+                    <p class="font-display text-base font-bold text-gold-soft">{{ e.cuotaCervezas1Dia }} €</p>
+                  </div>
+                }
+                @if (e.cuotaEmbarazada != null) {
+                  <div class="w-[calc(33.333%-0.4rem)] rounded-lg bg-brand/15 px-3 py-2 text-center">
+                    <p class="text-[11px] text-muted">Embarazada</p>
+                    <p class="font-display text-base font-bold text-gold-soft">{{ e.cuotaEmbarazada }} €</p>
+                  </div>
+                }
+              </div>
+            </div>
           }
+          @if (e.asistencia.ficha.miFicha; as f) {
+            @if (f.cuota != null) {
+              <div
+                class="tu-cuota-brillo mt-3 rounded-xl border border-gold/50 bg-brand/20 p-4 text-center"
+              >
+                <p class="text-xs font-semibold uppercase tracking-wide text-gold-soft">Tu cuota</p>
+                <p class="font-display text-2xl font-extrabold text-gold">{{ f.cuota }} €</p>
+              </div>
+            } @else if (f.cuotaPendiente) {
+              <p class="mt-3 text-xs text-muted">
+                Tu cuota está pendiente de que se fije la cuota máxima del evento.
+              </p>
+            }
+            @if (puedeEditarFicha() && !editandoFicha()) {
+              <button
+                type="button"
+                (click)="abrirEditorFicha()"
+                class="mt-2 rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark"
+              >
+                Cambiar lo que voy a beber
+              </button>
+            }
+            @if (editandoFicha() && catalogoFicha(); as cat) {
+              <app-ficha-bebida
+                [catalogo]="cat"
+                [dias]="e.asistencia.ficha.diasEvento"
+                [fichaActual]="f"
+                [enDuda]="e.asistencia.miAsistencia === 'EN_DUDA'"
+                textoBoton="Guardar cambios"
+                (guardar)="guardarFicha($event)"
+              />
+              <button
+                type="button"
+                (click)="cerrarEditorFicha()"
+                class="mt-2 rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-brand-bright/60"
+              >
+                Cancelar
+              </button>
+            }
+          }
+
           @if (e.descripcion) {
             <p class="mt-4 whitespace-pre-line text-sm leading-relaxed">{{ e.descripcion }}</p>
           }
@@ -41,196 +123,130 @@
             <p class="mt-4 text-xs text-muted">Creado por {{ e.creadoPor.nombre }}</p>
           }
 
-          @if (!e.pasado) {
-            <div class="mt-5 border-t border-outline/40 pt-4">
-              <p class="text-sm font-semibold">¿Vas a ir?</p>
-              <div class="mt-2 flex flex-wrap gap-2">
-                @for (o of opciones; track o.valor) {
-                  <button
-                    type="button"
-                    (click)="responder(o.valor)"
-                    [class.bg-brand]="e.asistencia.miAsistencia === o.valor"
-                    [class.text-gold]="e.asistencia.miAsistencia === o.valor"
-                    [class.border-brand-bright]="e.asistencia.miAsistencia === o.valor"
-                    class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-brand-bright/60"
-                  >
-                    {{ o.texto }}
-                  </button>
-                }
-              </div>
-            </div>
+          @if (e.asistencia.notificacionMandada) {
+            <p class="mt-4 text-xs text-muted">
+              {{ e.asistencia.apuntados }} apuntados · {{ e.asistencia.enDuda }} en duda ·
+              {{ e.asistencia.sinContestar }} sin contestar
+            </p>
           }
 
-          <p class="mt-3 text-xs text-muted">
-            {{ e.asistencia.apuntados }} apuntados · {{ e.asistencia.enDuda }} en duda ·
-            {{ e.asistencia.sinContestar }} sin contestar
-          </p>
-
-          @if (mostrarFicha() && catalogo(); as cat) {
-            <app-ficha-bebida
-              [catalogo]="cat"
-              [dias]="e.asistencia.ficha.diasEvento"
-              [fichaActual]="e.asistencia.ficha.miFicha"
-              [enDuda]="e.asistencia.miAsistencia === 'EN_DUDA'"
-              (guardar)="guardarFicha($event)"
-            />
-            @if (e.asistencia.ficha.miFicha?.bebidaPendiente) {
-              <p class="mt-2 text-xs text-gold-soft">
-                Alguna de tus bebidas está pendiente de que un admin la acepte.
-              </p>
-            }
-            @if (resultadoFicha()) {
-              <p role="status" class="mt-2 text-sm font-semibold text-gold-soft">
-                {{ resultadoFicha() }}
-              </p>
-            }
+          @if (aviso()) {
+            <p
+              role="status"
+              class="mt-4 rounded-xl border border-brand-bright/30 bg-brand/15 px-4 py-3 text-sm text-gold-soft"
+            >
+              {{ aviso() }}
+            </p>
           }
-        </article>
 
-        @if (aviso()) {
-          <p
-            role="status"
-            class="mt-4 rounded-xl border border-brand-bright/30 bg-brand/15 px-4 py-3 text-sm text-gold-soft"
-          >
-            {{ aviso() }}
-          </p>
-        }
-
-        @if (e.puedoEditar || e.puedoBorrar) {
-          <div class="mt-6 flex flex-wrap gap-3">
-            @if (e.puedoEditar) {
-              <button
-                type="button"
-                (click)="gestionar()"
-                class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark"
-              >
-                Gestionar
-              </button>
-            }
-            @if (e.puedoBorrar) {
-              <button
-                type="button"
-                (click)="borrar()"
-                [disabled]="e.borradoPendiente"
-                class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-red-400/50 hover:text-red-300 disabled:opacity-50"
-              >
-                @if (e.borradoPendiente) {
-                  Borrado pendiente de autorización
-                } @else if (e.creadoPor) {
-                  Solicitar borrado
-                } @else {
-                  Borrar
-                }
-              </button>
-            }
-          </div>
-        }
-
-        @if (e.puedoEditar) {
-          <div class="mt-6 space-y-4 border-t border-outline/40 pt-5">
-            <div>
-              <p class="text-sm font-semibold">Convocatoria</p>
-              @if (e.asistencia.puedeNotificar) {
+          @if (e.puedoEditar || e.puedoBorrar) {
+            <div class="mt-6 flex flex-wrap items-center gap-3 border-t border-outline/40 pt-4">
+              @if (e.puedoEditar) {
+                <button
+                  type="button"
+                  (click)="editar()"
+                  class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark"
+                >
+                  Editar
+                </button>
+              }
+              @if (e.puedoEditar && e.asistencia.puedeNotificar) {
                 <button
                   type="button"
                   (click)="abrirDialogoNotif()"
                   [disabled]="reenvioBloqueado()"
-                  class="mt-2 rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark disabled:opacity-50"
+                  class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark disabled:opacity-50"
                 >
                   Mandar notificación
                 </button>
-                @if (reenvioBloqueado()) {
-                  <p class="mt-1 text-xs text-muted">
-                    Se podrá reenviar el
-                    {{ e.asistencia.notificacionReenviableAt | date: 'short' }}
-                    (solo a quien no haya contestado).
-                  </p>
-                }
-                @if (dialogoNotif()) {
-                  <div
-                    class="mt-3 rounded-xl border border-brand-bright/30 bg-brand/10 p-4"
-                    role="dialog"
-                    aria-label="Mandar notificación"
-                  >
-                    <label class="text-sm font-semibold" for="texto-notif">Texto (opcional)</label>
-                    <textarea
-                      id="texto-notif"
-                      rows="3"
-                      [value]="textoNotif()"
-                      (input)="cambiarTextoNotif($event)"
-                      class="mt-1 w-full rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
-                    ></textarea>
-                    <div class="mt-3 flex gap-2">
-                      <button
-                        type="button"
-                        (click)="enviarNotif()"
-                        [disabled]="enviandoNotif()"
-                        class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark disabled:opacity-50"
-                      >
-                        Enviar
-                      </button>
-                      <button
-                        type="button"
-                        (click)="dialogoNotif.set(false)"
-                        class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                }
-              } @else {
-                <p class="mt-1 text-xs text-muted">
-                  El evento ya ha pasado: no se pueden mandar notificaciones.
-                </p>
+              }
+              @if (e.puedoBorrar && !e.oculto) {
+                <button
+                  type="button"
+                  (click)="pedirBorrar()"
+                  class="ml-auto rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-ink transition hover:bg-red-700"
+                >
+                  Borrar
+                </button>
+              }
+              @if (e.puedoBorrar && e.oculto) {
+                <button
+                  type="button"
+                  (click)="recuperar()"
+                  class="ml-auto rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-brand-bright/60"
+                >
+                  Recuperar
+                </button>
               }
             </div>
-
-            <div>
-              <p class="text-sm font-semibold" id="anadir-mano">Añadir a mano</p>
-              <p class="text-xs text-muted">Para invitados o gente sin la app.</p>
-              <div class="mt-2 flex flex-wrap items-center gap-2">
-                <input
-                  type="text"
-                  aria-labelledby="anadir-mano"
-                  [value]="nombreManual()"
-                  (input)="cambiarNombreManual($event)"
-                  placeholder="Nombre"
-                  class="rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
-                />
-                <select
-                  aria-labelledby="anadir-mano"
-                  [value]="estadoManual()"
-                  (change)="cambiarEstadoManual($event)"
-                  class="rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
-                >
-                  @for (o of opciones; track o.valor) {
-                    <option [value]="o.valor">{{ o.texto }}</option>
-                  }
-                </select>
-                @if (!fichaEnAltaManual()) {
+            @if (confirmarBorrado()) {
+              <div
+                class="mt-3 rounded-xl border border-red-400/50 bg-red-950/30 p-4"
+                role="alertdialog"
+                aria-label="Confirmar borrado"
+              >
+                <p class="text-sm">
+                  ¿Seguro que quieres borrar <strong>«{{ e.nombre }}»</strong>?
+                </p>
+                <div class="mt-3 flex gap-2">
                   <button
                     type="button"
-                    (click)="anadirManual()"
-                    [disabled]="!nombreManual().trim()"
-                    class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-brand-bright/60 disabled:opacity-50"
+                    (click)="ocultar()"
+                    class="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-ink transition hover:bg-red-700"
                   >
-                    Añadir
+                    Sí, borrar
                   </button>
-                }
+                  <button
+                    type="button"
+                    (click)="cancelarBorrado()"
+                    class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink"
+                  >
+                    Cancelar
+                  </button>
+                </div>
               </div>
-              @if (fichaEnAltaManual() && catalogo(); as cat) {
-                <app-ficha-bebida
-                  [catalogo]="cat"
-                  [dias]="e.asistencia.ficha.diasEvento"
-                  [enDuda]="estadoManual() === 'EN_DUDA'"
-                  textoBoton="Añadir con su ficha"
-                  (guardar)="anadirConFicha($event)"
-                />
-              }
-            </div>
-          </div>
-        }
+            }
+            @if (e.puedoEditar && e.asistencia.puedeNotificar && reenvioBloqueado()) {
+              <p class="mt-2 text-xs text-muted">
+                Se podrá reenviar el {{ e.asistencia.notificacionReenviableAt | date: 'short' }}
+                (solo a quien no haya contestado).
+              </p>
+            }
+            @if (dialogoNotif()) {
+              <div
+                class="mt-3 rounded-xl border border-brand-bright/30 bg-brand/10 p-4"
+                role="dialog"
+                aria-label="Mandar notificación"
+              >
+                <label class="text-sm font-semibold" for="texto-notif">Texto (opcional)</label>
+                <textarea
+                  id="texto-notif"
+                  rows="3"
+                  [value]="textoNotif()"
+                  (input)="cambiarTextoNotif($event)"
+                  class="mt-1 w-full rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
+                ></textarea>
+                <div class="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    (click)="enviarNotif()"
+                    [disabled]="enviandoNotif()"
+                    class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark disabled:opacity-50"
+                  >
+                    Enviar
+                  </button>
+                  <button
+                    type="button"
+                    (click)="dialogoNotif.set(false)"
+                    class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            }
+          }
+        </article>
       }
     }
   }

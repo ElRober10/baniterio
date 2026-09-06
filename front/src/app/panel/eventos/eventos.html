@@ -95,6 +95,18 @@
     }
   </div>
 
+  @if (esAdmin()) {
+    <p class="mt-6 text-center">
+      <button
+        type="button"
+        (click)="verOcultos()"
+        class="text-xs text-muted underline-offset-2 transition hover:text-gold-soft hover:underline"
+      >
+        Ver eventos ocultos
+      </button>
+    </p>
+  }
+
   @if (dialogoSolicitud()) {
     <div class="fixed inset-0 z-20 flex items-center justify-center bg-black/50 p-4">
       <div class="w-full max-w-md rounded-2xl border border-outline bg-panel p-5">

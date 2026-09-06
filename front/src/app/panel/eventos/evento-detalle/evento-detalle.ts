@@ -3,33 +3,18 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Volver } from '../../../shared/volver/volver';
-import {
-  CatalogoBebidas,
-  CodigoErrorEvento,
-  EstadoAsistencia,
-  EventoDetalle,
-  FichaBebidaBody,
-} from '../eventos.types';
-import { EventosService } from '../eventos.service';
 import { FichaBebida } from '../ficha-bebida/ficha-bebida';
-
-/** Texto legible de la modalidad de peñista. */
-function modalidadTexto(m: string): string {
-  return (
-    {
-      COMPLETA: 'peña completa',
-      SOLO_CERVEZA: 'solo cerveza',
-      UN_DIA: 'un día',
-      EMBARAZADA: 'embarazada',
-    }[m] ?? m
-  );
-}
+import { CatalogoBebidas, EventoDetalle, FichaBebidaBody } from '../eventos.types';
+import { EventosService } from '../eventos.service';
 
 /**
- * Vista de un evento. Además de los datos y los botones de gestión
- * (`puedoEditar`/`puedoBorrar`), lleva la parte de asistencia (pieza 3a):
- * responder Me apunto / No voy / En duda, y —solo admin u organizador— mandar
- * la notificación de convocatoria y añadir asistentes a mano.
+ * Vista de un evento: sus datos y —solo si `puedoEditar`/`puedoBorrar`, es
+ * decir, admin/superadmin— los botones Editar y Ocultar/Recuperar dentro de la
+ * tarjeta. "Borrar" un evento lo oculta (no lo quita de la BBDD); `e.oculto`
+ * dice si ya lo está, y entonces el botón pasa a ser "Recuperar". La parte de
+ * asistencia (responder, ficha de bebida, convocatoria, añadir a mano) se movió
+ * a `AsistenciaEventoComponent` mientras se rediseña; aquí solo queda el
+ * recuento de asistentes y el botón de mandar/reenviar la convocatoria.
  */
 @Component({
   selector: 'app-evento-detalle',
@@ -47,44 +32,26 @@ export class EventoDetalleComponent implements OnInit {
   protected readonly aviso = signal('');
   private readonly id = Number(this.route.snapshot.paramMap.get('id'));
 
-  protected readonly opciones: { valor: EstadoAsistencia; texto: string }[] = [
-    { valor: 'APUNTADO', texto: 'Me apunto' },
-    { valor: 'NO_VOY', texto: 'No voy' },
-    { valor: 'EN_DUDA', texto: 'En duda' },
-  ];
+  /** Se muestra el bloque de cuotas solo si un admin ha puesto al menos una. */
+  protected readonly hayCuotas = computed(() => {
+    const e = this.evento();
+    return (
+      !!e &&
+      (e.cuotaCubatas != null ||
+        e.cuotaCervezas != null ||
+        e.cuotaCubatas1Dia != null ||
+        e.cuotaCervezas1Dia != null ||
+        e.cuotaEmbarazada != null)
+    );
+  });
 
   // Diálogo "Mandar notificación".
   protected readonly dialogoNotif = signal(false);
   protected readonly textoNotif = signal('');
   protected readonly enviandoNotif = signal(false);
 
-  // Bloque "Añadir a mano".
-  protected readonly nombreManual = signal('');
-  protected readonly estadoManual = signal<EstadoAsistencia>('APUNTADO');
-
-  // Ficha de bebida (San Miguel).
-  protected readonly catalogo = signal<CatalogoBebidas | null>(null);
-  protected readonly resultadoFicha = signal('');
-
-  /** La ficha se muestra en un evento de San Miguel al que ya he respondido Me apunto / En duda. */
-  protected readonly mostrarFicha = computed(() => {
-    const a = this.evento()?.asistencia;
-    return (
-      !!a?.ficha.llevaFicha &&
-      (a.miAsistencia === 'APUNTADO' || a.miAsistencia === 'EN_DUDA') &&
-      this.catalogo() != null
-    );
-  });
-
-  /** En el alta manual sale la ficha si el evento es de San Miguel y el estado elegido la pide. */
-  protected readonly fichaEnAltaManual = computed(() => {
-    const lleva = this.evento()?.asistencia.ficha.llevaFicha;
-    return (
-      !!lleva &&
-      this.catalogo() != null &&
-      (this.estadoManual() === 'APUNTADO' || this.estadoManual() === 'EN_DUDA')
-    );
-  });
+  /** Confirmación antes de borrar (ocultar) el evento. */
+  protected readonly confirmarBorrado = signal(false);
 
   /** `true` mientras no se pueda reenviar la notificación (último envío + 48 h aún en el futuro). */
   protected readonly reenvioBloqueado = computed(() => {
@@ -92,21 +59,19 @@ export class EventoDetalleComponent implements OnInit {
     return at != null && new Date(at).getTime() > Date.now();
   });
 
-  private valor(e: Event): string {
-    return (e.target as HTMLInputElement | HTMLSelectElement).value;
-  }
-
-  protected cambiarNombreManual(e: Event): void {
-    this.nombreManual.set(this.valor(e));
-  }
-
-  protected cambiarEstadoManual(e: Event): void {
-    this.estadoManual.set(this.valor(e) as EstadoAsistencia);
-  }
-
-  protected cambiarTextoNotif(e: Event): void {
-    this.textoNotif.set(this.valor(e));
-  }
+  // Editor de "mi ficha" (bebida y cuota): se puede cambiar hasta el mismo
+  // día del evento, mismo límite que aplica el backend al guardar.
+  protected readonly editandoFicha = signal(false);
+  protected readonly catalogoFicha = signal<CatalogoBebidas | null>(null);
+  protected readonly puedeEditarFicha = computed(() => {
+    const e = this.evento();
+    if (!e?.asistencia.ficha.miFicha) {
+      return false;
+    }
+    const hoy = new Date();
+    const hoyIso = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+    return e.fecha >= hoyIso;
+  });
 
   ngOnInit(): void {
     this.cargar();
@@ -118,93 +83,88 @@ export class EventoDetalleComponent implements OnInit {
       next: (e) => {
         this.evento.set(e);
         this.estado.set('listo');
-        if (e.asistencia.ficha.llevaFicha && this.catalogo() == null) {
-          this.eventosService.catalogoBebidas().subscribe((c) => this.catalogo.set(c));
-        }
       },
       error: () => this.estado.set('error'),
     });
   }
 
-  protected guardarFicha(body: FichaBebidaBody): void {
-    this.resultadoFicha.set('');
-    this.eventosService.guardarFichaBebida(this.id, body).subscribe({
-      next: (r) => {
-        this.resultadoFicha.set(
-          r.cuota != null
-            ? `Tu cuota: ${r.cuota} € (${modalidadTexto(r.modalidad)})`
-            : 'Cuota pendiente de que se fije la cuota máxima del evento.',
-        );
-        this.cargar();
-      },
-      error: () => this.resultadoFicha.set('No se pudo guardar la ficha.'),
-    });
-  }
-
-  protected anadirConFicha(ficha: FichaBebidaBody): void {
-    const nombre = this.nombreManual().trim();
-    if (!nombre) {
-      this.aviso.set('Escribe el nombre antes de guardar la ficha.');
-      return;
-    }
-    this.aviso.set('');
-    this.eventosService.anadirAsistente(this.id, nombre, this.estadoManual(), ficha).subscribe({
-      next: (r) => {
-        this.nombreManual.set('');
-        this.estadoManual.set('APUNTADO');
-        this.aviso.set(
-          r.cuota != null ? `«${nombre}» añadido — cuota ${r.cuota} €.` : `«${nombre}» añadido.`,
-        );
-        this.cargar();
-      },
-      error: () => this.aviso.set('No se pudo añadir a esa persona.'),
-    });
-  }
-
-  protected gestionar(): void {
+  protected editar(): void {
     this.router.navigate(['/panel/eventos', this.id, 'editar']);
   }
 
-  protected borrar(): void {
-    this.eventosService.borrar(this.id).subscribe({
-      next: (r) => {
-        if (r && r.estado === 'PENDIENTE') {
-          this.aviso.set('Solicitud de borrado enviada. Un administrador tiene que autorizarla.');
-          this.cargar();
-        } else {
-          this.router.navigate(['/panel/eventos']);
-        }
+  protected abrirEditorFicha(): void {
+    this.aviso.set('');
+    if (this.catalogoFicha()) {
+      this.editandoFicha.set(true);
+      return;
+    }
+    this.eventosService.catalogoBebidas().subscribe({
+      next: (c) => {
+        this.catalogoFicha.set(c);
+        this.editandoFicha.set(true);
       },
-      error: (e: HttpErrorResponse) => {
-        const codigo = e.error?.codigo as CodigoErrorEvento | undefined;
-        this.aviso.set(
-          codigo === 'SOLICITUD_EVENTO_YA_PENDIENTE'
-            ? 'Ya hay una solicitud de borrado pendiente para este evento.'
-            : 'No se pudo borrar el evento.',
-        );
+      error: () => this.aviso.set('No se pudo cargar el catálogo de bebidas.'),
+    });
+  }
+
+  protected cerrarEditorFicha(): void {
+    this.editandoFicha.set(false);
+  }
+
+  protected guardarFicha(body: FichaBebidaBody): void {
+    this.eventosService.guardarFichaBebida(this.id, body).subscribe({
+      next: () => {
+        this.editandoFicha.set(false);
+        this.aviso.set('Tu ficha se ha actualizado.');
+        this.cargar();
+      },
+      error: (e: HttpErrorResponse) => this.aviso.set(this.mensajeFichaError(e.error?.codigo)),
+    });
+  }
+
+  private mensajeFichaError(codigo: string | undefined): string {
+    if (codigo === 'EVENTO_YA_PASADO') {
+      return 'Ya no se puede cambiar: el evento ya ha empezado.';
+    }
+    return 'No se pudo guardar tu ficha.';
+  }
+
+  protected pedirBorrar(): void {
+    this.confirmarBorrado.set(true);
+  }
+
+  protected cancelarBorrado(): void {
+    this.confirmarBorrado.set(false);
+  }
+
+  protected ocultar(): void {
+    this.confirmarBorrado.set(false);
+    this.eventosService.ocultar(this.id).subscribe({
+      next: () => this.router.navigate(['/panel/eventos']),
+      error: () => {
+        this.aviso.set('No se pudo ocultar el evento.');
         this.cargar();
       },
     });
   }
 
-  protected responder(estado: EstadoAsistencia): void {
-    this.aviso.set('');
-    this.eventosService.responder(this.id, estado).subscribe({
-      next: (e) => this.evento.set(e),
-      error: (e: HttpErrorResponse) => {
-        const codigo = e.error?.codigo as CodigoErrorEvento | undefined;
-        this.aviso.set(
-          codigo === 'EVENTO_YA_PASADO'
-            ? 'El evento ya ha pasado, no se puede cambiar la respuesta.'
-            : 'No se pudo guardar tu respuesta.',
-        );
+  protected recuperar(): void {
+    this.eventosService.recuperar(this.id).subscribe({
+      next: (e) => {
+        this.evento.set(e);
+        this.aviso.set('Evento recuperado.');
       },
+      error: () => this.aviso.set('No se pudo recuperar el evento.'),
     });
   }
 
   protected abrirDialogoNotif(): void {
     this.textoNotif.set('');
     this.dialogoNotif.set(true);
+  }
+
+  protected cambiarTextoNotif(e: Event): void {
+    this.textoNotif.set((e.target as HTMLTextAreaElement).value);
   }
 
   protected enviarNotif(): void {
@@ -234,22 +194,5 @@ export class EventoDetalleComponent implements OnInit {
       return 'No tienes permiso para mandar la notificación.';
     }
     return 'No se pudo enviar la notificación.';
-  }
-
-  protected anadirManual(): void {
-    const nombre = this.nombreManual().trim();
-    if (!nombre) {
-      return;
-    }
-    this.aviso.set('');
-    this.eventosService.anadirAsistente(this.id, nombre, this.estadoManual()).subscribe({
-      next: () => {
-        this.nombreManual.set('');
-        this.estadoManual.set('APUNTADO');
-        this.aviso.set(`«${nombre}» añadido.`);
-        this.cargar();
-      },
-      error: () => this.aviso.set('No se pudo añadir a esa persona.'),
-    });
   }
 }

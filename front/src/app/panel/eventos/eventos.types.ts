@@ -32,6 +32,8 @@ export interface AsistenciaDetalle {
   miAsistencia: EstadoAsistencia | null;
   puedeNotificar: boolean;
   notificacionReenviableAt: string | null;
+  /** `true` en cuanto se ha mandado la convocatoria; hasta entonces se ocultan los recuentos. */
+  notificacionMandada: boolean;
   apuntados: number;
   noVoy: number;
   enDuda: number;
@@ -90,6 +92,8 @@ export interface FichaBebidaBody {
   embarazada: boolean;
   asisteDia1: boolean;
   asisteDia2: boolean;
+  /** Solo en `PUT /ficha-bebida` directo: `null` para la propia ficha, o la pareja/hijo por quien se responde. */
+  paraUsuarioId?: number | null;
 }
 
 export interface FichaBebidaResponse {
@@ -126,11 +130,17 @@ export interface EventoDetalle {
   fechaFin: string | null;
   pasado: boolean;
   cuenta: CuentaRef;
-  cuotaMaxima: number | null;
+  /** Las 5 cuotas del evento; `null` mientras un admin no las ponga. */
+  cuotaCubatas: number | null;
+  cuotaCervezas: number | null;
+  cuotaCubatas1Dia: number | null;
+  cuotaCervezas1Dia: number | null;
+  cuotaEmbarazada: number | null;
   creadoPor: { id: number; nombre: string } | null;
   puedoEditar: boolean;
   puedoBorrar: boolean;
-  borradoPendiente: boolean;
+  /** `true` si el evento está "borrado" (oculto, recuperable). */
+  oculto: boolean;
   asistencia: AsistenciaDetalle;
 }
 
@@ -141,6 +151,27 @@ export interface ListaEventosResponse {
   totalPaginas: number;
   puedeCrear: boolean;
   puedeSolicitar: boolean;
+}
+
+/** Persona por quien es un pendiente de respuesta: uno mismo, o pareja/hijo con cuenta. */
+export interface ParaUsuario {
+  id: number;
+  nombre: string;
+}
+
+/**
+ * Un evento pendiente y por quién es. `paraUsuario` es uno mismo salvo que se
+ * pueda responder por otro (pareja con vínculo aceptado, hijo con cuenta
+ * propia) y esa persona aún no haya contestado.
+ */
+export interface PendienteRespuesta {
+  evento: EventoResumen;
+  paraUsuario: ParaUsuario;
+}
+
+/** `GET /api/v1/eventos/pendientes-respuesta`. */
+export interface PendientesRespuestaResponse {
+  eventos: PendienteRespuesta[];
 }
 
 /**
@@ -156,8 +187,13 @@ export interface GuardarEventoRequest {
   fechaFin: string | null;
   cuentaId: number | null;
   cuentaNueva: boolean;
-  /** Solo la aplica el backend si quien guarda es admin/superadmin. `null` = sin cuota / sin cambio. */
-  cuotaMaxima: number | null;
+  /**
+   * Única cuota que se pone a mano; el backend deriva las otras 4 de esta
+   * (cervezas = cubatas−10 · 1 día cubatas = cubatas/2+1 · 1 día cervezas =
+   * cervezas/2+1 · embarazada = 5 fijo). Solo la aplica si quien guarda es
+   * admin/superadmin. `null` = sin poner / sin cambio.
+   */
+  cuotaCubatas: number | null;
 }
 
 /** Códigos de error propios de eventos (ver ApiExceptionHandler.java). */

@@ -11,7 +11,7 @@ import { EditorEvento } from './editor-evento';
 /**
  * Tests del editor de evento: modo crear (ruta sin id) hace POST; modo editar
  * (ruta con id) precarga con GET y luego hace PUT. El editor pide la lista de
- * cuentas y, si el usuario es admin, muestra el campo "Cuota máxima".
+ * cuentas y, si el usuario es admin, muestra el campo "Cubatas".
  */
 describe('EditorEvento', () => {
   let fixture: ComponentFixture<EditorEvento>;
@@ -90,34 +90,34 @@ describe('EditorEvento', () => {
       fechaFin: null,
       cuentaId: 2,
       cuentaNueva: false,
-      cuotaMaxima: null,
+      cuotaCubatas: null,
     });
     req.flush({ id: 3 });
   });
 
-  it('admin: al rellenar "Cuota máxima" la manda en el cuerpo', () => {
+  it('admin: al rellenar la cuota de cubatas la manda en el cuerpo', () => {
     crear(null, 'ADMIN');
     fixture.detectChanges();
     responderCuentas();
     escribir('nombre', 'San Miguel 2028');
     escribir('fecha', '2028-09-25');
     escribir('cuenta', '2');
-    escribir('cuotaMaxima', '26');
+    escribir('cuotaCubatas', '26');
     fixture.detectChanges();
 
     (fixture.nativeElement as HTMLElement).querySelector('form')!.dispatchEvent(new Event('submit'));
 
     const req = httpMock.expectOne(`${base}/eventos`);
-    expect(req.request.body.cuotaMaxima).toBe(26);
+    expect(req.request.body.cuotaCubatas).toBe(26);
     req.flush({ id: 5 });
   });
 
-  it('miembro: no aparece el campo "Cuota máxima"', () => {
+  it('miembro: no aparecen los campos de cuotas', () => {
     crear(null, 'MIEMBRO');
     fixture.detectChanges();
     responderCuentas();
     expect(
-      (fixture.nativeElement as HTMLElement).querySelector('[formControlName="cuotaMaxima"]'),
+      (fixture.nativeElement as HTMLElement).querySelector('[formControlName="cuotaCubatas"]'),
     ).toBeNull();
   });
 
@@ -151,11 +151,11 @@ describe('EditorEvento', () => {
       fechaFin: '2026-09-26',
       pasado: false,
       cuenta: { id: 2, nombre: 'San Miguel' },
-      cuotaMaxima: 26,
+      cuotaCubatas: 26,
       creadoPor: null,
       puedoEditar: true,
       puedoBorrar: true,
-      borradoPendiente: false,
+      oculto: false,
     });
     fixture.detectChanges();
 
@@ -167,7 +167,7 @@ describe('EditorEvento', () => {
     expect(put.request.method).toBe('PUT');
     expect(put.request.body.nombre).toBe('San Miguel 2026');
     expect(put.request.body.cuentaId).toBe(2);
-    expect(put.request.body.cuotaMaxima).toBe(26);
+    expect(put.request.body.cuotaCubatas).toBe(26);
     put.flush({ id: 7 });
   });
 

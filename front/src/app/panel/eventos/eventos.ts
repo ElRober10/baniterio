@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { AuthService } from '../../auth/auth.service';
 import { CodigoErrorEvento, EventoResumen } from './eventos.types';
 import { EventosService } from './eventos.service';
 
@@ -29,6 +30,7 @@ const MENSAJES: Partial<Record<CodigoErrorEvento, string>> = {
 export class Eventos implements OnInit {
   private readonly eventosService = inject(EventosService);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
 
   protected readonly estado = signal<'cargando' | 'lista' | 'error'>('cargando');
   protected readonly eventos = signal<EventoResumen[]>([]);
@@ -36,6 +38,7 @@ export class Eventos implements OnInit {
   protected readonly totalPaginas = signal(1);
   protected readonly puedeCrear = signal(false);
   protected readonly puedeSolicitar = signal(false);
+  protected readonly esAdmin = signal(false);
 
   protected readonly dialogoSolicitud = signal(false);
   protected readonly mensajeSolicitud = signal('');
@@ -43,6 +46,9 @@ export class Eventos implements OnInit {
 
   ngOnInit(): void {
     this.cargar(0);
+    this.auth.asegurarYo().subscribe((u) =>
+      this.esAdmin.set(u?.rol === 'ADMIN' || u?.esSuperadmin === true),
+    );
   }
 
   protected cargar(pagina: number): void {
@@ -74,6 +80,10 @@ export class Eventos implements OnInit {
 
   protected crear(): void {
     this.router.navigate(['/panel/eventos/nuevo']);
+  }
+
+  protected verOcultos(): void {
+    this.router.navigate(['/panel/eventos/ocultos']);
   }
 
   protected abrirDialogoSolicitud(): void {

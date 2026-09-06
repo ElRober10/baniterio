@@ -23,9 +23,10 @@ const CUENTA_NUEVA = '__nueva__';
 /**
  * Editor de evento. Sin `id` en la ruta → crear (`POST`); con `id` → editar
  * (`PUT`, precarga con `GET /eventos/:id`). Campos: nombre, descripción, lugar,
- * fecha (obligatoria), fecha fin (opcional) y cuenta (obligatoria). La cuota
- * máxima solo se ve/edita si el usuario es admin/superadmin (el backend también
- * lo comprueba). La validación de "fecha fin no anterior a fecha" la hace el
+ * fecha (obligatoria), fecha fin (opcional) y cuenta (obligatoria). La cuota de
+ * cubatas solo se ve/edita si el usuario es admin/superadmin (el backend
+ * también lo comprueba); las otras 4 cuotas las deriva el backend de esta, no
+ * son editables. La validación de "fecha fin no anterior a fecha" la hace el
  * backend además del cliente.
  */
 @Component({
@@ -57,7 +58,7 @@ export class EditorEvento implements OnInit {
     fecha: ['', Validators.required],
     fechaFin: [''],
     cuenta: ['', Validators.required],
-    cuotaMaxima: [''],
+    cuotaCubatas: [''],
   });
 
   ngOnInit(): void {
@@ -77,7 +78,7 @@ export class EditorEvento implements OnInit {
             fecha: e.fecha,
             fechaFin: e.fechaFin ?? '',
             cuenta: String(e.cuenta.id),
-            cuotaMaxima: e.cuotaMaxima != null ? String(e.cuotaMaxima) : '',
+            cuotaCubatas: e.cuotaCubatas != null ? String(e.cuotaCubatas) : '',
           }),
         error: () => this.error.set('No se ha podido cargar el evento.'),
       });
@@ -92,20 +93,14 @@ export class EditorEvento implements OnInit {
     const v = this.form.getRawValue();
     const cuentaNueva = v.cuenta === CUENTA_NUEVA;
 
-    // El input es type="number": el value accessor puede dar number, string o null.
-    // No se condiciona al check de admin del cliente (que en un F5 puede no haber
-    // resuelto aún y borraría la cuota): el backend ignora este campo si quien
-    // guarda no es admin. El campo solo se PINTA para admins, así que un no-admin
+    // El input es type="number": el value accessor puede dar number, string o
+    // null. No se condiciona al check de admin del cliente (que en un F5 puede no
+    // haber resuelto aún y borraría la cuota): el backend ignora este campo si
+    // quien guarda no es admin. Solo se PINTA para admins, así que un no-admin
     // reenvía el valor precargado y el backend lo conserva.
-    const cuotaRaw = String(v.cuotaMaxima ?? '').trim();
-    let cuotaMaxima: number | null = null;
-    if (cuotaRaw) {
-      const n = Number(cuotaRaw.replace(',', '.'));
-      if (Number.isNaN(n) || n < 0) {
-        this.error.set('La cuota máxima tiene que ser un número mayor o igual que 0.');
-        return;
-      }
-      cuotaMaxima = n;
+    const cubatas = this.numeroCuota(v.cuotaCubatas, 'cubatas');
+    if (!cubatas.valido) {
+      return;
     }
 
     const body: GuardarEventoRequest = {
@@ -116,7 +111,7 @@ export class EditorEvento implements OnInit {
       fechaFin: v.fechaFin || null,
       cuentaId: cuentaNueva ? null : Number(v.cuenta),
       cuentaNueva,
-      cuotaMaxima,
+      cuotaCubatas: cubatas.valor,
     };
     if (body.fechaFin && body.fechaFin < body.fecha) {
       this.error.set('La fecha de fin no puede ser anterior a la de inicio.');
@@ -134,5 +129,19 @@ export class EditorEvento implements OnInit {
         this.error.set((codigo && MENSAJES[codigo]) || 'No se pudo guardar el evento.');
       },
     });
+  }
+
+  /** Convierte el valor de un campo de cuota a número; vacío → `null`. Si no es válido, pone el error y `valido: false`. */
+  private numeroCuota(raw: unknown, etiqueta: string): { valor: number | null; valido: boolean } {
+    const s = String(raw ?? '').trim();
+    if (!s) {
+      return { valor: null, valido: true };
+    }
+    const n = Number(s.replace(',', '.'));
+    if (Number.isNaN(n) || n < 0) {
+      this.error.set(`La cuota de ${etiqueta} tiene que ser un número mayor o igual que 0.`);
+      return { valor: null, valido: false };
+    }
+    return { valor: n, valido: true };
   }
 }

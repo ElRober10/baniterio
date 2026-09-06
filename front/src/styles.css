@@ -41,6 +41,16 @@ body {
   utilidad `transition` de Tailwind, así que los botones que la llevan lo
   animan suave; al resto le damos una transición mínima aquí.
 */
+/*
+  Los <select> llevan bg-transparent para fundirse con la carta oscura que los
+  rodea, pero eso no llega al desplegable de opciones: el navegador lo pinta
+  con su tema por defecto (blanco) salvo que <option> tenga su propio color.
+*/
+select option {
+  background-color: var(--color-panel);
+  color: var(--color-ink);
+}
+
 button {
   transition-property: color, background-color, border-color, transform, box-shadow, opacity;
   transition-duration: 150ms;
@@ -76,4 +86,61 @@ button:not(:disabled):active {
     0 18px 40px -12px rgba(55, 47, 165, 0.55),
     inset 0 1px 0 0 rgba(111, 99, 216, 0.55),
     inset 0 -1px 0 0 rgba(0, 0, 0, 0.35);
+}
+
+/*
+  Animación de cambio de pantalla al navegar (Angular Router View
+  Transitions API, activada en app.config.ts con withViewTransitions()).
+  La vista vieja se desvanece y sube un pelín; la nueva entra desde abajo
+  con fundido. Se desactiva sola en navegadores sin soporte y respeta
+  prefers-reduced-motion.
+*/
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    animation: baniterio-salida 150ms ease-in both;
+  }
+  ::view-transition-new(root) {
+    animation: baniterio-entrada 220ms ease-out both;
+  }
+}
+
+@keyframes baniterio-salida {
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes baniterio-entrada {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+/*
+  "Tu cuota" (evento-detalle): a diferencia de las cuotas del evento, que son
+  informativas, esta es la que el usuario tiene que pagar de verdad, así que
+  debe llamar más la atención que ellas, no menos. Luminiscencia dorada suave
+  y continua para que destaque sin ser molesta.
+*/
+.tu-cuota-brillo {
+  animation: tu-cuota-brillo 2.4s ease-in-out infinite;
+}
+
+@keyframes tu-cuota-brillo {
+  0%,
+  100% {
+    box-shadow: 0 0 10px 0 rgba(248, 211, 73, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 22px 4px rgba(248, 211, 73, 0.65);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tu-cuota-brillo {
+    animation: none;
+    box-shadow: 0 0 14px 2px rgba(248, 211, 73, 0.5);
+  }
 }

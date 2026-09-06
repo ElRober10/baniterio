@@ -54,6 +54,17 @@ export class FichaBebida implements OnInit {
     sig.set((e.target as HTMLInputElement | HTMLSelectElement).value);
   }
 
+  /**
+   * `[selected]` de cada `<option>` generada por `@for`, en vez de `[value]`
+   * en el `<select>`: el `<select>` se pinta antes de que existan sus
+   * opciones (`@for` es una vista aparte), así que fijar su valor ahí llega
+   * demasiado pronto y no selecciona nada la primera vez que hay una ficha
+   * ya rellenada. Marcando cada `<option>` no depende de ese orden.
+   */
+  protected esId(valorSel: string, id: number): boolean {
+    return valorSel === String(id);
+  }
+
   protected setAlternativa(e: Event): void {
     this.alternativa.set((e.target as HTMLSelectElement).value as Alternativa);
   }

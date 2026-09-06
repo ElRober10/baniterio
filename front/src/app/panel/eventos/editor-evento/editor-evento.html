@@ -90,20 +90,25 @@
     </label>
 
     @if (esAdmin()) {
-      <label class="flex flex-col gap-1.5 text-sm">
-        <span class="font-medium text-ink">Cuota máxima (€) <span class="text-muted">(opcional)</span></span>
-        <input
-          type="number"
-          inputmode="decimal"
-          min="0"
-          step="0.01"
-          formControlName="cuotaMaxima"
-          class="rounded-xl border border-outline bg-surface px-4 py-2.5 text-ink outline-none focus:border-gold"
-        />
+      <fieldset class="flex flex-col gap-3 rounded-xl border border-outline p-4">
+        <legend class="px-1 text-sm font-medium text-ink">Cuota <span class="text-muted">(opcional)</span></legend>
+        <label class="flex flex-col gap-1.5 text-sm">
+          <span class="font-medium text-ink">Cubatas (€)</span>
+          <input
+            type="number"
+            inputmode="decimal"
+            min="0"
+            step="0.01"
+            formControlName="cuotaCubatas"
+            class="rounded-xl border border-outline bg-surface px-4 py-2.5 text-ink outline-none focus:border-gold"
+          />
+        </label>
         <span class="text-xs text-muted">
-          La cuota tope del evento. De momento solo la usan las fiestas de San Miguel.
+          De momento solo la usan las fiestas de San Miguel. Las demás cuotas (cervezas, 1 día,
+          embarazada) se calculan solas a partir de esta al guardar. Si se deja vacía, no se
+          muestra ninguna.
         </span>
-      </label>
+      </fieldset>
     }
 
     <button

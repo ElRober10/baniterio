@@ -1,7 +1,10 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
+import { environment } from '../../environments/environment';
 import { AdminAvisosService } from '../admin/admin-avisos.service';
 import { AuthService } from '../auth/auth.service';
 import { UsuarioDto } from '../auth/auth.types';
@@ -18,6 +21,8 @@ describe('Panel · nav lateral', () => {
   const usuarioSesion = signal<UsuarioDto | null>(null);
   const totalAvisos = signal(0);
   let refrescos = 0;
+  let httpMock: HttpTestingController;
+  const base = environment.apiBaseUrl;
 
   const authFalso: Partial<AuthService> = {
     usuarioActual: usuarioSesion,
@@ -46,6 +51,9 @@ describe('Panel · nav lateral', () => {
     });
     const fixture = TestBed.createComponent(Panel);
     fixture.detectChanges();
+    // El modal bloqueante de convocatorias pide sus pendientes nada más montarse.
+    httpMock.expectOne(`${base}/eventos/pendientes-respuesta`).flush({ eventos: [] });
+    fixture.detectChanges();
     return fixture.nativeElement as HTMLElement;
   }
 
@@ -56,11 +64,14 @@ describe('Panel · nav lateral', () => {
     TestBed.configureTestingModule({
       imports: [Panel],
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
         provideRouter([]),
         { provide: AuthService, useValue: authFalso },
         { provide: AdminAvisosService, useValue: avisosFalso },
       ],
     });
+    httpMock = TestBed.inject(HttpTestingController);
   });
 
   it('pinta "Inicio" y las secciones "próximamente"', () => {

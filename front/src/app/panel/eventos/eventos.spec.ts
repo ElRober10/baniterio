@@ -2,26 +2,47 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { of } from 'rxjs';
+import { AuthService } from '../../auth/auth.service';
+import { UsuarioDto } from '../../auth/auth.types';
 import { environment } from '../../../environments/environment';
 import { Eventos } from './eventos';
 
 /**
  * Tests del listado de eventos: carga la primera página, pinta un botón por
- * evento y muestra el botón de acción correcto según los permisos del backend.
+ * evento, muestra el botón de acción correcto según los permisos del backend,
+ * y el enlace "Ver eventos ocultos" solo para admin/superadmin.
  */
 describe('Eventos (listado)', () => {
   let fixture: ComponentFixture<Eventos>;
   let httpMock: HttpTestingController;
   const base = environment.apiBaseUrl;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
+  function usuario(rol: 'ADMIN' | 'MIEMBRO'): UsuarioDto {
+    return {
+      id: 1,
+      nombre: 'Ada',
+      apellidos: 'Lovelace',
+      mote: null,
+      esSuperadmin: false,
+      rol,
+      areas: [],
+    };
+  }
+
+  function crear(rol: 'ADMIN' | 'MIEMBRO' = 'MIEMBRO') {
+    TestBed.configureTestingModule({
       imports: [Eventos],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
-    }).compileComponents();
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: AuthService, useValue: { asegurarYo: () => of(usuario(rol)) } },
+      ],
+    });
     fixture = TestBed.createComponent(Eventos);
     httpMock = TestBed.inject(HttpTestingController);
-  });
+  }
 
   afterEach(() => httpMock.verify());
 
@@ -48,6 +69,7 @@ describe('Eventos (listado)', () => {
   }
 
   it('carga la primera página y pinta un botón por evento', () => {
+    crear();
     fixture.detectChanges();
     responder();
     fixture.detectChanges();
@@ -57,6 +79,7 @@ describe('Eventos (listado)', () => {
   });
 
   it('con puedeCrear muestra el botón "Crear evento"', () => {
+    crear();
     fixture.detectChanges();
     responder({ puedeCrear: true, puedeSolicitar: false });
     fixture.detectChanges();
@@ -64,6 +87,7 @@ describe('Eventos (listado)', () => {
   });
 
   it('al pulsar "Solicitar crear evento" y enviar, hace POST a /eventos/solicitudes', () => {
+    crear();
     fixture.detectChanges();
     responder();
     fixture.detectChanges();
@@ -85,5 +109,21 @@ describe('Eventos (listado)', () => {
     req.flush({ id: 5, estado: 'PENDIENTE' });
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Solicitud enviada');
+  });
+
+  it('miembro normal no ve "Ver eventos ocultos"', () => {
+    crear('MIEMBRO');
+    fixture.detectChanges();
+    responder();
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Ver eventos ocultos');
+  });
+
+  it('admin ve "Ver eventos ocultos"', () => {
+    crear('ADMIN');
+    fixture.detectChanges();
+    responder();
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Ver eventos ocultos');
   });
 });
