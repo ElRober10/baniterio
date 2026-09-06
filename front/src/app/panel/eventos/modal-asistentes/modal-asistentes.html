@@ -3,14 +3,13 @@
   role="dialog"
   aria-label="Listado de asistentes"
 >
-  <div class="carta-relieve flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl p-6">
+  <div class="carta-relieve flex max-h-[90vh] w-full max-w-4xl flex-col rounded-2xl p-6">
     <div class="flex items-start justify-between gap-3">
       <h2 class="font-display text-xl font-extrabold">Asistentes</h2>
       <button
         type="button"
         (click)="cerrar.emit()"
-        aria-label="Cerrar"
-        class="rounded-lg border border-outline px-3 py-1 text-sm text-ink transition hover:border-brand-bright/60"
+        class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark"
       >
         Cerrar
       </button>
@@ -28,9 +27,13 @@
           @if (d.asistentes.length === 0) {
             <p class="mt-4 text-sm text-muted">Todavía no hay nadie apuntado.</p>
           } @else {
-            <ul class="mt-4 flex-1 space-y-2 overflow-y-auto">
+            <div
+              #lista
+              class="mt-4 grid flex-1 auto-rows-min gap-2 overflow-y-auto"
+              [style.grid-template-columns]="'repeat(' + columnas() + ', minmax(0, 1fr))'"
+            >
               @for (a of d.asistentes; track $index) {
-                <li class="rounded-xl border border-outline/40 bg-brand/10 p-3">
+                <div class="rounded-xl border border-outline/40 bg-brand/10 p-3">
                   <div class="flex items-baseline justify-between gap-2">
                     <span
                       class="text-sm font-semibold"
@@ -50,9 +53,9 @@
                     </span>
                   </div>
                   <p class="mt-1 text-xs text-muted">{{ bebidaTexto(a) }}</p>
-                </li>
+                </div>
               }
-            </ul>
+            </div>
           }
           <p class="mt-3 border-t border-outline/40 pt-3 text-sm">
             Total cuotas: <strong>{{ d.totalCuotas }} €</strong> · pagado:
