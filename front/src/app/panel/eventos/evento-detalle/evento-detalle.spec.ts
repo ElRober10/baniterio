@@ -110,6 +110,27 @@ describe('EventoDetalleComponent', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Cuotas a pagar');
   });
 
+  it('muestra "Listado de asistentes" en un evento de San Miguel', () => {
+    crear();
+    fixture.detectChanges();
+    responder({
+      asistencia: {
+        ...asistenciaBase,
+        ficha: { llevaFicha: true, diasEvento: ['2026-09-25', '2026-09-26'], miFicha: null },
+      },
+    });
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Listado de asistentes');
+  });
+
+  it('no muestra "Listado de asistentes" si el evento no lleva ficha', () => {
+    crear();
+    fixture.detectChanges();
+    responder();
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Listado de asistentes');
+  });
+
   it('sin permisos no muestra botones de gestión', () => {
     crear();
     fixture.detectChanges();
