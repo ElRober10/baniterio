@@ -5,6 +5,7 @@ import com.baniterio.app.data.dto.EventoDetalle
 import com.baniterio.app.data.dto.EventoResumen
 import com.baniterio.app.data.dto.EventosOcultosResponse
 import com.baniterio.app.data.dto.GuardarEventoRequest
+import com.baniterio.app.data.dto.ListadoAsistentesDto
 import com.baniterio.app.data.dto.ListaEventosResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -72,6 +73,10 @@ class EventosRepositoryImpl(
 
     override suspend fun listarOcultos(): ResultadoEvento<List<EventoResumen>> = peticion {
         http.get("$API_BASE_URL/eventos/ocultos") { auth() }.body<EventosOcultosResponse>().eventos
+    }
+
+    override suspend fun asistentes(eventoId: Long): ResultadoEvento<ListadoAsistentesDto> = peticion {
+        http.get("$API_BASE_URL/eventos/$eventoId/asistentes") { auth() }.body()
     }
 
     override suspend fun solicitarCrear(mensaje: String?): ResultadoEvento<Unit> = peticion {

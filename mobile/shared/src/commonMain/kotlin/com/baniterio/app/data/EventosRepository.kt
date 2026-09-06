@@ -3,6 +3,7 @@ package com.baniterio.app.data
 import com.baniterio.app.data.dto.EventoDetalle
 import com.baniterio.app.data.dto.EventoResumen
 import com.baniterio.app.data.dto.GuardarEventoRequest
+import com.baniterio.app.data.dto.ListadoAsistentesDto
 import com.baniterio.app.data.dto.ListaEventosResponse
 
 /**
@@ -21,5 +22,7 @@ interface EventosRepository {
     suspend fun recuperar(id: Long): ResultadoEvento<EventoDetalle>
     /** Los eventos "borrados" (ocultos, recuperables); solo admin/superadmin. */
     suspend fun listarOcultos(): ResultadoEvento<List<EventoResumen>>
+    /** Listado de asistentes de un evento de San Miguel (pieza 4). Solo lectura. */
+    suspend fun asistentes(eventoId: Long): ResultadoEvento<ListadoAsistentesDto>
     suspend fun solicitarCrear(mensaje: String?): ResultadoEvento<Unit>
 }

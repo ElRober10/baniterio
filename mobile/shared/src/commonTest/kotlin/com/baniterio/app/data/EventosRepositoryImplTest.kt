@@ -64,6 +64,28 @@ class EventosRepositoryImplTest {
     }
 
     @Test
+    fun asistentes_hace_get_con_bearer_y_deserializa() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = """
+            {"asistentes":[
+              {"nombre":"Ana","estado":"APUNTADO","esManual":false,
+               "bebida":{"alcohol":"Barceló","refresco":"Coca-Cola","alternativa":"NADA","modalidad":"COMPLETA"},
+               "cuota":45.0,"pagado":false}],
+             "totalCuotas":45.0,"totalPagado":0.0,"miCuota":45.0,
+             "puedoPagarPor":[
+              {"nombre":"Luis","cuota":45.0,"relacion":"HIJO","usuarioId":9,"asistenciaId":null}]}
+        """.trimIndent())
+        val res = r.asistentes(3)
+        assertIs<ResultadoEvento.Exito<com.baniterio.app.data.dto.ListadoAsistentesDto>>(res)
+        assertEquals("GET", vistas[0].metodo)
+        assertEquals("/api/v1/eventos/3/asistentes", vistas[0].path)
+        assertEquals("Bearer jwt-x", vistas[0].auth)
+        assertEquals(1, res.dato.asistentes.size)
+        assertEquals("Ana", res.dato.asistentes[0].nombre)
+        assertEquals("HIJO", res.dato.puedoPagarPor[0].relacion)
+        assertEquals(9L, res.dato.puedoPagarPor[0].usuarioId)
+    }
+
+    @Test
     fun crear_incluye_la_cuenta_en_el_cuerpo() = runTest {
         val (r, vistas) = repo(cuerpoRespuesta = "{}")
         r.crear(GuardarEventoRequest(nombre = "X", fecha = "2999-01-01", cuentaId = 7))
