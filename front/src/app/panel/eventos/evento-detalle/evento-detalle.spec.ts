@@ -131,7 +131,7 @@ describe('EventoDetalleComponent', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Listado de asistentes');
   });
 
-  it('muestra "He pagado" solo si tengo cuota', () => {
+  it('muestra "Confirmar el pago" solo si tengo cuota', () => {
     crear();
     fixture.detectChanges();
     const miFicha = {
@@ -157,7 +157,7 @@ describe('EventoDetalleComponent', () => {
       },
     });
     fixture.detectChanges();
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('He pagado');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Confirmar el pago');
   });
 
   it('sin permisos no muestra botones de gestión', () => {

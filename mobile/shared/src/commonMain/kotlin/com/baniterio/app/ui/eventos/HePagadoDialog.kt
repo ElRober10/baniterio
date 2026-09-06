@@ -58,7 +58,7 @@ private fun relacionTexto(r: String) = when (r) {
 fun HePagadoDialog(
     eventoId: Long,
     repo: EventosRepository,
-    onEnviar: (PagoDeclarado) -> Unit,
+    onConfirmar: (PagoDeclarado) -> Unit,
     onCerrar: () -> Unit,
 ) {
     var datos by remember { mutableStateOf<ListadoAsistentesDto?>(null) }
@@ -82,7 +82,7 @@ fun HePagadoDialog(
             TextButton(
                 enabled = puedeEnviar,
                 onClick = {
-                    onEnviar(
+                    onConfirmar(
                         PagoDeclarado(
                             importe = importe.replace(',', '.').toDouble(),
                             metodo = metodo!!,
@@ -91,10 +91,10 @@ fun HePagadoDialog(
                         )
                     )
                 },
-            ) { Text("Enviar") }
+            ) { Text("Confirmar") }
         },
         dismissButton = { TextButton(onClick = onCerrar) { Text("Cancelar") } },
-        title = { Text("He pagado") },
+        title = { Text("Confirmar el pago") },
         text = {
             Column(
                 modifier = Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()),

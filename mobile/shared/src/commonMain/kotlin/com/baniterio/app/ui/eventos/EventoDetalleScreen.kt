@@ -222,12 +222,21 @@ fun EventoDetalleScreen(
                     }
 
                     if (ev.asistencia.ficha.llevaFicha) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick = { verAsistentes = true }) {
-                                Text("Listado de asistentes")
+                        val botonPeña = ButtonDefaults.buttonColors(
+                            containerColor = BaniterioColors.brand,
+                            contentColor = BaniterioColors.gold,
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                        ) {
+                            Button(onClick = { verAsistentes = true }, colors = botonPeña) {
+                                Text("Listado de asistentes", fontWeight = FontWeight.Bold)
                             }
                             if (ev.asistencia.ficha.miFicha?.cuota != null) {
-                                OutlinedButton(onClick = { verPago = true }) { Text("He pagado") }
+                                Button(onClick = { verPago = true }, colors = botonPeña) {
+                                    Text("Confirmar el pago", fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                     }
@@ -241,10 +250,10 @@ fun EventoDetalleScreen(
                         HePagadoDialog(
                             eventoId = eventoId,
                             repo = eventosRepo,
-                            onEnviar = {
+                            onConfirmar = {
                                 verPago = false
                                 // TODO(pagos): cuando se defina el modelo de pagos, mandar 'it' al backend.
-                                aviso = "Pago enviado. Un administrador lo confirmará."
+                                aviso = "Pago confirmado. Un administrador lo revisará."
                             },
                             onCerrar = { verPago = false },
                         )
