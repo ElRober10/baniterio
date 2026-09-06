@@ -134,6 +134,48 @@ data class AsistenciaResumenDto(
 @Serializable
 data class ResponderAsistenciaBody(val estado: String, val paraUsuarioId: Long? = null)
 
+// --- Listado de asistentes y pago (pieza 4) ---
+
+/** Lo que bebe un asistente en el listado. `alcohol` null = no bebe alcohol. */
+@Serializable
+data class BebidaFilaDto(
+    val alcohol: String? = null,
+    val refresco: String,
+    val alternativa: String,
+    val modalidad: String,
+)
+
+/** Una fila del listado de asistentes. `estado` = APUNTADO | EN_DUDA. */
+@Serializable
+data class AsistenteFilaDto(
+    val nombre: String,
+    val estado: String,
+    val esManual: Boolean,
+    val bebida: BebidaFilaDto? = null,
+    val cuota: Double? = null,
+    val pagado: Boolean = false,
+)
+
+/** Alguien a quien puedo incluir en mi pago. `relacion` = PAREJA | HIJO | INVITADO. */
+@Serializable
+data class PersonaPagableDto(
+    val nombre: String,
+    val cuota: Double,
+    val relacion: String,
+    val usuarioId: Long? = null,
+    val asistenciaId: Long? = null,
+)
+
+/** `GET /eventos/{id}/asistentes` (pieza 4). */
+@Serializable
+data class ListadoAsistentesDto(
+    val asistentes: List<AsistenteFilaDto> = emptyList(),
+    val totalCuotas: Double = 0.0,
+    val totalPagado: Double = 0.0,
+    val puedoPagarPor: List<PersonaPagableDto> = emptyList(),
+    val miCuota: Double? = null,
+)
+
 @Serializable
 data class AnadirAsistenteBody(
     val nombre: String,
