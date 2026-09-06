@@ -1,30 +1,44 @@
 package com.baniterio.api.evento;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import com.baniterio.api.auth.ServicioPermisos;
 import java.util.List;
 
 import com.baniterio.api.evento.dto.AsistenciaDetalle;
 import com.baniterio.api.evento.dto.AsistenciaResumen;
+import com.baniterio.api.evento.dto.AsistenteFila;
+import com.baniterio.api.evento.dto.BebidaFila;
 import com.baniterio.api.evento.dto.FichaBebidaRequest;
 import com.baniterio.api.evento.dto.FichaBebidaResponse;
+import com.baniterio.api.evento.dto.ListadoAsistentesResponse;
 import com.baniterio.api.evento.dto.PendienteRespuesta;
+import com.baniterio.api.evento.dto.PersonaPagable;
 import com.baniterio.api.identidad.AsistenciaEvento;
 import com.baniterio.api.identidad.AsistenciaEventoRepository;
 import com.baniterio.api.identidad.EstadoAsistencia;
+import com.baniterio.api.identidad.EstadoVinculo;
 import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
+import com.baniterio.api.identidad.FichaBebida;
+import com.baniterio.api.identidad.FichaBebidaRepository;
 import com.baniterio.api.identidad.NotificacionEvento;
 import com.baniterio.api.identidad.NotificacionEventoRepository;
 import com.baniterio.api.identidad.PenaRepository;
 import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
 import com.baniterio.api.identidad.VinculoFamiliarService;
+import com.baniterio.api.identidad.VinculoPareja;
+import com.baniterio.api.identidad.VinculoParejaRepository;
 import com.baniterio.api.push.Audiencia;
 import com.baniterio.api.push.AvisoPushEvent;
 import com.baniterio.api.push.ResolutorAudiencia;
@@ -56,12 +70,15 @@ public class AsistenciaService {
     private final ResolutorAudiencia resolutor;
     private final FichaBebidaService fichaBebida;
     private final VinculoFamiliarService vinculoFamiliar;
+    private final FichaBebidaRepository fichas;
+    private final VinculoParejaRepository vinculosPareja;
 
     public AsistenciaService(AsistenciaEventoRepository asistencias,
                              NotificacionEventoRepository notificaciones, EventoRepository eventos,
                              UsuarioRepository usuarios, PenaRepository penas, ServicioPermisos permisos,
                              ApplicationEventPublisher publisher, ResolutorAudiencia resolutor,
-                             FichaBebidaService fichaBebida, VinculoFamiliarService vinculoFamiliar) {
+                             FichaBebidaService fichaBebida, VinculoFamiliarService vinculoFamiliar,
+                             FichaBebidaRepository fichas, VinculoParejaRepository vinculosPareja) {
         this.asistencias = asistencias;
         this.notificaciones = notificaciones;
         this.eventos = eventos;
@@ -72,6 +89,8 @@ public class AsistenciaService {
         this.resolutor = resolutor;
         this.fichaBebida = fichaBebida;
         this.vinculoFamiliar = vinculoFamiliar;
+        this.fichas = fichas;
+        this.vinculosPareja = vinculosPareja;
     }
 
     /** Un administrador de verdad, o quien organiza (creó) el evento. */
@@ -244,6 +263,96 @@ public class AsistenciaService {
         int sinContestar = resolutor.resolver(new Audiencia.SinRespuestaEvento(eventoId)).size();
         return new AsistenciaDetalle(miAsistencia, puedeNotificar, reenviableAt, notificacionMandada,
                 apuntados, noVoy, enDuda, sinContestar, fichaBebida.detalleDe(usuarioId, e));
+    }
+
+    /**
+     * Listado de asistentes de un evento de San Miguel (pieza 4). Solo lectura:
+     * quién va (APUNTADO / EN_DUDA, nunca NO_VOY), qué bebe, su cuota y —de
+     * momento siempre {@code false}— si ha pagado. Añade {@code puedoPagarPor}:
+     * a quién puede cubrir el usuario que pregunta (su pareja, hijos mayores con
+     * cuenta e invitados propios, apuntados y con cuota). 404 si no existe el
+     * evento; 409 {@code EVENTO_SIN_FICHA} si no es de San Miguel.
+     */
+    @Transactional(readOnly = true)
+    public ListadoAsistentesResponse listadoAsistentes(Long usuarioId, Long eventoId) {
+        Evento e = cargar(eventoId);
+        if (!e.getCuenta().isLlevaFichaBebida()) {
+            throw new EventoSinFichaException();
+        }
+
+        Map<Long, FichaBebida> fichaPorAsistencia = fichas.findByEventoId(eventoId).stream()
+                .collect(Collectors.toMap(FichaBebida::getAsistenciaId, Function.identity()));
+
+        List<AsistenciaEvento> filas = asistencias.findByEventoIdAndEstadoIn(
+                eventoId, List.of(EstadoAsistencia.APUNTADO, EstadoAsistencia.EN_DUDA));
+
+        Comparator<AsistenciaEvento> orden = Comparator
+                .comparingInt((AsistenciaEvento a) -> a.getEstado() == EstadoAsistencia.APUNTADO ? 0 : 1)
+                .thenComparing(a -> nombreDe(a).toLowerCase());
+
+        List<AsistenteFila> asistentes = filas.stream().sorted(orden)
+                .map(a -> aFila(a, fichaPorAsistencia.get(a.getId())))
+                .toList();
+
+        BigDecimal totalCuotas = asistentes.stream()
+                .map(AsistenteFila::cuota).filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal miCuota = asistencias.findByEventoIdAndUsuarioId(eventoId, usuarioId)
+                .map(a -> fichaPorAsistencia.get(a.getId()))
+                .map(FichaBebida::getCuota).orElse(null);
+
+        return new ListadoAsistentesResponse(asistentes, totalCuotas, BigDecimal.ZERO,
+                puedoPagarPor(usuarioId, eventoId, fichaPorAsistencia), miCuota);
+    }
+
+    private static String nombreDe(AsistenciaEvento a) {
+        return a.getUsuario() != null ? a.getUsuario().getNombre() : a.getNombre();
+    }
+
+    private static AsistenteFila aFila(AsistenciaEvento a, FichaBebida f) {
+        BebidaFila bebida = f == null ? null : new BebidaFila(
+                f.getAlcohol() != null ? f.getAlcohol().getNombre() : null,
+                f.getRefresco().getNombre(),
+                f.getAlternativa().name(),
+                f.getModalidad().name());
+        return new AsistenteFila(nombreDe(a), a.getEstado().name(), a.getUsuario() == null,
+                bebida, f == null ? null : f.getCuota(), false);
+    }
+
+    private List<PersonaPagable> puedoPagarPor(Long usuarioId, Long eventoId,
+                                               Map<Long, FichaBebida> fichaPorAsistencia) {
+        List<PersonaPagable> out = new ArrayList<>();
+        Long parejaId = idPareja(usuarioId).orElse(null);
+
+        for (VinculoFamiliarService.Persona p : vinculoFamiliar.personasParaPago(usuarioId)) {
+            asistencias.findByEventoIdAndUsuarioId(eventoId, p.id())
+                    .map(a -> fichaPorAsistencia.get(a.getId()))
+                    .map(FichaBebida::getCuota)
+                    .ifPresent(cuota -> out.add(new PersonaPagable(p.nombre(), cuota,
+                            p.id().equals(parejaId) ? "PAREJA" : "HIJO", p.id(), null)));
+        }
+
+        for (AsistenciaEvento a : asistencias
+                .findByEventoIdAndUsuarioIsNullAndRegistradoPorId(eventoId, usuarioId)) {
+            if (a.getEstado() == EstadoAsistencia.NO_VOY) {
+                continue;
+            }
+            FichaBebida f = fichaPorAsistencia.get(a.getId());
+            if (f == null || f.getCuota() == null) {
+                continue;
+            }
+            out.add(new PersonaPagable(a.getNombre(), f.getCuota(), "INVITADO", null, a.getId()));
+        }
+        return out;
+    }
+
+    /** Id del usuario que es "la otra mitad" de la pareja con vínculo aceptado. */
+    private java.util.Optional<Long> idPareja(Long usuarioId) {
+        return vinculosPareja.findBySolicitanteIdAndEstado(usuarioId, EstadoVinculo.ACEPTADO)
+                .map(VinculoPareja::getParejaUsuario).map(Usuario::getId)
+                .or(() -> vinculosPareja.findByParejaUsuarioIdAndEstado(usuarioId, EstadoVinculo.ACEPTADO)
+                        .map(VinculoPareja::getSolicitante).map(Usuario::getId));
     }
 
     /**

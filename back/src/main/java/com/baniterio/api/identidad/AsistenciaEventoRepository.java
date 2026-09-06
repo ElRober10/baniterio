@@ -17,6 +17,11 @@ public interface AsistenciaEventoRepository extends JpaRepository<AsistenciaEven
 
     List<AsistenciaEvento> findByEventoId(Long eventoId);
 
+    List<AsistenciaEvento> findByEventoIdAndEstadoIn(Long eventoId, java.util.Collection<EstadoAsistencia> estados);
+
+    /** Invitados que añadió a mano una persona concreta (filas sin usuario). */
+    List<AsistenciaEvento> findByEventoIdAndUsuarioIsNullAndRegistradoPorId(Long eventoId, Long registradoPorId);
+
     long countByEventoIdAndEstado(Long eventoId, EstadoAsistencia estado);
 
     boolean existsByEventoIdAndUsuarioId(Long eventoId, Long usuarioId);
