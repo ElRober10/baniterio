@@ -228,15 +228,19 @@ fun EventoDetalleScreen(
                         )
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Button(onClick = { verAsistentes = true }, colors = botonPeña) {
-                                Text("Listado de asistentes", fontWeight = FontWeight.Bold)
-                            }
+                            Button(
+                                onClick = { verAsistentes = true },
+                                colors = botonPeña,
+                                modifier = Modifier.weight(1f),
+                            ) { Text("Listado de asistentes", fontWeight = FontWeight.Bold) }
                             if (ev.asistencia.ficha.miFicha?.cuota != null) {
-                                Button(onClick = { verPago = true }, colors = botonPeña) {
-                                    Text("Confirmar el pago", fontWeight = FontWeight.Bold)
-                                }
+                                Button(
+                                    onClick = { verPago = true },
+                                    colors = botonPeña,
+                                    modifier = Modifier.weight(1f),
+                                ) { Text("Confirmar el pago", fontWeight = FontWeight.Bold) }
                             }
                         }
                     }
