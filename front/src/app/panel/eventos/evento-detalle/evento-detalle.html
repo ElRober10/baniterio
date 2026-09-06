@@ -88,14 +88,27 @@
                 Tu cuota está pendiente de que se fije la cuota máxima del evento.
               </p>
             }
-            @if (puedeEditarFicha() && !editandoFicha()) {
-              <button
-                type="button"
-                (click)="abrirEditorFicha()"
-                class="mt-2 rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark"
-              >
-                Cambiar lo que voy a beber
-              </button>
+            @if (!editandoFicha()) {
+              <div class="mt-2 flex flex-wrap gap-2">
+                @if (puedeEditarFicha()) {
+                  <button
+                    type="button"
+                    (click)="abrirEditorFicha()"
+                    class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark"
+                  >
+                    Cambiar lo que voy a beber
+                  </button>
+                }
+                @if (f.cuota != null) {
+                  <button
+                    type="button"
+                    (click)="modalPago.set(true)"
+                    class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-brand-bright/60"
+                  >
+                    He pagado
+                  </button>
+                }
+              </div>
             }
             @if (editandoFicha() && catalogoFicha(); as cat) {
               <app-ficha-bebida
@@ -262,6 +275,13 @@
 
         @if (modalAsistentes()) {
           <app-modal-asistentes [eventoId]="e.id" (cerrar)="modalAsistentes.set(false)" />
+        }
+        @if (modalPago()) {
+          <app-modal-he-pagado
+            [eventoId]="e.id"
+            (cerrar)="modalPago.set(false)"
+            (enviado)="onPagoEnviado()"
+          />
         }
       }
     }

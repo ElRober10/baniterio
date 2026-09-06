@@ -1,0 +1,101 @@
+<div
+  class="fixed inset-0 z-50 flex items-center justify-center bg-surface/90 p-4 backdrop-blur-sm"
+  role="dialog"
+  aria-label="He pagado"
+>
+  <div class="carta-relieve flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl p-6">
+    <div class="flex items-start justify-between gap-3">
+      <h2 class="font-display text-xl font-extrabold">He pagado</h2>
+      <button
+        type="button"
+        (click)="cerrar.emit()"
+        aria-label="Cerrar"
+        class="rounded-lg border border-outline px-3 py-1 text-sm text-ink transition hover:border-brand-bright/60"
+      >
+        Cerrar
+      </button>
+    </div>
+
+    @switch (estado()) {
+      @case ('cargando') {
+        <p class="mt-4 text-sm text-muted">Cargando…</p>
+      }
+      @case ('error') {
+        <p class="mt-4 text-sm text-red-300">No se ha podido cargar.</p>
+      }
+      @case ('listo') {
+        <div class="mt-4 flex-1 space-y-4 overflow-y-auto">
+          <div>
+            <p class="text-sm font-semibold">¿A quién pagas?</p>
+            <label class="mt-2 flex items-center gap-2 text-sm">
+              <input type="checkbox" checked disabled />
+              Yo
+              @if (miCuota() != null) {
+                <span class="text-muted">({{ miCuota() }} €)</span>
+              }
+            </label>
+            @for (p of personas(); track $index) {
+              <label class="mt-1 flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  (change)="
+                    p.usuarioId != null ? marcarUsuario(p.usuarioId) : marcarAsistencia(p.asistenciaId!)
+                  "
+                />
+                {{ p.nombre }}
+                <span class="text-muted">({{ relacionTexto[p.relacion] }} · {{ p.cuota }} €)</span>
+              </label>
+            }
+          </div>
+
+          <div>
+            <label class="text-sm font-semibold" for="importe-pago">Importe pagado (€)</label>
+            <input
+              id="importe-pago"
+              type="number"
+              min="0"
+              step="0.01"
+              [value]="importe()"
+              (input)="cambiarImporte($event)"
+              class="mt-1 w-full rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div>
+            <p class="text-sm font-semibold">Cómo lo has pagado</p>
+            @for (m of metodos; track m.valor) {
+              <label class="mt-1 flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="metodo-pago"
+                  [checked]="metodo() === m.valor"
+                  (change)="metodo.set(m.valor)"
+                />
+                {{ m.texto }}
+              </label>
+            }
+          </div>
+        </div>
+
+        <div class="mt-4 flex gap-2 border-t border-outline/40 pt-4">
+          <button
+            type="button"
+            data-test="enviar"
+            (click)="enviar()"
+            [disabled]="!puedeEnviar()"
+            class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark disabled:opacity-50"
+          >
+            Enviar
+          </button>
+          <button
+            type="button"
+            (click)="cerrar.emit()"
+            class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink"
+          >
+            Cancelar
+          </button>
+        </div>
+      }
+    }
+  </div>
+</div>
