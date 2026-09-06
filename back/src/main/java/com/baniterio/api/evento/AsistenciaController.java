@@ -4,6 +4,7 @@ import com.baniterio.api.auth.UsuarioPrincipal;
 import com.baniterio.api.evento.dto.AnadirAsistenteRequest;
 import com.baniterio.api.evento.dto.AsistenciaResumen;
 import com.baniterio.api.evento.dto.EventoDetalle;
+import com.baniterio.api.evento.dto.ListadoAsistentesResponse;
 import com.baniterio.api.evento.dto.MandarNotificacionRequest;
 import com.baniterio.api.evento.dto.PendientesRespuestaResponse;
 import com.baniterio.api.evento.dto.ResponderAsistenciaRequest;
@@ -40,6 +41,12 @@ public class AsistenciaController {
     @GetMapping("/pendientes-respuesta")
     public PendientesRespuestaResponse pendientes(@AuthenticationPrincipal UsuarioPrincipal principal) {
         return new PendientesRespuestaResponse(asistenciaService.pendientesRespuesta(principal.id()));
+    }
+
+    @GetMapping("/{id}/asistentes")
+    public ListadoAsistentesResponse asistentes(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long id) {
+        return asistenciaService.listadoAsistentes(principal.id(), id);
     }
 
     @PutMapping("/{id}/asistencia")

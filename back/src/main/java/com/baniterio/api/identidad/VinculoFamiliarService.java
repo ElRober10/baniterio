@@ -60,4 +60,46 @@ public class VinculoFamiliarService {
             porId.put(u.getId(), new Persona(u.getId(), u.getNombre()));
         }
     }
+
+    /**
+     * A quién puede incluir {@code actuanteId} en un pago además de a sí mismo: su
+     * pareja con vínculo {@link EstadoVinculo#ACEPTADO} y los hijos <b>mayores de
+     * edad</b> con cuenta propia ({@link Hijo#getUsuario()}), suyos o de la
+     * pareja. No incluye a uno mismo (a diferencia de
+     * {@link #personasQuePuedoResponder}).
+     */
+    public List<Persona> personasParaPago(Long actuanteId) {
+        Map<Long, Persona> porId = new LinkedHashMap<>();
+
+        Optional<VinculoPareja> vinculo = vinculos
+                .findBySolicitanteIdAndEstado(actuanteId, EstadoVinculo.ACEPTADO)
+                .or(() -> vinculos.findByParejaUsuarioIdAndEstado(actuanteId, EstadoVinculo.ACEPTADO));
+        parejaDe(vinculo, actuanteId)
+                .ifPresent(u -> porId.put(u.getId(), new Persona(u.getId(), u.getNombre())));
+
+        hijos.findByCreadorId(actuanteId).forEach(h -> agregarSiMayorConCuenta(porId, h));
+        vinculo.map(VinculoPareja::getId)
+                .map(hijos::findByVinculoParejaId)
+                .ifPresent(lista -> lista.forEach(h -> agregarSiMayorConCuenta(porId, h)));
+
+        return new ArrayList<>(porId.values());
+    }
+
+    /**
+     * El otro miembro de la pareja visto desde {@code actuanteId}: normalmente
+     * {@code parejaUsuario}, pero si {@code actuanteId} es quien fue invitado, el
+     * "otro" es el {@code solicitante}.
+     */
+    private static Optional<Usuario> parejaDe(Optional<VinculoPareja> vinculo, Long actuanteId) {
+        return vinculo.map(v -> v.getSolicitante().getId().equals(actuanteId)
+                ? v.getParejaUsuario()
+                : v.getSolicitante());
+    }
+
+    private static void agregarSiMayorConCuenta(Map<Long, Persona> porId, Hijo h) {
+        Usuario u = h.getUsuario();
+        if (u != null && h.isMayorDeEdad()) {
+            porId.put(u.getId(), new Persona(u.getId(), u.getNombre()));
+        }
+    }
 }
