@@ -224,7 +224,7 @@ class EventoIT extends IntegrationTest {
     }
 
     @Test
-    void creador_edita_su_evento() {
+    void creador_no_admin_no_puede_editar_su_propio_evento_403() {
         Sesion miembro = crearMiembro(RolMembresia.MIEMBRO);
         Usuario creador = usuarios.findById(miembro.id()).orElseThrow();
         Evento e = sembrarEvento("IT-edita-mio", LocalDate.of(2999, 8, 1), creador);
@@ -233,73 +233,61 @@ class EventoIT extends IntegrationTest {
                 .header(AUTHORIZATION, "Bearer " + miembro.token())
                 .body(Map.of("nombre", "IT-edita-mio-2", "fecha", "2999-08-02",
                         "cuentaId", cuenta().getId()))
-                .exchange().expectStatus().isOk()
-                .expectBody().jsonPath("$.nombre").isEqualTo("IT-edita-mio-2");
+                .exchange().expectStatus().isForbidden()
+                .expectBody().jsonPath("$.codigo").isEqualTo("SIN_PERMISO_EVENTO");
     }
 
     @Test
-    void admin_fija_la_cuota_maxima_al_crear() {
+    void admin_fija_cubatas_al_crear_y_las_otras_4_cuotas_se_derivan() {
         Sesion admin = crearMiembro(RolMembresia.ADMIN);
         @SuppressWarnings("unchecked")
         Map<String, Object> body = http.post().uri("/api/v1/eventos")
                 .header(AUTHORIZATION, "Bearer " + admin.token())
                 .body(Map.of("nombre", "IT-cuota", "fecha", "2999-07-20",
-                        "cuentaId", cuenta().getId(), "cuotaMaxima", 26))
+                        "cuentaId", cuenta().getId(), "cuotaCubatas", 26))
                 .exchange().expectStatus().isCreated()
                 .expectBody(Map.class).returnResult().getResponseBody();
 
         Long id = ((Number) body.get("id")).longValue();
-        assertThat(new BigDecimal(body.get("cuotaMaxima").toString()))
+        assertThat(new BigDecimal(body.get("cuotaCubatas").toString()))
                 .isEqualByComparingTo(new BigDecimal("26"));
-        assertThat(eventos.findById(id).orElseThrow().getCuotaMaxima())
-                .isEqualByComparingTo(new BigDecimal("26.00"));
+        Evento guardado = eventos.findById(id).orElseThrow();
+        // cubatas = 26 · cervezas = 26-10 = 16 · cubatas 1 día = 26/2+1 = 14 ·
+        // cervezas 1 día = 16/2+1 = 9 · embarazada = 5 fijo.
+        assertThat(guardado.getCuotaCubatas()).isEqualByComparingTo(new BigDecimal("26.00"));
+        assertThat(guardado.getCuotaCervezas()).isEqualByComparingTo(new BigDecimal("16.00"));
+        assertThat(guardado.getCuotaCubatas1Dia()).isEqualByComparingTo(new BigDecimal("14.00"));
+        assertThat(guardado.getCuotaCervezas1Dia()).isEqualByComparingTo(new BigDecimal("9.00"));
+        assertThat(guardado.getCuotaEmbarazada()).isEqualByComparingTo(new BigDecimal("5.00"));
     }
 
     @Test
-    void miembro_creador_no_puede_cambiar_la_cuota_maxima() {
-        Sesion miembro = crearMiembro(RolMembresia.MIEMBRO);
-        Usuario creador = usuarios.findById(miembro.id()).orElseThrow();
-        Evento e = sembrarEvento("IT-cuota-fija", LocalDate.of(2999, 7, 21), creador);
-        e.setCuotaMaxima(new BigDecimal("20.00"));
-        eventos.save(e);
-
-        http.put().uri("/api/v1/eventos/" + e.getId())
-                .header(AUTHORIZATION, "Bearer " + miembro.token())
-                .body(Map.of("nombre", "IT-cuota-fija-2", "fecha", "2999-07-21",
-                        "cuentaId", cuenta().getId(), "cuotaMaxima", 5))
-                .exchange().expectStatus().isOk();
-
-        assertThat(eventos.findById(e.getId()).orElseThrow().getCuotaMaxima())
-                .isEqualByComparingTo(new BigDecimal("20.00"));
-    }
-
-    @Test
-    void cuota_maxima_negativa_es_400_VALIDACION() {
+    void cuota_negativa_es_400_VALIDACION() {
         Sesion admin = crearMiembro(RolMembresia.ADMIN);
         http.post().uri("/api/v1/eventos")
                 .header(AUTHORIZATION, "Bearer " + admin.token())
                 .body(Map.of("nombre", "IT-cuota-neg", "fecha", "2999-07-22",
-                        "cuentaId", cuenta().getId(), "cuotaMaxima", -1))
+                        "cuentaId", cuenta().getId(), "cuotaCubatas", -1))
                 .exchange().expectStatus().isBadRequest()
                 .expectBody().jsonPath("$.codigo").isEqualTo("VALIDACION");
     }
 
     @Test
-    void admin_editar_reenviando_la_cuota_la_conserva() {
+    void admin_editar_reenviando_las_cuotas_las_conserva() {
         Sesion admin = crearMiembro(RolMembresia.ADMIN);
         Evento e = sembrarEvento("IT-cuota-edit", LocalDate.of(2999, 8, 5), null);
-        e.setCuotaMaxima(new BigDecimal("26.00"));
+        e.setCuotaCubatas(new BigDecimal("26.00"));
         eventos.save(e);
 
-        // El editor precarga la cuota y la reenvía aunque solo cambie el nombre.
+        // El editor precarga las cuotas y las reenvía aunque solo cambie el nombre.
         http.put().uri("/api/v1/eventos/" + e.getId())
                 .header(AUTHORIZATION, "Bearer " + admin.token())
                 .body(Map.of("nombre", "IT-cuota-edit-2", "fecha", "2999-08-05",
-                        "cuentaId", cuenta().getId(), "cuotaMaxima", 26))
+                        "cuentaId", cuenta().getId(), "cuotaCubatas", 26))
                 .exchange().expectStatus().isOk()
-                .expectBody().jsonPath("$.cuotaMaxima").isEqualTo(26);
+                .expectBody().jsonPath("$.cuotaCubatas").isEqualTo(26);
 
-        assertThat(eventos.findById(e.getId()).orElseThrow().getCuotaMaxima())
+        assertThat(eventos.findById(e.getId()).orElseThrow().getCuotaCubatas())
                 .isEqualByComparingTo(new BigDecimal("26.00"));
     }
 
@@ -330,47 +318,91 @@ class EventoIT extends IntegrationTest {
     }
 
     @Test
-    void admin_borra_evento_directo_204() {
+    void admin_borra_evento_lo_oculta_sin_quitarlo_de_bbdd_204() {
         Sesion admin = crearMiembro(RolMembresia.ADMIN);
-        Evento e = sembrarEvento("IT-borra-admin", LocalDate.of(2999, 9, 1), null);
+        Evento e = sembrarEvento("IT-oculta-admin", LocalDate.of(2999, 9, 1), null);
 
         http.delete().uri("/api/v1/eventos/" + e.getId())
                 .header(AUTHORIZATION, "Bearer " + admin.token())
                 .exchange().expectStatus().isNoContent();
 
-        assertThat(eventos.findById(e.getId())).isEmpty();
-    }
-
-    @Test
-    void creador_no_admin_pide_borrado_202_y_el_evento_sigue() {
-        Sesion miembro = crearMiembro(RolMembresia.MIEMBRO);
-        Usuario creador = usuarios.findById(miembro.id()).orElseThrow();
-        Evento e = sembrarEvento("IT-borra-solicitud", LocalDate.of(2999, 9, 2), creador);
-
-        http.delete().uri("/api/v1/eventos/" + e.getId())
-                .header(AUTHORIZATION, "Bearer " + miembro.token())
-                .exchange().expectStatus().isEqualTo(202)
-                .expectBody().jsonPath("$.estado").isEqualTo("PENDIENTE");
-
         assertThat(eventos.findById(e.getId())).isPresent();
-        assertThat(solicitudes.existsByEventoIdAndTipoAndEstado(
-                e.getId(), com.baniterio.api.identidad.TipoSolicitudEvento.BORRAR,
-                com.baniterio.api.identidad.EstadoSolicitud.PENDIENTE)).isTrue();
+        assertThat(eventos.findById(e.getId()).orElseThrow().isOculto()).isTrue();
     }
 
     @Test
-    void segunda_solicitud_de_borrado_del_mismo_evento_409() {
+    void evento_oculto_no_sale_en_el_listado() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Evento e = sembrarEvento("IT-oculto-fuera-listado", LocalDate.of(2999, 9, 2), null);
+
+        http.delete().uri("/api/v1/eventos/" + e.getId())
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .exchange().expectStatus().isNoContent();
+
+        http.get().uri("/api/v1/eventos?pagina=0")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.eventos[?(@.id == " + e.getId() + ")]").doesNotExist();
+    }
+
+    @Test
+    void miembro_no_admin_no_puede_borrar_403() {
         Sesion miembro = crearMiembro(RolMembresia.MIEMBRO);
         Usuario creador = usuarios.findById(miembro.id()).orElseThrow();
-        Evento e = sembrarEvento("IT-borra-doble", LocalDate.of(2999, 9, 3), creador);
+        Evento e = sembrarEvento("IT-no-puede-borrar", LocalDate.of(2999, 9, 3), creador);
 
         http.delete().uri("/api/v1/eventos/" + e.getId())
                 .header(AUTHORIZATION, "Bearer " + miembro.token())
-                .exchange().expectStatus().isEqualTo(202);
-        http.delete().uri("/api/v1/eventos/" + e.getId())
+                .exchange().expectStatus().isForbidden()
+                .expectBody().jsonPath("$.codigo").isEqualTo("SIN_PERMISO_EVENTO");
+
+        assertThat(eventos.findById(e.getId()).orElseThrow().isOculto()).isFalse();
+    }
+
+    @Test
+    void admin_recupera_un_evento_oculto() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Evento e = sembrarEvento("IT-recupera", LocalDate.of(2999, 9, 4), null);
+        e.setOculto(true);
+        eventos.save(e);
+
+        http.put().uri("/api/v1/eventos/" + e.getId() + "/recuperar")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.oculto").isEqualTo(false);
+
+        assertThat(eventos.findById(e.getId()).orElseThrow().isOculto()).isFalse();
+    }
+
+    @Test
+    void miembro_no_admin_no_puede_recuperar_403() {
+        Sesion miembro = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sembrarEvento("IT-no-puede-recuperar", LocalDate.of(2999, 9, 5), null);
+        e.setOculto(true);
+        eventos.save(e);
+
+        http.put().uri("/api/v1/eventos/" + e.getId() + "/recuperar")
                 .header(AUTHORIZATION, "Bearer " + miembro.token())
-                .exchange().expectStatus().isEqualTo(409)
-                .expectBody().jsonPath("$.codigo").isEqualTo("SOLICITUD_EVENTO_YA_PENDIENTE");
+                .exchange().expectStatus().isForbidden()
+                .expectBody().jsonPath("$.codigo").isEqualTo("SIN_PERMISO_EVENTO");
+    }
+
+    @Test
+    void listar_ocultos_solo_admin() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Sesion miembro = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sembrarEvento("IT-listado-ocultos", LocalDate.of(2999, 9, 6), null);
+        e.setOculto(true);
+        eventos.save(e);
+
+        http.get().uri("/api/v1/eventos/ocultos")
+                .header(AUTHORIZATION, "Bearer " + miembro.token())
+                .exchange().expectStatus().isForbidden();
+
+        http.get().uri("/api/v1/eventos/ocultos")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.eventos[?(@.id == " + e.getId() + ")]").exists();
     }
 
     @Test

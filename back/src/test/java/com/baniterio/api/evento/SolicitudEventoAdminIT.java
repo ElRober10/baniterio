@@ -14,6 +14,7 @@ import com.baniterio.api.identidad.MembresiaRepository;
 import com.baniterio.api.identidad.Pena;
 import com.baniterio.api.identidad.PenaRepository;
 import com.baniterio.api.identidad.RolMembresia;
+import com.baniterio.api.identidad.SolicitudEvento;
 import com.baniterio.api.identidad.SolicitudEventoRepository;
 import com.baniterio.api.identidad.TipoSolicitudEvento;
 import com.baniterio.api.identidad.Usuario;
@@ -132,18 +133,27 @@ class SolicitudEventoAdminIT extends IntegrationTest {
                 .exchange().expectStatus().isCreated();
     }
 
+    /**
+     * Desde el rediseño de eventos (2026-09-04), nadie puede ya crear una
+     * solicitud BORRAR (borrar un evento pasó a ser ocultarlo, directo, solo
+     * admin/superadmin — ver {@code EventoService.ocultar}). Este test sigue
+     * probando que aprobar una BORRAR ya existente borra de verdad el evento
+     * (comportamiento legado, por si queda alguna en BBDD de antes), sembrándola
+     * directo por repositorio en vez de por la API, que ya no la crea.
+     */
     @Test
     void aprobar_BORRAR_borra_el_evento() {
         Sesion admin = crearMiembro(RolMembresia.ADMIN);
         Sesion miembro = crearMiembro(RolMembresia.MIEMBRO);
         Usuario creador = usuarios.findById(miembro.id()).orElseThrow();
         Evento e = sembrarEvento("IT-borrar-aprobado", LocalDate.of(2999, 10, 2), creador);
-
-        http.delete().uri("/api/v1/eventos/" + e.getId())
-                .header(AUTHORIZATION, "Bearer " + miembro.token())
-                .exchange().expectStatus().isEqualTo(202);
-        long solId = solicitudes.findByEventoIdAndTipoAndEstado(
-                e.getId(), TipoSolicitudEvento.BORRAR, EstadoSolicitud.PENDIENTE).orElseThrow().getId();
+        long solId = solicitudes.save(SolicitudEvento.builder()
+                .pena(pena())
+                .solicitante(creador)
+                .tipo(TipoSolicitudEvento.BORRAR)
+                .evento(e)
+                .estado(EstadoSolicitud.PENDIENTE)
+                .build()).getId();
 
         http.post().uri("/api/v1/admin/solicitudes-evento/" + solId + "/aprobar")
                 .header(AUTHORIZATION, "Bearer " + admin.token())

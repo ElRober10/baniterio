@@ -3,6 +3,8 @@ package com.baniterio.api.evento;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -10,8 +12,11 @@ import com.baniterio.api.identidad.AsistenciaEventoRepository;
 import com.baniterio.api.identidad.Cuenta;
 import com.baniterio.api.identidad.CuentaRepository;
 import com.baniterio.api.identidad.EstadoAsistencia;
+import com.baniterio.api.identidad.EstadoVinculo;
 import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
+import com.baniterio.api.identidad.Hijo;
+import com.baniterio.api.identidad.HijoRepository;
 import com.baniterio.api.identidad.Membresia;
 import com.baniterio.api.identidad.MembresiaRepository;
 import com.baniterio.api.identidad.NotificacionEvento;
@@ -21,6 +26,8 @@ import com.baniterio.api.identidad.PenaRepository;
 import com.baniterio.api.identidad.RolMembresia;
 import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
+import com.baniterio.api.identidad.VinculoPareja;
+import com.baniterio.api.identidad.VinculoParejaRepository;
 import com.baniterio.api.support.IntegrationTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,9 +72,19 @@ class AsistenciaIT extends IntegrationTest {
     NotificacionEventoRepository notificaciones;
 
     @Autowired
+    VinculoParejaRepository vinculos;
+
+    @Autowired
+    HijoRepository hijos;
+
+    @Autowired
     PasswordEncoder passwordEncoder;
 
     RestTestClient http;
+
+    /** Vínculos/hijos creados a mano en los tests de "responder por otro"; se borran en {@link #limpiar()}. */
+    private final List<Long> vinculosCreados = new ArrayList<>();
+    private final List<Long> hijosCreados = new ArrayList<>();
 
     @BeforeEach
     void setUp() {
@@ -85,6 +102,29 @@ class AsistenciaIT extends IntegrationTest {
         notificaciones.deleteAllInBatch();
         eventos.deleteAll(eventos.findAll().stream()
                 .filter(e -> e.getNombre().startsWith("IT-asis")).toList());
+        hijos.deleteAllById(hijosCreados);
+        vinculos.deleteAllById(vinculosCreados);
+        hijosCreados.clear();
+        vinculosCreados.clear();
+    }
+
+    /** Vínculo de pareja ACEPTADO entre {@code a} y {@code b} (ambos con cuenta). */
+    VinculoPareja vincularPareja(Usuario a, Usuario b) {
+        VinculoPareja v = vinculos.save(VinculoPareja.builder()
+                .solicitante(a).parejaUsuario(b)
+                .parejaNombre(b.getNombre()).parejaTelefono(b.getTelefono())
+                .estado(EstadoVinculo.ACEPTADO).build());
+        vinculosCreados.add(v.getId());
+        return v;
+    }
+
+    /** Hijo con cuenta propia, declarado por {@code creador}. */
+    Hijo hijoConCuenta(Usuario creador, Usuario cuentaHijo) {
+        Hijo h = hijos.save(Hijo.builder()
+                .creador(creador).nombre(cuentaHijo.getNombre())
+                .mayorDeEdad(true).visible(true).usuario(cuentaHijo).build());
+        hijosCreados.add(h.getId());
+        return h;
     }
 
     Pena pena() {
@@ -334,7 +374,96 @@ class AsistenciaIT extends IntegrationTest {
                 .exchange().expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.eventos.length()").isEqualTo(1)
-                .jsonPath("$.eventos[0].nombre").isEqualTo("IT-asis-pend-A");
+                .jsonPath("$.eventos[0].evento.nombre").isEqualTo("IT-asis-pend-A")
+                .jsonPath("$.eventos[0].paraUsuario.id").isEqualTo(s.id().intValue());
+    }
+
+    @Test
+    void responder_por_la_pareja_aceptada_guarda_a_su_nombre_y_registrado_por_mi() {
+        Sesion a = crearMiembro(RolMembresia.MIEMBRO);
+        Sesion b = crearMiembro(RolMembresia.MIEMBRO);
+        vincularPareja(usuarios.findById(a.id()).orElseThrow(), usuarios.findById(b.id()).orElseThrow());
+        Evento e = sembrarEvento("IT-asis-pareja", LocalDate.now().plusDays(30), null);
+
+        http.put().uri("/api/v1/eventos/" + e.getId() + "/asistencia")
+                .header(AUTHORIZATION, "Bearer " + a.token())
+                .body(Map.of("estado", "APUNTADO", "paraUsuarioId", b.id()))
+                .exchange().expectStatus().isOk();
+
+        var fila = asistencias.findByEventoIdAndUsuarioId(e.getId(), b.id()).orElseThrow();
+        assertThat(fila.getEstado()).isEqualTo(EstadoAsistencia.APUNTADO);
+        assertThat(fila.getRegistradoPor().getId()).isEqualTo(a.id());
+    }
+
+    @Test
+    void responder_por_alguien_sin_vinculo_es_403_SIN_PERMISO_EVENTO() {
+        Sesion a = crearMiembro(RolMembresia.MIEMBRO);
+        Sesion c = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sembrarEvento("IT-asis-sinvinculo", LocalDate.now().plusDays(30), null);
+
+        http.put().uri("/api/v1/eventos/" + e.getId() + "/asistencia")
+                .header(AUTHORIZATION, "Bearer " + a.token())
+                .body(Map.of("estado", "APUNTADO", "paraUsuarioId", c.id()))
+                .exchange().expectStatus().isEqualTo(403)
+                .expectBody().jsonPath("$.codigo").isEqualTo("SIN_PERMISO_EVENTO");
+    }
+
+    @Test
+    void responder_por_un_hijo_con_cuenta_propia_funciona() {
+        Sesion padre = crearMiembro(RolMembresia.MIEMBRO);
+        Sesion hijo = crearMiembro(RolMembresia.MIEMBRO);
+        hijoConCuenta(usuarios.findById(padre.id()).orElseThrow(), usuarios.findById(hijo.id()).orElseThrow());
+        Evento e = sembrarEvento("IT-asis-hijo", LocalDate.now().plusDays(30), null);
+
+        http.put().uri("/api/v1/eventos/" + e.getId() + "/asistencia")
+                .header(AUTHORIZATION, "Bearer " + padre.token())
+                .body(Map.of("estado", "EN_DUDA", "paraUsuarioId", hijo.id()))
+                .exchange().expectStatus().isOk();
+
+        assertThat(asistencias.findByEventoIdAndUsuarioId(e.getId(), hijo.id()))
+                .get().extracting(x -> x.getEstado()).isEqualTo(EstadoAsistencia.EN_DUDA);
+    }
+
+    @Test
+    void pendientes_respuesta_incluye_los_de_mi_pareja_etiquetados() {
+        Sesion a = crearMiembro(RolMembresia.MIEMBRO);
+        Sesion b = crearMiembro(RolMembresia.MIEMBRO);
+        Usuario ub = usuarios.findById(b.id()).orElseThrow();
+        vincularPareja(usuarios.findById(a.id()).orElseThrow(), ub);
+        Evento e = sembrarEvento("IT-asis-pend-pareja", LocalDate.now().plusDays(15), null);
+        notificaciones.save(NotificacionEvento.builder().evento(e).enviadaPor(ub).build());
+        // Ya respondí lo mío: en la lista solo debe quedar el pendiente de mi pareja.
+        http.put().uri("/api/v1/eventos/" + e.getId() + "/asistencia")
+                .header(AUTHORIZATION, "Bearer " + a.token())
+                .body(Map.of("estado", "APUNTADO")).exchange().expectStatus().isOk();
+
+        http.get().uri("/api/v1/eventos/pendientes-respuesta")
+                .header(AUTHORIZATION, "Bearer " + a.token())
+                .exchange().expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.eventos.length()").isEqualTo(1)
+                .jsonPath("$.eventos[0].evento.nombre").isEqualTo("IT-asis-pend-pareja")
+                .jsonPath("$.eventos[0].paraUsuario.id").isEqualTo(b.id().intValue());
+    }
+
+    @Test
+    void ya_respondido_por_la_pareja_no_sale_en_mis_pendientes() {
+        Sesion a = crearMiembro(RolMembresia.MIEMBRO);
+        Sesion b = crearMiembro(RolMembresia.MIEMBRO);
+        Usuario ub = usuarios.findById(b.id()).orElseThrow();
+        vincularPareja(usuarios.findById(a.id()).orElseThrow(), ub);
+        Evento e = sembrarEvento("IT-asis-pend-ya-resp", LocalDate.now().plusDays(15), null);
+        notificaciones.save(NotificacionEvento.builder().evento(e).enviadaPor(ub).build());
+
+        http.put().uri("/api/v1/eventos/" + e.getId() + "/asistencia")
+                .header(AUTHORIZATION, "Bearer " + a.token())
+                .body(Map.of("estado", "APUNTADO", "paraUsuarioId", b.id()))
+                .exchange().expectStatus().isOk();
+
+        http.get().uri("/api/v1/eventos/pendientes-respuesta")
+                .header(AUTHORIZATION, "Bearer " + b.token())
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.eventos.length()").isEqualTo(0);
     }
 
     @Test
@@ -360,7 +489,28 @@ class AsistenciaIT extends IntegrationTest {
                 .jsonPath("$.asistencia.apuntados").isEqualTo(2)
                 .jsonPath("$.asistencia.enDuda").isEqualTo(1)
                 .jsonPath("$.asistencia.miAsistencia").isEqualTo("EN_DUDA")
-                .jsonPath("$.asistencia.puedeNotificar").isEqualTo(false);
+                .jsonPath("$.asistencia.puedeNotificar").isEqualTo(false)
+                .jsonPath("$.asistencia.notificacionMandada").isEqualTo(false);
+    }
+
+    @Test
+    void detalle_notificacionMandada_true_tras_mandar_la_convocatoria() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Evento e = sembrarEvento("IT-asis-notif-mandada", LocalDate.now().plusDays(20), null);
+
+        http.get().uri("/api/v1/eventos/" + e.getId())
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.asistencia.notificacionMandada").isEqualTo(false);
+
+        http.post().uri("/api/v1/eventos/" + e.getId() + "/notificacion")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of()).exchange().expectStatus().isNoContent();
+
+        http.get().uri("/api/v1/eventos/" + e.getId())
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.asistencia.notificacionMandada").isEqualTo(true);
     }
 
     @Test

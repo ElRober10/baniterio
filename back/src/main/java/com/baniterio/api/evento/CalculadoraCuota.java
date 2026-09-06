@@ -2,10 +2,7 @@ package com.baniterio.api.evento;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.EnumSet;
-import java.util.Set;
 
-import com.baniterio.api.identidad.Alternativa;
 import com.baniterio.api.identidad.Modalidad;
 
 /**
@@ -13,60 +10,98 @@ import com.baniterio.api.identidad.Modalidad;
  * de bebida de San Miguel. Lógica pura (sin Spring) para poder probar toda la
  * matriz de casos con tests unitarios.
  *
- * <p>Precedencia (la primera que encaje manda):
+ * <p>Un administrador solo fija el precio de cubatas; las otras 4 cuotas
+ * ({@link Cuotas}) salen solas con {@link #derivar}. Elegir cuál de las 5 toca
+ * según la modalidad es cosa de {@link #calcular}. Precedencia (la primera que
+ * encaje manda):
  * <ol>
- *   <li>{@code embarazada} → {@link Modalidad#EMBARAZADA}, cuota {@code 5}.</li>
- *   <li>va exactamente 1 de los 2 días → {@link Modalidad#UN_DIA}, cuota {@code M/2 + 1}.</li>
- *   <li>no bebe alcohol y la alternativa es cerveza / tinto de verano →
- *       {@link Modalidad#SOLO_CERVEZA}, cuota {@code max(M - 10, 0)}.</li>
- *   <li>resto → {@link Modalidad#COMPLETA}, cuota {@code M}.</li>
+ *   <li>{@code embarazada} → {@link Modalidad#EMBARAZADA}, {@link Cuotas#embarazada()}
+ *       (no varía por días).</li>
+ *   <li>va exactamente 1 de los 2 días → {@link Modalidad#UN_DIA}, {@link Cuotas#cervezas1Dia()}
+ *       si no bebe alcohol, si no {@link Cuotas#cubatas1Dia()}.</li>
+ *   <li>no bebe alcohol → {@link Modalidad#SOLO_CERVEZA}, {@link Cuotas#cervezas()} (da igual
+ *       la alternativa que elija —nada, cerveza, cerveza especial o tinto de verano—: sin
+ *       alcohol siempre paga esa cuota, la misma que solo beber cerveza).</li>
+ *   <li>resto → {@link Modalidad#COMPLETA}, {@link Cuotas#cubatas()}.</li>
  * </ol>
- * Si {@code cuotaMaxima} es {@code null} la cuota es {@code null} (el evento aún
- * no tiene cuota máxima), pero la modalidad se calcula igual.
+ * Si la cuota que toca es {@code null} (el administrador aún no la ha puesto),
+ * la cuota del resultado es {@code null}, pero la modalidad se calcula igual.
  */
 public final class CalculadoraCuota {
 
-    private static final BigDecimal CUOTA_EMBARAZADA = new BigDecimal("5");
-    private static final BigDecimal DESCUENTO_SOLO_CERVEZA = new BigDecimal("10");
-    private static final BigDecimal RECARGO_UN_DIA = BigDecimal.ONE;
-    private static final Set<Alternativa> ALTERNATIVAS_CERVEZA =
-            EnumSet.of(Alternativa.CERVEZA, Alternativa.CERVEZA_ESPECIAL, Alternativa.TINTO_VERANO);
-
     private CalculadoraCuota() {
+    }
+
+    /** Las 5 cuotas del evento, tal como las fija un administrador. */
+    public record Cuotas(BigDecimal cubatas, BigDecimal cervezas,
+                         BigDecimal cubatas1Dia, BigDecimal cervezas1Dia,
+                         BigDecimal embarazada) {
     }
 
     public record Resultado(Modalidad modalidad, BigDecimal cuota) {
     }
 
-    public static Resultado calcular(BigDecimal cuotaMaxima, boolean embarazada,
+    private static final BigDecimal DIEZ = BigDecimal.valueOf(10);
+    private static final BigDecimal DOS = BigDecimal.valueOf(2);
+    private static final BigDecimal EMBARAZADA_FIJA = BigDecimal.valueOf(5);
+
+    /**
+     * Deriva las 5 cuotas a partir de la única que fija un administrador
+     * (cubatas): es la única editable, las demás salen solas con la fórmula
+     * histórica de San Miguel. {@code cubatas == null} → sin cuotas puestas
+     * (las 5 salen {@code null}).
+     * <ul>
+     *   <li>cubatas = M (el precio puesto)</li>
+     *   <li>cervezas = M − 10 (mínimo 0)</li>
+     *   <li>cubatas 1 día = M/2 + 1</li>
+     *   <li>cervezas 1 día = cervezas/2 + 1</li>
+     *   <li>embarazada = 5 € fijo</li>
+     * </ul>
+     */
+    public static Cuotas derivar(BigDecimal cubatas) {
+        if (cubatas == null) {
+            return new Cuotas(null, null, null, null, null);
+        }
+        BigDecimal cervezas = cubatas.subtract(DIEZ).max(BigDecimal.ZERO);
+        BigDecimal cubatas1Dia = cubatas.divide(DOS, 4, RoundingMode.HALF_UP).add(BigDecimal.ONE);
+        BigDecimal cervezas1Dia = cervezas.divide(DOS, 4, RoundingMode.HALF_UP).add(BigDecimal.ONE);
+        return new Cuotas(
+                cubatas.setScale(2, RoundingMode.HALF_UP),
+                cervezas.setScale(2, RoundingMode.HALF_UP),
+                cubatas1Dia.setScale(2, RoundingMode.HALF_UP),
+                cervezas1Dia.setScale(2, RoundingMode.HALF_UP),
+                EMBARAZADA_FIJA.setScale(2, RoundingMode.HALF_UP));
+    }
+
+    public static Resultado calcular(Cuotas cuotas, boolean embarazada,
                                      boolean asisteDia1, boolean asisteDia2,
-                                     boolean bebeAlcohol, Alternativa alternativa) {
-        Modalidad modalidad = modalidad(embarazada, asisteDia1, asisteDia2, bebeAlcohol, alternativa);
-        BigDecimal cuota = cuotaMaxima == null ? null : importe(modalidad, cuotaMaxima);
+                                     boolean bebeAlcohol) {
+        Modalidad modalidad = modalidad(embarazada, asisteDia1, asisteDia2, bebeAlcohol);
+        BigDecimal cuota = importe(modalidad, !bebeAlcohol, cuotas);
         return new Resultado(modalidad, cuota);
     }
 
     private static Modalidad modalidad(boolean embarazada, boolean asisteDia1, boolean asisteDia2,
-                                       boolean bebeAlcohol, Alternativa alternativa) {
+                                       boolean bebeAlcohol) {
         if (embarazada) {
             return Modalidad.EMBARAZADA;
         }
         if (asisteDia1 ^ asisteDia2) {
             return Modalidad.UN_DIA;
         }
-        if (!bebeAlcohol && ALTERNATIVAS_CERVEZA.contains(alternativa)) {
+        if (!bebeAlcohol) {
             return Modalidad.SOLO_CERVEZA;
         }
         return Modalidad.COMPLETA;
     }
 
-    private static BigDecimal importe(Modalidad modalidad, BigDecimal m) {
+    private static BigDecimal importe(Modalidad modalidad, boolean cervezas, Cuotas cuotas) {
         BigDecimal bruto = switch (modalidad) {
-            case EMBARAZADA -> CUOTA_EMBARAZADA;
-            case UN_DIA -> m.divide(new BigDecimal("2"), 2, RoundingMode.HALF_UP).add(RECARGO_UN_DIA);
-            case SOLO_CERVEZA -> m.subtract(DESCUENTO_SOLO_CERVEZA).max(BigDecimal.ZERO);
-            case COMPLETA -> m;
+            case EMBARAZADA -> cuotas.embarazada();
+            case UN_DIA -> cervezas ? cuotas.cervezas1Dia() : cuotas.cubatas1Dia();
+            case SOLO_CERVEZA -> cuotas.cervezas();
+            case COMPLETA -> cuotas.cubatas();
         };
-        return bruto.setScale(2, RoundingMode.HALF_UP);
+        return bruto == null ? null : bruto.setScale(2, RoundingMode.HALF_UP);
     }
 }
