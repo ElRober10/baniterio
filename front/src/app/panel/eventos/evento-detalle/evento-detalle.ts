@@ -4,6 +4,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Volver } from '../../../shared/volver/volver';
 import { FichaBebida } from '../ficha-bebida/ficha-bebida';
+import { ModalAsistentes } from '../modal-asistentes/modal-asistentes';
 import { CatalogoBebidas, EventoDetalle, FichaBebidaBody } from '../eventos.types';
 import { EventosService } from '../eventos.service';
 
@@ -18,7 +19,7 @@ import { EventosService } from '../eventos.service';
  */
 @Component({
   selector: 'app-evento-detalle',
-  imports: [Volver, RouterLink, DatePipe, FichaBebida],
+  imports: [Volver, RouterLink, DatePipe, FichaBebida, ModalAsistentes],
   templateUrl: './evento-detalle.html',
   styleUrl: './evento-detalle.css',
 })
@@ -30,6 +31,7 @@ export class EventoDetalleComponent implements OnInit {
   protected readonly estado = signal<'cargando' | 'listo' | 'error'>('cargando');
   protected readonly evento = signal<EventoDetalle | null>(null);
   protected readonly aviso = signal('');
+  protected readonly modalAsistentes = signal(false);
   private readonly id = Number(this.route.snapshot.paramMap.get('id'));
 
   /** Se muestra el bloque de cuotas solo si un admin ha puesto al menos una. */

@@ -12,6 +12,7 @@ import {
   FichaBebidaBody,
   FichaBebidaResponse,
   GuardarEventoRequest,
+  ListadoAsistentes,
   ListaEventosResponse,
   PendientesRespuestaResponse,
 } from './eventos.types';
@@ -57,6 +58,11 @@ export class EventosService {
   /** Los eventos "borrados" (ocultos, recuperables); solo admin/superadmin. */
   listarOcultos(): Observable<{ eventos: EventoResumen[] }> {
     return this.http.get<{ eventos: EventoResumen[] }>(`${this.base}/eventos/ocultos`);
+  }
+
+  /** Quién va a un evento de San Miguel, qué bebe, su cuota y su estado de pago (pieza 4). */
+  asistentesEvento(id: number): Observable<ListadoAsistentes> {
+    return this.http.get<ListadoAsistentes>(`${this.base}/eventos/${id}/asistentes`);
   }
 
   solicitarCrear(mensaje?: string): Observable<{ id: number; estado: string }> {

@@ -40,6 +40,13 @@ describe('EventosService', () => {
     req.flush({});
   });
 
+  it('asistentesEvento() hace GET a /eventos/:id/asistentes', () => {
+    service.asistentesEvento(7).subscribe();
+    const req = httpMock.expectOne(`${base}/eventos/7/asistentes`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ asistentes: [], totalCuotas: 0, totalPagado: 0, puedoPagarPor: [], miCuota: null });
+  });
+
   it('crear() hace POST a /eventos con el cuerpo', () => {
     const body: GuardarEventoRequest = {
       nombre: 'Cena',

@@ -196,6 +196,50 @@ export interface GuardarEventoRequest {
   cuotaCubatas: number | null;
 }
 
+// --- Listado de asistentes y pago (pieza 4) ---
+
+/** Método de un pago declarado. */
+export type MetodoPago = 'TRANSFERENCIA' | 'BIZUM' | 'EFECTIVO';
+
+/** Relación de una persona a la que puedo incluir en mi pago. */
+export type RelacionPago = 'PAREJA' | 'HIJO' | 'INVITADO';
+
+/** Lo que bebe un asistente en el listado. `alcohol` null = no bebe alcohol. */
+export interface BebidaFila {
+  alcohol: string | null;
+  refresco: string;
+  alternativa: Alternativa;
+  modalidad: Modalidad;
+}
+
+/** Una fila del listado de asistentes. `estado` es APUNTADO o EN_DUDA. */
+export interface AsistenteFila {
+  nombre: string;
+  estado: 'APUNTADO' | 'EN_DUDA';
+  esManual: boolean;
+  bebida: BebidaFila | null;
+  cuota: number | null;
+  pagado: boolean;
+}
+
+/** Alguien a quien puedo incluir en mi pago (pareja, hijo mayor con cuenta, invitado propio). */
+export interface PersonaPagable {
+  nombre: string;
+  cuota: number;
+  relacion: RelacionPago;
+  usuarioId: number | null;
+  asistenciaId: number | null;
+}
+
+/** `GET /api/v1/eventos/{id}/asistentes`. */
+export interface ListadoAsistentes {
+  asistentes: AsistenteFila[];
+  totalCuotas: number;
+  totalPagado: number;
+  puedoPagarPor: PersonaPagable[];
+  miCuota: number | null;
+}
+
 /** Códigos de error propios de eventos (ver ApiExceptionHandler.java). */
 export type CodigoErrorEvento =
   | 'EVENTO_NO_ENCONTRADO'
