@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Volver } from '../../../shared/volver/volver';
 import { FichaBebida } from '../ficha-bebida/ficha-bebida';
 import { ModalAsistentes } from '../modal-asistentes/modal-asistentes';
+import { ModalHePagado } from '../modal-he-pagado/modal-he-pagado';
 import { CatalogoBebidas, EventoDetalle, FichaBebidaBody } from '../eventos.types';
 import { EventosService } from '../eventos.service';
 
@@ -19,7 +20,7 @@ import { EventosService } from '../eventos.service';
  */
 @Component({
   selector: 'app-evento-detalle',
-  imports: [Volver, RouterLink, DatePipe, FichaBebida, ModalAsistentes],
+  imports: [Volver, RouterLink, DatePipe, FichaBebida, ModalAsistentes, ModalHePagado],
   templateUrl: './evento-detalle.html',
   styleUrl: './evento-detalle.css',
 })
@@ -32,6 +33,7 @@ export class EventoDetalleComponent implements OnInit {
   protected readonly evento = signal<EventoDetalle | null>(null);
   protected readonly aviso = signal('');
   protected readonly modalAsistentes = signal(false);
+  protected readonly modalPago = signal(false);
   private readonly id = Number(this.route.snapshot.paramMap.get('id'));
 
   /** Se muestra el bloque de cuotas solo si un admin ha puesto al menos una. */
@@ -92,6 +94,11 @@ export class EventoDetalleComponent implements OnInit {
 
   protected editar(): void {
     this.router.navigate(['/panel/eventos', this.id, 'editar']);
+  }
+
+  protected onPagoEnviado(): void {
+    this.modalPago.set(false);
+    this.aviso.set('Pago enviado. Un administrador lo confirmará.');
   }
 
   protected abrirEditorFicha(): void {
