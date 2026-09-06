@@ -98,7 +98,7 @@ export class EventoDetalleComponent implements OnInit {
 
   protected onPagoEnviado(): void {
     this.modalPago.set(false);
-    this.aviso.set('Pago enviado. Un administrador lo confirmará.');
+    this.aviso.set('Pago confirmado. Un administrador lo revisará.');
   }
 
   protected abrirEditorFicha(): void {
