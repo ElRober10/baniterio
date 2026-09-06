@@ -4,10 +4,10 @@ import com.baniterio.app.data.dto.AnadirAsistenteBody
 import com.baniterio.app.data.dto.AsistenciaResumenDto
 import com.baniterio.app.data.dto.ErrorResponse
 import com.baniterio.app.data.dto.EventoDetalle
-import com.baniterio.app.data.dto.EventoResumen
 import com.baniterio.app.data.dto.FichaBebidaBody
 import com.baniterio.app.data.dto.FichaBebidaResponseDto
 import com.baniterio.app.data.dto.MandarNotificacionBody
+import com.baniterio.app.data.dto.PendienteRespuestaDto
 import com.baniterio.app.data.dto.PendientesRespuestaDto
 import com.baniterio.app.data.dto.ResponderAsistenciaBody
 import io.ktor.client.HttpClient
@@ -35,11 +35,15 @@ class AsistenciaRepositoryImpl(
         sesion.token?.let { header(HttpHeaders.Authorization, "Bearer $it") }
     }
 
-    override suspend fun responder(eventoId: Long, estado: String): ResultadoAsistencia<EventoDetalle> = peticion {
+    override suspend fun responder(
+        eventoId: Long,
+        estado: String,
+        paraUsuarioId: Long?,
+    ): ResultadoAsistencia<EventoDetalle> = peticion {
         http.put("$API_BASE_URL/eventos/$eventoId/asistencia") {
             auth()
             contentType(ContentType.Application.Json)
-            setBody(ResponderAsistenciaBody(estado))
+            setBody(ResponderAsistenciaBody(estado, paraUsuarioId))
         }.body()
     }
 
@@ -80,7 +84,7 @@ class AsistenciaRepositoryImpl(
         }.body()
     }
 
-    override suspend fun pendientes(): ResultadoAsistencia<List<EventoResumen>> = peticion {
+    override suspend fun pendientes(): ResultadoAsistencia<List<PendienteRespuestaDto>> = peticion {
         http.get("$API_BASE_URL/eventos/pendientes-respuesta") { auth() }
             .body<PendientesRespuestaDto>().eventos
     }

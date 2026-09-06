@@ -29,7 +29,7 @@ import com.baniterio.app.data.ResultadoAsistencia
 import com.baniterio.app.data.ResultadoBebida
 import com.baniterio.app.data.dto.CatalogoBebidasDto
 import com.baniterio.app.data.dto.EventoDetalle
-import com.baniterio.app.data.dto.EventoResumen
+import com.baniterio.app.data.dto.PendienteRespuestaDto
 import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.theme.BaniterioWordmark
 import com.baniterio.app.ui.comun.relieveDeCarta
@@ -37,19 +37,23 @@ import kotlinx.coroutines.launch
 
 private sealed interface EstadoResponder {
     data object Cargando : EstadoResponder
-    data class Lista(val pendientes: List<EventoResumen>) : EstadoResponder
+    data class Lista(val pendientes: List<PendienteRespuestaDto>) : EstadoResponder
     data class Error(val mensaje: String) : EstadoResponder
 }
 
 /**
  * Pantalla bloqueante: mientras haya convocatorias sin contestar muestra la
- * primera y tres botones grandes. Al responder recarga; cuando la lista queda
- * vacía llama [onTerminado] (que lleva al panel). Sin "atrás".
+ * primera y tres botones grandes. Incluye las propias y las de quien se pueda
+ * responder por él (pareja con vínculo aceptado, hijos con cuenta propia),
+ * etiquetadas "Respondiendo por: X" cuando no son de `miUsuarioId`. Al
+ * responder recarga; cuando la lista queda vacía llama [onTerminado] (que
+ * lleva al panel). Sin "atrás".
  */
 @Composable
 fun ResponderEventoScreen(
     asistenciaRepo: AsistenciaRepository,
     bebidaRepo: BebidaRepository,
+    miUsuarioId: Long?,
     onTerminado: () -> Unit,
 ) {
     var estado by remember { mutableStateOf<EstadoResponder>(EstadoResponder.Cargando) }
@@ -85,7 +89,9 @@ fun ResponderEventoScreen(
                 Button(onClick = { scope.launch { cargar() } }) { Text("Reintentar") }
             }
             is EstadoResponder.Lista -> {
-                val ev = e.pendientes.first()
+                val actual = e.pendientes.first()
+                val ev = actual.evento
+                val objetivoId = actual.paraUsuario.id
                 Column(
                     modifier = Modifier.fillMaxWidth()
                         .relieveDeCarta(RoundedCornerShape(18.dp))
@@ -95,6 +101,12 @@ fun ResponderEventoScreen(
                 ) {
                     Text("CONVOCATORIA", color = BaniterioColors.muted,
                         style = MaterialTheme.typography.labelSmall)
+                    if (objetivoId != miUsuarioId) {
+                        Text("Respondiendo por: ${actual.paraUsuario.nombre}",
+                            color = BaniterioColors.goldSoft,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold)
+                    }
                     Text(
                         ev.nombre,
                         style = MaterialTheme.typography.headlineSmall,
@@ -120,7 +132,9 @@ fun ResponderEventoScreen(
                             textoBoton = "Responder",
                             onGuardar = { body ->
                                 scope.launch {
-                                    when (asistenciaRepo.guardarFicha(ev.id, body)) {
+                                    when (asistenciaRepo.guardarFicha(
+                                        ev.id, body.copy(paraUsuarioId = objetivoId),
+                                    )) {
                                         is ResultadoAsistencia.Exito -> cargar()
                                         is ResultadoAsistencia.Error ->
                                             aviso = "No se pudo guardar la ficha."
@@ -137,7 +151,7 @@ fun ResponderEventoScreen(
                                     enviando = true
                                     aviso = null
                                     scope.launch {
-                                        when (val r = asistenciaRepo.responder(ev.id, valor)) {
+                                        when (val r = asistenciaRepo.responder(ev.id, valor, objetivoId)) {
                                             is ResultadoAsistencia.Exito ->
                                                 if (valor != "NO_VOY" && r.dato.asistencia.ficha.llevaFicha) {
                                                     when (val c = bebidaRepo.catalogo()) {

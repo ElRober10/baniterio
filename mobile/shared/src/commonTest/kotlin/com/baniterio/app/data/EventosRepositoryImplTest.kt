@@ -71,10 +71,11 @@ class EventosRepositoryImplTest {
     }
 
     @Test
-    fun crear_incluye_la_cuota_maxima_si_se_pasa() = runTest {
+    fun crear_incluye_la_cuota_de_cubatas_si_se_pasa() = runTest {
         val (r, vistas) = repo(cuerpoRespuesta = "{}")
-        r.crear(GuardarEventoRequest(nombre = "X", fecha = "2999-01-01", cuentaId = 7, cuotaMaxima = 26.0))
-        assertTrue(vistas[0].cuerpo.contains("\"cuotaMaxima\":26"), vistas[0].cuerpo)
+        r.crear(GuardarEventoRequest(nombre = "X", fecha = "2999-01-01", cuentaId = 7,
+            cuotaCubatas = 26.0))
+        assertTrue(vistas[0].cuerpo.contains("\"cuotaCubatas\":26"), vistas[0].cuerpo)
     }
 
     @Test
@@ -96,10 +97,31 @@ class EventosRepositoryImplTest {
     }
 
     @Test
-    fun borrar_202_es_SOLICITUD_CREADA() = runTest {
-        val (r, _) = repo(status = HttpStatusCode.Accepted, cuerpoRespuesta = """{"estado":"PENDIENTE"}""")
-        val res = r.borrar(5)
-        assertIs<ResultadoEvento.Exito<BorradoEvento>>(res)
-        assertEquals(BorradoEvento.SOLICITUD_CREADA, res.dato)
+    fun ocultar_hace_delete() = runTest {
+        val (r, vistas) = repo(status = HttpStatusCode.NoContent)
+        val res = r.ocultar(5)
+        assertIs<ResultadoEvento.Exito<Unit>>(res)
+        assertEquals("DELETE", vistas[0].metodo)
+        assertEquals("/api/v1/eventos/5", vistas[0].path)
+    }
+
+    @Test
+    fun recuperar_hace_put_y_devuelve_el_detalle() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = """{"id":5,"nombre":"San Miguel","fecha":"2026-09-25",
+            "pasado":false,"cuenta":{"id":1,"nombre":"San Miguel"},
+            "puedoEditar":true,"puedoBorrar":true,"oculto":false}""")
+        val res = r.recuperar(5)
+        assertIs<ResultadoEvento.Exito<*>>(res)
+        assertEquals("PUT", vistas[0].metodo)
+        assertEquals("/api/v1/eventos/5/recuperar", vistas[0].path)
+    }
+
+    @Test
+    fun listarOcultos_hace_get() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = """{"eventos":[]}""")
+        val res = r.listarOcultos()
+        assertIs<ResultadoEvento.Exito<*>>(res)
+        assertEquals("GET", vistas[0].metodo)
+        assertEquals("/api/v1/eventos/ocultos", vistas[0].path)
     }
 }

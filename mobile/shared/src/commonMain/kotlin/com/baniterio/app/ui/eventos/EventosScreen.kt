@@ -48,8 +48,10 @@ private sealed interface EstadoEventos {
 @Composable
 fun EventosScreen(
     eventosRepo: EventosRepository,
+    esAdmin: Boolean,
     onAbrirEvento: (Long) -> Unit,
     onCrear: () -> Unit,
+    onVerOcultos: () -> Unit,
     onVolver: () -> Unit,
 ) {
     var estado by remember { mutableStateOf<EstadoEventos>(EstadoEventos.Cargando) }
@@ -132,6 +134,14 @@ fun EventosScreen(
                             enabled = pagina + 1 < d.totalPaginas,
                             onClick = { scope.launch { cargar(pagina + 1, false) } },
                         ) { Text("Siguiente") }
+                    }
+                }
+
+                if (esAdmin) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                        TextButton(onClick = onVerOcultos) {
+                            Text("Ver eventos ocultos", color = BaniterioColors.muted)
+                        }
                     }
                 }
             }

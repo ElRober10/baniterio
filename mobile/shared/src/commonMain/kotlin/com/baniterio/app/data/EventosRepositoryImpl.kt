@@ -2,6 +2,8 @@ package com.baniterio.app.data
 
 import com.baniterio.app.data.dto.ErrorResponse
 import com.baniterio.app.data.dto.EventoDetalle
+import com.baniterio.app.data.dto.EventoResumen
+import com.baniterio.app.data.dto.EventosOcultosResponse
 import com.baniterio.app.data.dto.GuardarEventoRequest
 import com.baniterio.app.data.dto.ListaEventosResponse
 import io.ktor.client.HttpClient
@@ -59,9 +61,17 @@ class EventosRepositoryImpl(
         }.body()
     }
 
-    override suspend fun borrar(id: Long): ResultadoEvento<BorradoEvento> = peticion {
-        val res = http.delete("$API_BASE_URL/eventos/$id") { auth() }
-        if (res.status == HttpStatusCode.Accepted) BorradoEvento.SOLICITUD_CREADA else BorradoEvento.BORRADO
+    override suspend fun ocultar(id: Long): ResultadoEvento<Unit> = peticion {
+        http.delete("$API_BASE_URL/eventos/$id") { auth() }
+        Unit
+    }
+
+    override suspend fun recuperar(id: Long): ResultadoEvento<EventoDetalle> = peticion {
+        http.put("$API_BASE_URL/eventos/$id/recuperar") { auth() }.body()
+    }
+
+    override suspend fun listarOcultos(): ResultadoEvento<List<EventoResumen>> = peticion {
+        http.get("$API_BASE_URL/eventos/ocultos") { auth() }.body<EventosOcultosResponse>().eventos
     }
 
     override suspend fun solicitarCrear(mensaje: String?): ResultadoEvento<Unit> = peticion {
