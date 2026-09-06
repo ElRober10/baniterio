@@ -65,9 +65,28 @@ public class Evento {
     @Column(name = "fecha_fin")
     private LocalDate fechaFin;
 
-    /** Cuota máxima del evento en euros (la fija un administrador). {@code null} = sin cuota. */
-    @Column(name = "cuota_maxima", precision = 7, scale = 2)
-    private BigDecimal cuotaMaxima;
+    /**
+     * Las 5 cuotas del evento en euros, las fija un administrador. {@code null} =
+     * esa cuota aún no está puesta. {@code embarazada} no varía por días.
+     */
+    @Column(name = "cuota_cubatas", precision = 7, scale = 2)
+    private BigDecimal cuotaCubatas;
+
+    @Column(name = "cuota_cervezas", precision = 7, scale = 2)
+    private BigDecimal cuotaCervezas;
+
+    @Column(name = "cuota_cubatas_1dia", precision = 7, scale = 2)
+    private BigDecimal cuotaCubatas1Dia;
+
+    @Column(name = "cuota_cervezas_1dia", precision = 7, scale = 2)
+    private BigDecimal cuotaCervezas1Dia;
+
+    @Column(name = "cuota_embarazada", precision = 7, scale = 2)
+    private BigDecimal cuotaEmbarazada;
+
+    /** "Borrar" un evento lo oculta en vez de borrarlo de verdad; recuperable (V25). */
+    @Column(nullable = false)
+    private boolean oculto;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "creado_por")

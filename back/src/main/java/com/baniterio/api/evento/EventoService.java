@@ -1,7 +1,7 @@
 package com.baniterio.api.evento;
 
-import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 import com.baniterio.api.auth.ServicioPermisos;
 import com.baniterio.api.cuenta.CuentaConflictoException;
@@ -74,8 +74,8 @@ public class EventoService {
         return (s == null || s.isBlank()) ? null : s.trim();
     }
 
-    /** Cambió el valor de la cuota máxima (comparando por número, no por escala). */
-    private static boolean cuotaMaximaCambio(java.math.BigDecimal antes, java.math.BigDecimal ahora) {
+    /** Cambió el valor de una cuota (comparando por número, no por escala). */
+    private static boolean cuotaCambio(java.math.BigDecimal antes, java.math.BigDecimal ahora) {
         if (antes == null || ahora == null) {
             return antes != ahora;
         }
@@ -136,9 +136,14 @@ public class EventoService {
                 usuarioId, TipoSolicitudEvento.CREAR, EstadoSolicitud.PENDIENTE);
     }
 
+    /**
+     * Editar y borrar un evento es solo de administradores/superadmin, aunque lo
+     * haya creado un miembro con crédito. Antes también podía el creador; se
+     * quitó porque el botón «Editar» y el de borrar solo deben verlos y usarlos
+     * admin/superadmin.
+     */
     boolean puedeGestionar(Long usuarioId, Evento e) {
-        return permisos.esAdministrador(usuarioId)
-                || (e.getCreadoPor() != null && e.getCreadoPor().getId().equals(usuarioId));
+        return permisos.esAdministrador(usuarioId);
     }
 
     @Transactional(readOnly = true)
@@ -172,6 +177,9 @@ public class EventoService {
                     .orElseThrow(SinCreditoEventoException::new);
         }
 
+        // Las cuotas solo las fija un administrador; un miembro con crédito no.
+        // Solo cubatas es el precio que se pone; las otras 4 se derivan.
+        CalculadoraCuota.Cuotas cuotas = CalculadoraCuota.derivar(admin ? req.cuotaCubatas() : null);
         Evento e = eventos.save(Evento.builder()
                 .pena(penas.findBySlug(SLUG_PENA).orElseThrow())
                 .cuenta(resolverCuenta(req))
@@ -180,8 +188,11 @@ public class EventoService {
                 .lugar(vacioANull(req.lugar()))
                 .fecha(req.fecha())
                 .fechaFin(req.fechaFin())
-                // La cuota máxima solo la fija un administrador; un miembro con crédito no.
-                .cuotaMaxima(admin ? req.cuotaMaxima() : null)
+                .cuotaCubatas(cuotas.cubatas())
+                .cuotaCervezas(cuotas.cervezas())
+                .cuotaCubatas1Dia(cuotas.cubatas1Dia())
+                .cuotaCervezas1Dia(cuotas.cervezas1Dia())
+                .cuotaEmbarazada(cuotas.embarazada())
                 .creadoPor(usuario)
                 .build());
 
@@ -192,78 +203,83 @@ public class EventoService {
         return aDetalle(usuarioId, e);
     }
 
-    /** Edita un evento. Solo el administrador o quien lo creó → si no, {@link SinPermisoEventoException}. */
+    /** Edita un evento. Solo un administrador/superadmin → si no, {@link SinPermisoEventoException}. */
     @Transactional
     public EventoDetalle editar(Long usuarioId, Long eventoId, GuardarEventoRequest req) {
         Evento e = cargar(eventoId);
         if (!puedeGestionar(usuarioId, e)) {
             throw new SinPermisoEventoException();
         }
-        java.math.BigDecimal cuotaAntes = e.getCuotaMaxima();
+        java.math.BigDecimal cubatasAntes = e.getCuotaCubatas();
+        java.math.BigDecimal cervezasAntes = e.getCuotaCervezas();
+        java.math.BigDecimal cubatas1DiaAntes = e.getCuotaCubatas1Dia();
+        java.math.BigDecimal cervezas1DiaAntes = e.getCuotaCervezas1Dia();
+        java.math.BigDecimal embarazadaAntes = e.getCuotaEmbarazada();
         e.setNombre(req.nombre().trim());
         e.setDescripcion(vacioANull(req.descripcion()));
         e.setLugar(vacioANull(req.lugar()));
         e.setFecha(req.fecha());
         e.setFechaFin(req.fechaFin());
         e.setCuenta(resolverCuenta(req));
-        // La cuota máxima solo la cambia un administrador; si edita el creador, se deja como está.
+        // Las cuotas solo las cambia un administrador; si edita el creador, se dejan como están.
+        // Solo cubatas es el precio que se pone; las otras 4 se derivan.
         if (permisos.esAdministrador(usuarioId)) {
-            e.setCuotaMaxima(req.cuotaMaxima());
+            CalculadoraCuota.Cuotas cuotas = CalculadoraCuota.derivar(req.cuotaCubatas());
+            e.setCuotaCubatas(cuotas.cubatas());
+            e.setCuotaCervezas(cuotas.cervezas());
+            e.setCuotaCubatas1Dia(cuotas.cubatas1Dia());
+            e.setCuotaCervezas1Dia(cuotas.cervezas1Dia());
+            e.setCuotaEmbarazada(cuotas.embarazada());
         }
         eventos.save(e);
-        // Si cambió la cuota máxima de un evento con ficha (San Miguel), se recalculan
+        // Si cambió alguna cuota de un evento con ficha (San Miguel), se recalculan
         // las cuotas de todas las fichas de bebida.
-        if (cuotaMaximaCambio(cuotaAntes, e.getCuotaMaxima()) && e.getCuenta().isLlevaFichaBebida()) {
+        boolean algunaCuotaCambio = cuotaCambio(cubatasAntes, e.getCuotaCubatas())
+                || cuotaCambio(cervezasAntes, e.getCuotaCervezas())
+                || cuotaCambio(cubatas1DiaAntes, e.getCuotaCubatas1Dia())
+                || cuotaCambio(cervezas1DiaAntes, e.getCuotaCervezas1Dia())
+                || cuotaCambio(embarazadaAntes, e.getCuotaEmbarazada());
+        if (algunaCuotaCambio && e.getCuenta().isLlevaFichaBebida()) {
             fichaBebida.recalcularCuotas(e.getId());
         }
         return aDetalle(usuarioId, e);
     }
 
     /**
-     * Un administrador borra el evento directo (204). Un miembro que lo creó, si
-     * no es admin, no lo borra: se crea una {@code solicitud_evento} BORRAR y se
-     * avisa por push a los administradores (202). Si ya hay una BORRAR pendiente
-     * para ese evento → 409. Cualquier otro → 403.
+     * "Borra" un evento: lo oculta (no lo quita de la BBDD), por si ha sido sin
+     * querer. Deja de salir en el listado y en "pendientes de respuesta"; se
+     * recupera con {@link #recuperar}. Solo admin/superadmin → si no,
+     * {@link SinPermisoEventoException}.
      */
     @Transactional
-    public ResultadoBorrado borrar(Long usuarioId, Long eventoId) {
+    public void ocultar(Long usuarioId, Long eventoId) {
         Evento e = cargar(eventoId);
-        boolean admin = permisos.esAdministrador(usuarioId);
-
-        if (admin) {
-            solicitudes.findByEventoIdAndTipoAndEstado(eventoId, TipoSolicitudEvento.BORRAR,
-                    EstadoSolicitud.PENDIENTE).ifPresent(sol -> {
-                sol.setEstado(EstadoSolicitud.APROBADA);
-                sol.setResueltaPor(usuarios.findById(usuarioId).orElseThrow());
-                sol.setResueltaAt(Instant.now());
-                sol.setEvento(null);
-                solicitudes.save(sol);
-                publisher.publishEvent(new AvisoPushEvent(
-                        new Audiencia.UsuarioUnico(sol.getSolicitante().getId()),
-                        TITULO_PUSH, "Se ha borrado el evento «" + e.getNombre() + "»."));
-            });
-            eventos.delete(e);
-            return ResultadoBorrado.BORRADO;
+        if (!puedeGestionar(usuarioId, e)) {
+            throw new SinPermisoEventoException();
         }
+        e.setOculto(true);
+        eventos.save(e);
+    }
 
-        if (e.getCreadoPor() != null && e.getCreadoPor().getId().equals(usuarioId)) {
-            if (solicitudes.existsByEventoIdAndTipoAndEstado(eventoId, TipoSolicitudEvento.BORRAR,
-                    EstadoSolicitud.PENDIENTE)) {
-                throw new SolicitudEventoConflictoException("SOLICITUD_EVENTO_YA_PENDIENTE");
-            }
-            solicitudes.save(SolicitudEvento.builder()
-                    .pena(e.getPena())
-                    .solicitante(usuarios.findById(usuarioId).orElseThrow())
-                    .tipo(TipoSolicitudEvento.BORRAR)
-                    .evento(e)
-                    .estado(EstadoSolicitud.PENDIENTE)
-                    .build());
-            publisher.publishEvent(new AvisoPushEvent(new Audiencia.Administradores(),
-                    TITULO_PUSH, "Alguien quiere borrar el evento «" + e.getNombre() + "»."));
-            return ResultadoBorrado.SOLICITUD_CREADA;
+    /** Deshace {@link #ocultar}. Solo admin/superadmin → si no, {@link SinPermisoEventoException}. */
+    @Transactional
+    public EventoDetalle recuperar(Long usuarioId, Long eventoId) {
+        Evento e = cargar(eventoId);
+        if (!puedeGestionar(usuarioId, e)) {
+            throw new SinPermisoEventoException();
         }
+        e.setOculto(false);
+        eventos.save(e);
+        return aDetalle(usuarioId, e);
+    }
 
-        throw new SinPermisoEventoException();
+    /** Eventos ocultos ("borrados") de la peña, para poder recuperarlos. Solo admin/superadmin. */
+    @Transactional(readOnly = true)
+    public List<EventoResumen> listarOcultos(Long usuarioId) {
+        if (!permisos.esAdministrador(usuarioId)) {
+            throw new SinPermisoEventoException();
+        }
+        return eventos.ocultos(penaId()).stream().map(EventoService::aResumen).toList();
     }
 
     /**
@@ -315,11 +331,11 @@ public class EventoService {
         var creadoPor = creador == null ? null
                 : new EventoDetalle.CreadoPor(creador.getId(), creador.getNombre());
         boolean gestiona = puedeGestionar(usuarioId, e);
-        boolean borradoPendiente = solicitudes.existsByEventoIdAndTipoAndEstado(
-                e.getId(), TipoSolicitudEvento.BORRAR, EstadoSolicitud.PENDIENTE);
         return new EventoDetalle(e.getId(), e.getNombre(), e.getDescripcion(), e.getLugar(),
-                e.getFecha(), e.getFechaFin(), esPasado(e), aCuentaRef(e), e.getCuotaMaxima(),
-                creadoPor, gestiona, gestiona, borradoPendiente,
+                e.getFecha(), e.getFechaFin(), esPasado(e), aCuentaRef(e),
+                e.getCuotaCubatas(), e.getCuotaCervezas(), e.getCuotaCubatas1Dia(),
+                e.getCuotaCervezas1Dia(), e.getCuotaEmbarazada(),
+                creadoPor, gestiona, gestiona, e.isOculto(),
                 asistencias.detalleDe(usuarioId, e));
     }
 }

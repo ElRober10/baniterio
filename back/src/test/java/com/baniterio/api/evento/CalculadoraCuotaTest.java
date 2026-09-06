@@ -2,7 +2,6 @@ package com.baniterio.api.evento;
 
 import java.math.BigDecimal;
 
-import com.baniterio.api.identidad.Alternativa;
 import com.baniterio.api.identidad.Modalidad;
 import org.junit.jupiter.api.Test;
 
@@ -11,79 +10,87 @@ import static org.assertj.core.api.Assertions.assertThat;
 /** Matriz de casos de {@link CalculadoraCuota}: las 4 modalidades y la precedencia. */
 class CalculadoraCuotaTest {
 
-    private static final BigDecimal M = new BigDecimal("26");
+    private static final CalculadoraCuota.Cuotas CUOTAS = new CalculadoraCuota.Cuotas(
+            new BigDecimal("26"), new BigDecimal("16"), new BigDecimal("14"),
+            new BigDecimal("9"), new BigDecimal("5"));
+
+    private static final CalculadoraCuota.Cuotas SIN_CUOTAS =
+            new CalculadoraCuota.Cuotas(null, null, null, null, null);
 
     @Test
-    void completa_paga_M() {
-        var r = CalculadoraCuota.calcular(M, false, true, true, true, Alternativa.NADA);
+    void completa_paga_cuota_cubatas() {
+        var r = CalculadoraCuota.calcular(CUOTAS, false, true, true, true);
         assertThat(r.modalidad()).isEqualTo(Modalidad.COMPLETA);
         assertThat(r.cuota()).isEqualByComparingTo("26.00");
     }
 
     @Test
-    void solo_cerveza_paga_M_menos_10() {
-        var r = CalculadoraCuota.calcular(M, false, true, true, false, Alternativa.CERVEZA);
+    void solo_cerveza_paga_cuota_cervezas() {
+        var r = CalculadoraCuota.calcular(CUOTAS, false, true, true, false);
         assertThat(r.modalidad()).isEqualTo(Modalidad.SOLO_CERVEZA);
         assertThat(r.cuota()).isEqualByComparingTo("16.00");
     }
 
     @Test
-    void tinto_de_verano_sin_alcohol_tambien_es_solo_cerveza() {
-        var r = CalculadoraCuota.calcular(M, false, true, true, false, Alternativa.TINTO_VERANO);
-        assertThat(r.modalidad()).isEqualTo(Modalidad.SOLO_CERVEZA);
-    }
-
-    @Test
-    void un_dia_paga_M_partido_2_mas_1() {
-        var r = CalculadoraCuota.calcular(M, false, true, false, true, Alternativa.NADA);
+    void un_dia_bebiendo_alcohol_paga_cuota_cubatas_1dia() {
+        var r = CalculadoraCuota.calcular(CUOTAS, false, true, false, true);
         assertThat(r.modalidad()).isEqualTo(Modalidad.UN_DIA);
         assertThat(r.cuota()).isEqualByComparingTo("14.00");
     }
 
     @Test
-    void embarazada_paga_5_aunque_vaya_los_dos_dias() {
-        var r = CalculadoraCuota.calcular(M, true, true, true, false, Alternativa.NADA);
-        assertThat(r.modalidad()).isEqualTo(Modalidad.EMBARAZADA);
-        assertThat(r.cuota()).isEqualByComparingTo("5.00");
-    }
-
-    @Test
-    void embarazada_y_un_dia_sigue_siendo_5() {
-        var r = CalculadoraCuota.calcular(M, true, true, false, false, Alternativa.NADA);
-        assertThat(r.modalidad()).isEqualTo(Modalidad.EMBARAZADA);
-        assertThat(r.cuota()).isEqualByComparingTo("5.00");
-    }
-
-    @Test
-    void solo_cerveza_y_un_dia_gana_un_dia() {
-        var r = CalculadoraCuota.calcular(M, false, false, true, false, Alternativa.CERVEZA);
+    void un_dia_sin_alcohol_paga_cuota_cervezas_1dia() {
+        var r = CalculadoraCuota.calcular(CUOTAS, false, false, true, false);
         assertThat(r.modalidad()).isEqualTo(Modalidad.UN_DIA);
-        assertThat(r.cuota()).isEqualByComparingTo("14.00");
+        assertThat(r.cuota()).isEqualByComparingTo("9.00");
     }
 
     @Test
-    void no_bebe_nada_y_no_embarazada_paga_completa() {
-        var r = CalculadoraCuota.calcular(M, false, true, true, false, Alternativa.NADA);
-        assertThat(r.modalidad()).isEqualTo(Modalidad.COMPLETA);
-        assertThat(r.cuota()).isEqualByComparingTo("26.00");
+    void embarazada_paga_cuota_embarazada_aunque_vaya_los_dos_dias() {
+        var r = CalculadoraCuota.calcular(CUOTAS, true, true, true, false);
+        assertThat(r.modalidad()).isEqualTo(Modalidad.EMBARAZADA);
+        assertThat(r.cuota()).isEqualByComparingTo("5.00");
     }
 
     @Test
-    void cuota_maxima_null_da_cuota_null_pero_modalidad_calculada() {
-        var r = CalculadoraCuota.calcular(null, false, true, false, true, Alternativa.NADA);
+    void embarazada_y_un_dia_sigue_pagando_cuota_embarazada() {
+        var r = CalculadoraCuota.calcular(CUOTAS, true, true, false, false);
+        assertThat(r.modalidad()).isEqualTo(Modalidad.EMBARAZADA);
+        assertThat(r.cuota()).isEqualByComparingTo("5.00");
+    }
+
+    @Test
+    void sin_esa_cuota_puesta_da_cuota_null_pero_modalidad_calculada() {
+        var r = CalculadoraCuota.calcular(SIN_CUOTAS, false, true, false, true);
         assertThat(r.modalidad()).isEqualTo(Modalidad.UN_DIA);
         assertThat(r.cuota()).isNull();
     }
 
     @Test
-    void M_menor_que_10_no_da_cuota_negativa() {
-        var r = CalculadoraCuota.calcular(new BigDecimal("8"), false, true, true, false, Alternativa.CERVEZA);
-        assertThat(r.cuota()).isEqualByComparingTo("0.00");
+    void derivar_calcula_las_otras_4_cuotas_a_partir_de_cubatas() {
+        var c = CalculadoraCuota.derivar(new BigDecimal("26"));
+        assertThat(c.cubatas()).isEqualByComparingTo("26.00");
+        assertThat(c.cervezas()).isEqualByComparingTo("16.00");
+        assertThat(c.cubatas1Dia()).isEqualByComparingTo("14.00");
+        assertThat(c.cervezas1Dia()).isEqualByComparingTo("9.00");
+        assertThat(c.embarazada()).isEqualByComparingTo("5.00");
     }
 
     @Test
-    void un_dia_con_M_impar_redondea_a_dos_decimales() {
-        var r = CalculadoraCuota.calcular(new BigDecimal("25"), false, true, false, true, Alternativa.NADA);
-        assertThat(r.cuota()).isEqualByComparingTo("13.50");
+    void derivar_cervezas_no_baja_de_cero_si_cubatas_es_menor_que_10() {
+        var c = CalculadoraCuota.derivar(new BigDecimal("4"));
+        assertThat(c.cervezas()).isEqualByComparingTo("0.00");
+        assertThat(c.cervezas1Dia()).isEqualByComparingTo("1.00");
+        assertThat(c.embarazada()).isEqualByComparingTo("5.00");
+    }
+
+    @Test
+    void derivar_sin_cubatas_da_las_5_cuotas_null() {
+        var c = CalculadoraCuota.derivar(null);
+        assertThat(c.cubatas()).isNull();
+        assertThat(c.cervezas()).isNull();
+        assertThat(c.cubatas1Dia()).isNull();
+        assertThat(c.cervezas1Dia()).isNull();
+        assertThat(c.embarazada()).isNull();
     }
 }

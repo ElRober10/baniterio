@@ -5,11 +5,11 @@ import java.util.Map;
 import com.baniterio.api.auth.UsuarioPrincipal;
 import com.baniterio.api.evento.dto.CrearSolicitudEventoRequest;
 import com.baniterio.api.evento.dto.EventoDetalle;
+import com.baniterio.api.evento.dto.EventosOcultosResponse;
 import com.baniterio.api.evento.dto.GuardarEventoRequest;
 import com.baniterio.api.evento.dto.ListaEventosResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,9 +23,9 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Sección Eventos para cualquier miembro: listado paginado y detalle. Crear,
- * editar y borrar se añaden en tareas siguientes. Solo traduce HTTP ↔ dominio;
- * el id del usuario sale del token. Errores → {@link com.baniterio.api.web.ApiExceptionHandler}.
+ * Sección Eventos para cualquier miembro: listado paginado y detalle. Solo
+ * traduce HTTP ↔ dominio; el id del usuario sale del token. Errores →
+ * {@link com.baniterio.api.web.ApiExceptionHandler}.
  */
 @RestController
 @RequestMapping("/api/v1/eventos")
@@ -41,6 +41,12 @@ public class EventoController {
     public ListaEventosResponse listar(@AuthenticationPrincipal UsuarioPrincipal principal,
             @RequestParam(defaultValue = "0") int pagina) {
         return eventoService.listar(principal.id(), pagina);
+    }
+
+    /** Los eventos "borrados" (ocultos, recuperables). Solo admin/superadmin. */
+    @GetMapping("/ocultos")
+    public EventosOcultosResponse ocultos(@AuthenticationPrincipal UsuarioPrincipal principal) {
+        return new EventosOcultosResponse(eventoService.listarOcultos(principal.id()));
     }
 
     @GetMapping("/{id}")
@@ -62,13 +68,18 @@ public class EventoController {
         return eventoService.editar(principal.id(), id, req);
     }
 
+    /** "Borra" el evento ocultándolo (no lo quita de la BBDD). Ver {@link #recuperar}. */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Object> borrar(@AuthenticationPrincipal UsuarioPrincipal principal,
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void ocultar(@AuthenticationPrincipal UsuarioPrincipal principal, @PathVariable Long id) {
+        eventoService.ocultar(principal.id(), id);
+    }
+
+    /** Deshace {@link #ocultar}. */
+    @PutMapping("/{id}/recuperar")
+    public EventoDetalle recuperar(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long id) {
-        ResultadoBorrado r = eventoService.borrar(principal.id(), id);
-        return r == ResultadoBorrado.BORRADO
-                ? ResponseEntity.noContent().build()
-                : ResponseEntity.accepted().body(Map.of("estado", "PENDIENTE"));
+        return eventoService.recuperar(principal.id(), id);
     }
 
     @PostMapping("/solicitudes")

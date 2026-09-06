@@ -39,16 +39,15 @@ public class AsistenciaController {
 
     @GetMapping("/pendientes-respuesta")
     public PendientesRespuestaResponse pendientes(@AuthenticationPrincipal UsuarioPrincipal principal) {
-        var eventos = asistenciaService.pendientesRespuesta(principal.id()).stream()
-                .map(EventoService::aResumen).toList();
-        return new PendientesRespuestaResponse(eventos);
+        return new PendientesRespuestaResponse(asistenciaService.pendientesRespuesta(principal.id()));
     }
 
     @PutMapping("/{id}/asistencia")
     public EventoDetalle responder(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long id, @Valid @RequestBody ResponderAsistenciaRequest req) {
-        asistenciaService.responder(principal.id(), id, req.estado());
-        return eventoService.detalle(principal.id(), id);
+        Long objetivo = req.paraUsuarioId() != null ? req.paraUsuarioId() : principal.id();
+        asistenciaService.responder(principal.id(), id, req.paraUsuarioId(), req.estado());
+        return eventoService.detalle(objetivo, id);
     }
 
     @PostMapping("/{id}/notificacion")

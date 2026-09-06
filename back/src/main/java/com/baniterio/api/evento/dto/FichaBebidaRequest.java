@@ -12,6 +12,9 @@ import jakarta.validation.constraints.Size;
  * refresco es obligatorio; el alcohol no (sin ninguno = "No bebo alcohol").
  * {@code asisteDia1/2} y {@code embarazada} son {@code Boolean} (wrapper) para
  * que Jackson no falle si el cliente los omite; {@code null} = valor por defecto.
+ * {@code paraUsuarioId} solo se usa en {@code PUT /ficha-bebida} directo (no en
+ * el alta a mano): {@code null} para la propia ficha, o la pareja/hijo con
+ * cuenta por quien se responde (ver {@code VinculoFamiliarService}).
  */
 public record FichaBebidaRequest(
         @NotBlank @Pattern(regexp = "APUNTADO|EN_DUDA") String estado,
@@ -23,7 +26,8 @@ public record FichaBebidaRequest(
         @Size(max = 80) String cervezaEspecial,
         Boolean embarazada,
         Boolean asisteDia1,
-        Boolean asisteDia2) {
+        Boolean asisteDia2,
+        Long paraUsuarioId) {
 
     public boolean esEmbarazada() {
         return Boolean.TRUE.equals(embarazada);

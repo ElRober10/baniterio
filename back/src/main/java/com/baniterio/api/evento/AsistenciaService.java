@@ -3,6 +3,8 @@ package com.baniterio.api.evento;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Comparator;
 
 import com.baniterio.api.auth.ServicioPermisos;
 import java.util.List;
@@ -11,6 +13,7 @@ import com.baniterio.api.evento.dto.AsistenciaDetalle;
 import com.baniterio.api.evento.dto.AsistenciaResumen;
 import com.baniterio.api.evento.dto.FichaBebidaRequest;
 import com.baniterio.api.evento.dto.FichaBebidaResponse;
+import com.baniterio.api.evento.dto.PendienteRespuesta;
 import com.baniterio.api.identidad.AsistenciaEvento;
 import com.baniterio.api.identidad.AsistenciaEventoRepository;
 import com.baniterio.api.identidad.EstadoAsistencia;
@@ -21,6 +24,7 @@ import com.baniterio.api.identidad.NotificacionEventoRepository;
 import com.baniterio.api.identidad.PenaRepository;
 import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
+import com.baniterio.api.identidad.VinculoFamiliarService;
 import com.baniterio.api.push.Audiencia;
 import com.baniterio.api.push.AvisoPushEvent;
 import com.baniterio.api.push.ResolutorAudiencia;
@@ -51,12 +55,13 @@ public class AsistenciaService {
     private final ApplicationEventPublisher publisher;
     private final ResolutorAudiencia resolutor;
     private final FichaBebidaService fichaBebida;
+    private final VinculoFamiliarService vinculoFamiliar;
 
     public AsistenciaService(AsistenciaEventoRepository asistencias,
                              NotificacionEventoRepository notificaciones, EventoRepository eventos,
                              UsuarioRepository usuarios, PenaRepository penas, ServicioPermisos permisos,
                              ApplicationEventPublisher publisher, ResolutorAudiencia resolutor,
-                             FichaBebidaService fichaBebida) {
+                             FichaBebidaService fichaBebida, VinculoFamiliarService vinculoFamiliar) {
         this.asistencias = asistencias;
         this.notificaciones = notificaciones;
         this.eventos = eventos;
@@ -66,6 +71,7 @@ public class AsistenciaService {
         this.publisher = publisher;
         this.resolutor = resolutor;
         this.fichaBebida = fichaBebida;
+        this.vinculoFamiliar = vinculoFamiliar;
     }
 
     /** Un administrador de verdad, o quien organiza (creó) el evento. */
@@ -86,21 +92,43 @@ public class AsistenciaService {
     }
 
     /**
-     * Mi respuesta a un evento. Crea la fila la primera vez y la actualiza en las
-     * siguientes; se puede cambiar hasta el día del evento. Evento pasado →
-     * {@link EventoYaPasadoException}.
+     * Respuesta a un evento, la propia o —si {@code actuanteId} puede responder
+     * por {@code objetivoId} (pareja con vínculo aceptado, o hijo con cuenta
+     * propia; ver {@link VinculoFamiliarService})— en nombre de otro. Crea la
+     * fila la primera vez y la actualiza en las siguientes; se puede cambiar
+     * hasta el día del evento. Evento pasado → {@link EventoYaPasadoException};
+     * sin vínculo con {@code objetivoId} → {@link SinPermisoEventoException}.
      */
     @Transactional
-    public void responder(Long usuarioId, Long eventoId, EstadoAsistencia estado) {
+    public void responder(Long actuanteId, Long eventoId, Long objetivoId, EstadoAsistencia estado) {
         Evento e = cargar(eventoId);
         exigirNoPasado(e);
-        AsistenciaEvento a = asistencias.findByEventoIdAndUsuarioId(eventoId, usuarioId)
+        Long objetivo = exigirPuedeResponderPor(actuanteId, objetivoId);
+        AsistenciaEvento a = asistencias.findByEventoIdAndUsuarioId(eventoId, objetivo)
                 .orElseGet(() -> AsistenciaEvento.builder()
                         .evento(e)
-                        .usuario(usuarios.findById(usuarioId).orElseThrow())
+                        .usuario(usuarios.findById(objetivo).orElseThrow())
                         .build());
         a.setEstado(estado);
+        if (!objetivo.equals(actuanteId)) {
+            a.setRegistradoPor(usuarios.findById(actuanteId).orElseThrow());
+        }
         asistencias.save(a);
+    }
+
+    /**
+     * Resuelve por quién responde {@code actuanteId} ({@code objetivoId} o, si es
+     * {@code null}, uno mismo) y comprueba el vínculo. Se usa desde {@link
+     * #responder} y desde {@link FichaBebidaService#guardar}.
+     */
+    Long exigirPuedeResponderPor(Long actuanteId, Long objetivoId) {
+        Long objetivo = objetivoId != null ? objetivoId : actuanteId;
+        if (!objetivo.equals(actuanteId)
+                && vinculoFamiliar.personasQuePuedoResponder(actuanteId).stream()
+                        .noneMatch(p -> p.id().equals(objetivo))) {
+            throw new SinPermisoEventoException();
+        }
+        return objetivo;
     }
 
     /**
@@ -120,12 +148,14 @@ public class AsistenciaService {
         }
         exigirNoPasado(e);
         var ultima = notificaciones.findFirstByEventoIdOrderByEnviadaAtDesc(eventoId);
-        ultima.ifPresent(n -> {
-            Instant limite = Instant.now().minus(HORAS_ENTRE_ENVIOS, ChronoUnit.HOURS);
-            if (n.getEnviadaAt().isAfter(limite)) {
-                throw new NotificacionReenvioProntoException();
-            }
-        });
+        // TODO(rober): reactivar el bloqueo de 48h para reenviar — comentado a
+        // propósito para poder probar convocatorias sin esperar (2026-09-04).
+        // ultima.ifPresent(n -> {
+        //     Instant limite = Instant.now().minus(HORAS_ENTRE_ENVIOS, ChronoUnit.HOURS);
+        //     if (n.getEnviadaAt().isAfter(limite)) {
+        //         throw new NotificacionReenvioProntoException();
+        //     }
+        // });
         boolean primeraVez = ultima.isEmpty();
         String limpio = (texto == null || texto.isBlank()) ? null : texto.trim();
         notificaciones.save(NotificacionEvento.builder()
@@ -207,24 +237,35 @@ public class AsistenciaService {
         Instant reenviableAt = notificaciones.findFirstByEventoIdOrderByEnviadaAtDesc(eventoId)
                 .map(n -> n.getEnviadaAt().plus(HORAS_ENTRE_ENVIOS, ChronoUnit.HOURS))
                 .orElse(null);
+        boolean notificacionMandada = notificaciones.existsByEventoId(eventoId);
         int apuntados = (int) asistencias.countByEventoIdAndEstado(eventoId, EstadoAsistencia.APUNTADO);
         int noVoy = (int) asistencias.countByEventoIdAndEstado(eventoId, EstadoAsistencia.NO_VOY);
         int enDuda = (int) asistencias.countByEventoIdAndEstado(eventoId, EstadoAsistencia.EN_DUDA);
         int sinContestar = resolutor.resolver(new Audiencia.SinRespuestaEvento(eventoId)).size();
-        return new AsistenciaDetalle(miAsistencia, puedeNotificar, reenviableAt,
+        return new AsistenciaDetalle(miAsistencia, puedeNotificar, reenviableAt, notificacionMandada,
                 apuntados, noVoy, enDuda, sinContestar, fichaBebida.detalleDe(usuarioId, e));
     }
 
     /**
-     * Eventos que el usuario tiene pendientes de contestar (hay notificación y no
-     * ha respondido), ordenados por fecha ascendente. La pantalla bloqueante los
-     * recorre uno a uno.
+     * Eventos pendientes de contestar (hay notificación y no hay respuesta):
+     * los propios y los de cada persona por la que {@code usuarioId} pueda
+     * responder (ver {@link VinculoFamiliarService}), ordenados por fecha
+     * ascendente. El modal bloqueante los recorre uno a uno.
      */
     @Transactional(readOnly = true)
-    public List<Evento> pendientesRespuesta(Long usuarioId) {
+    public List<PendienteRespuesta> pendientesRespuesta(Long usuarioId) {
         Long penaId = penas.findBySlug(SLUG_PENA)
                 .orElseThrow(() -> new IllegalStateException("Falta la peña piloto '" + SLUG_PENA + "'"))
                 .getId();
-        return eventos.pendientesRespuesta(penaId, usuarioId, LocalDate.now());
+        LocalDate hoy = LocalDate.now();
+        List<PendienteRespuesta> resultado = new ArrayList<>();
+        for (VinculoFamiliarService.Persona persona : vinculoFamiliar.personasQuePuedoResponder(usuarioId)) {
+            for (Evento e : eventos.pendientesRespuesta(penaId, persona.id(), hoy)) {
+                resultado.add(new PendienteRespuesta(EventoService.aResumen(e),
+                        new PendienteRespuesta.ParaUsuario(persona.id(), persona.nombre())));
+            }
+        }
+        resultado.sort(Comparator.comparing(p -> p.evento().fecha()));
+        return resultado;
     }
 }

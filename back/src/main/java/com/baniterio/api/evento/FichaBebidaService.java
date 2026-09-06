@@ -20,6 +20,7 @@ import com.baniterio.api.identidad.FichaBebida;
 import com.baniterio.api.identidad.FichaBebidaRepository;
 import com.baniterio.api.identidad.TipoBebida;
 import com.baniterio.api.identidad.UsuarioRepository;
+import com.baniterio.api.identidad.VinculoFamiliarService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,33 +39,48 @@ public class FichaBebidaService {
     private final EventoRepository eventos;
     private final UsuarioRepository usuarios;
     private final BebidaService bebidaService;
+    private final VinculoFamiliarService vinculoFamiliar;
 
     public FichaBebidaService(AsistenciaEventoRepository asistencias, FichaBebidaRepository fichas,
                               BebidaRepository bebidas, EventoRepository eventos,
-                              UsuarioRepository usuarios, BebidaService bebidaService) {
+                              UsuarioRepository usuarios, BebidaService bebidaService,
+                              VinculoFamiliarService vinculoFamiliar) {
         this.asistencias = asistencias;
         this.fichas = fichas;
         this.bebidas = bebidas;
         this.eventos = eventos;
         this.usuarios = usuarios;
         this.bebidaService = bebidaService;
+        this.vinculoFamiliar = vinculoFamiliar;
     }
 
     /**
-     * Guarda mi ficha de bebida para un evento de San Miguel y devuelve la cuota
+     * Guarda la ficha de bebida de un evento de San Miguel —la propia, o la de
+     * {@code req.paraUsuarioId()} si {@code actuanteId} puede responder por esa
+     * persona (ver {@link VinculoFamiliarService})— y devuelve la cuota
      * calculada. Crea la fila de asistencia si no existía y la deja en el estado
-     * indicado (APUNTADO o EN_DUDA).
+     * indicado (APUNTADO o EN_DUDA). Sin vínculo con {@code paraUsuarioId} →
+     * {@link SinPermisoEventoException}.
      */
     @Transactional
-    public FichaBebidaResponse guardar(Long usuarioId, Long eventoId, FichaBebidaRequest req) {
+    public FichaBebidaResponse guardar(Long actuanteId, Long eventoId, FichaBebidaRequest req) {
         Evento e = cargarConFicha(eventoId);
+        Long objetivo = req.paraUsuarioId() != null ? req.paraUsuarioId() : actuanteId;
+        if (!objetivo.equals(actuanteId)
+                && vinculoFamiliar.personasQuePuedoResponder(actuanteId).stream()
+                        .noneMatch(p -> p.id().equals(objetivo))) {
+            throw new SinPermisoEventoException();
+        }
         EstadoAsistencia estado = EstadoAsistencia.valueOf(req.estado());
-        AsistenciaEvento a = asistencias.findByEventoIdAndUsuarioId(eventoId, usuarioId)
+        AsistenciaEvento a = asistencias.findByEventoIdAndUsuarioId(eventoId, objetivo)
                 .orElseGet(() -> AsistenciaEvento.builder()
-                        .evento(e).usuario(usuarios.findById(usuarioId).orElseThrow()).build());
+                        .evento(e).usuario(usuarios.findById(objetivo).orElseThrow()).build());
         a.setEstado(estado);
+        if (!objetivo.equals(actuanteId)) {
+            a.setRegistradoPor(usuarios.findById(actuanteId).orElseThrow());
+        }
         asistencias.save(a);
-        return aplicar(e, a, usuarioId, req);
+        return aplicar(e, a, actuanteId, req);
     }
 
     /**
@@ -83,12 +99,18 @@ public class FichaBebidaService {
     @Transactional
     public void recalcularCuotas(Long eventoId) {
         Evento e = eventos.findById(eventoId).orElseThrow(EventoNoEncontradoException::new);
+        var cuotas = cuotasDe(e);
         for (FichaBebida f : fichas.findByEventoId(eventoId)) {
-            var calc = CalculadoraCuota.calcular(e.getCuotaMaxima(), f.isEmbarazada(),
-                    f.isAsisteDia1(), f.isAsisteDia2(), f.getAlcohol() != null, f.getAlternativa());
+            var calc = CalculadoraCuota.calcular(cuotas, f.isEmbarazada(),
+                    f.isAsisteDia1(), f.isAsisteDia2(), f.getAlcohol() != null);
             f.setCuota(calc.cuota());
             fichas.save(f);
         }
+    }
+
+    private static CalculadoraCuota.Cuotas cuotasDe(Evento e) {
+        return new CalculadoraCuota.Cuotas(e.getCuotaCubatas(), e.getCuotaCervezas(),
+                e.getCuotaCubatas1Dia(), e.getCuotaCervezas1Dia(), e.getCuotaEmbarazada());
     }
 
     private Evento cargarConFicha(Long eventoId) {
@@ -118,8 +140,8 @@ public class FichaBebidaService {
         boolean dia1 = !dosDias || req.vaDia1();
         boolean dia2 = !dosDias || req.vaDia2();
 
-        var calc = CalculadoraCuota.calcular(e.getCuotaMaxima(), embarazada, dia1, dia2,
-                alcohol != null, alternativa);
+        var calc = CalculadoraCuota.calcular(cuotasDe(e), embarazada, dia1, dia2,
+                alcohol != null);
 
         FichaBebida f = fichas.findByAsistenciaId(a.getId())
                 .orElseGet(() -> FichaBebida.builder().asistencia(a).build());

@@ -27,7 +27,7 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
     @Query("""
             select e from Evento e
             join fetch e.cuenta
-            where e.pena.id = :penaId
+            where e.pena.id = :penaId and e.oculto = false
             order by
               case when coalesce(e.fechaFin, e.fecha) >= :limite then 0 else 1 end,
               case when coalesce(e.fechaFin, e.fecha) >= :limite then e.fecha end asc,
@@ -44,7 +44,7 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
     @Query("""
             select e from Evento e
             join fetch e.cuenta
-            where e.pena.id = :penaId and coalesce(e.fechaFin, e.fecha) >= :limite
+            where e.pena.id = :penaId and e.oculto = false and coalesce(e.fechaFin, e.fecha) >= :limite
             """)
     List<Evento> futuros(@Param("penaId") Long penaId, @Param("limite") LocalDate limite);
 
@@ -56,11 +56,20 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
     @Query("""
             select e from Evento e
             join fetch e.cuenta
-            where e.pena.id = :penaId and e.fecha >= :hoy
+            where e.pena.id = :penaId and e.oculto = false and e.fecha >= :hoy
               and exists (select 1 from NotificacionEvento n where n.evento = e)
               and not exists (select 1 from AsistenciaEvento a where a.evento = e and a.usuario.id = :usuarioId)
             order by e.fecha asc, e.id asc
             """)
     List<Evento> pendientesRespuesta(@Param("penaId") Long penaId,
             @Param("usuarioId") Long usuarioId, @Param("hoy") LocalDate hoy);
+
+    /** Eventos ocultos ("borrados") de la peña, para poder recuperarlos. Más recientes primero. */
+    @Query("""
+            select e from Evento e
+            join fetch e.cuenta
+            where e.pena.id = :penaId and e.oculto = true
+            order by e.fecha desc, e.id desc
+            """)
+    List<Evento> ocultos(@Param("penaId") Long penaId);
 }

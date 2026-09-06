@@ -91,11 +91,22 @@ class FichaBebidaIT extends IntegrationTest {
         return new Sesion(u.getId(), (String) body.get("token"));
     }
 
-    private Evento sanMiguel(BigDecimal cuotaMaxima) {
+    /**
+     * Evento de San Miguel con las 5 cuotas derivadas de {@code m} (cubatas) con
+     * {@link CalculadoraCuota#derivar}, la misma fórmula que usa el backend al
+     * crear/editar. {@code m} null → las 5 cuotas quedan sin poner.
+     */
+    private Evento sanMiguel(BigDecimal m) {
+        CalculadoraCuota.Cuotas cuotas = CalculadoraCuota.derivar(m);
         return eventos.save(Evento.builder().pena(pena()).cuenta(cuenta("San Miguel"))
                 .nombre("IT-ficha-" + ThreadLocalRandom.current().nextInt(1_000_000))
                 .fecha(LocalDate.now().plusDays(20)).fechaFin(LocalDate.now().plusDays(21))
-                .cuotaMaxima(cuotaMaxima).build());
+                .cuotaCubatas(cuotas.cubatas())
+                .cuotaCervezas(cuotas.cervezas())
+                .cuotaCubatas1Dia(cuotas.cubatas1Dia())
+                .cuotaCervezas1Dia(cuotas.cervezas1Dia())
+                .cuotaEmbarazada(cuotas.embarazada())
+                .build());
     }
 
     private Long refrescoId(String nombre) {
@@ -128,10 +139,11 @@ class FichaBebidaIT extends IntegrationTest {
         Sesion s = crearMiembro(RolMembresia.MIEMBRO);
         Evento e = sanMiguel(new BigDecimal("26"));
 
+        // fichaBase() no lleva alcohol, así que paga la cuota de "solo cerveza".
         putFicha(s, e.getId(), fichaBase()).expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.modalidad").isEqualTo("COMPLETA")
-                .jsonPath("$.cuota").isEqualTo(26.00)
+                .jsonPath("$.modalidad").isEqualTo("SOLO_CERVEZA")
+                .jsonPath("$.cuota").isEqualTo(16.00)
                 .jsonPath("$.cuotaPendiente").isEqualTo(false);
 
         var a = asistencias.findByEventoIdAndUsuarioId(e.getId(), s.id()).orElseThrow();
@@ -153,7 +165,7 @@ class FichaBebidaIT extends IntegrationTest {
         Sesion s = crearMiembro(RolMembresia.MIEMBRO);
         Evento e = eventos.save(Evento.builder().pena(pena()).cuenta(cuenta("San Miguel"))
                 .nombre("IT-ficha-pasado").fecha(LocalDate.now().minusDays(1))
-                .fechaFin(LocalDate.now()).cuotaMaxima(new BigDecimal("26")).build());
+                .fechaFin(LocalDate.now()).cuotaCubatas(new BigDecimal("26")).build());
 
         putFicha(s, e.getId(), fichaBase()).expectStatus().isEqualTo(409)
                 .expectBody().jsonPath("$.codigo").isEqualTo("EVENTO_YA_PASADO");
@@ -187,7 +199,21 @@ class FichaBebidaIT extends IntegrationTest {
     }
 
     @Test
-    void un_dia_calcula_M_partido_2_mas_1() {
+    void un_dia_bebiendo_alcohol_calcula_M_partido_2_mas_1() {
+        Sesion s = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sanMiguel(new BigDecimal("26"));
+        Map<String, Object> ficha = fichaBase();
+        ficha.put("alcoholBebidaId", alcoholId("Barceló"));
+        ficha.put("asisteDia2", false);
+
+        putFicha(s, e.getId(), ficha).expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.modalidad").isEqualTo("UN_DIA")
+                .jsonPath("$.cuota").isEqualTo(14.00);
+    }
+
+    @Test
+    void un_dia_sin_alcohol_calcula_cervezas_partido_2_mas_1() {
         Sesion s = crearMiembro(RolMembresia.MIEMBRO);
         Evento e = sanMiguel(new BigDecimal("26"));
         Map<String, Object> ficha = fichaBase();
@@ -196,7 +222,7 @@ class FichaBebidaIT extends IntegrationTest {
         putFicha(s, e.getId(), ficha).expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.modalidad").isEqualTo("UN_DIA")
-                .jsonPath("$.cuota").isEqualTo(14.00);
+                .jsonPath("$.cuota").isEqualTo(9.00);
     }
 
     @Test
@@ -216,7 +242,7 @@ class FichaBebidaIT extends IntegrationTest {
     }
 
     @Test
-    void sin_cuota_maxima_guarda_la_ficha_con_cuota_null() {
+    void sin_esa_cuota_puesta_guarda_la_ficha_con_cuota_null() {
         Sesion s = crearMiembro(RolMembresia.MIEMBRO);
         Evento e = sanMiguel(null);
 
@@ -241,7 +267,7 @@ class FichaBebidaIT extends IntegrationTest {
                 .jsonPath("$.asistencia.ficha.llevaFicha").isEqualTo(true)
                 .jsonPath("$.asistencia.ficha.diasEvento.length()").isEqualTo(2)
                 .jsonPath("$.asistencia.ficha.miFicha.modalidad").isEqualTo("UN_DIA")
-                .jsonPath("$.asistencia.ficha.miFicha.cuota").isEqualTo(14.00);
+                .jsonPath("$.asistencia.ficha.miFicha.cuota").isEqualTo(9.00);
     }
 
     @Test
@@ -269,26 +295,26 @@ class FichaBebidaIT extends IntegrationTest {
                 .body(Map.of("nombre", "Primo de Juan", "estado", "APUNTADO", "ficha", ficha))
                 .exchange().expectStatus().isCreated()
                 .expectBody()
-                .jsonPath("$.cuota").isEqualTo(26.00)
-                .jsonPath("$.modalidad").isEqualTo("COMPLETA");
+                .jsonPath("$.cuota").isEqualTo(16.00)
+                .jsonPath("$.modalidad").isEqualTo("SOLO_CERVEZA");
     }
 
     @Test
-    void cambiar_la_cuota_maxima_recalcula_las_fichas() {
+    void cambiar_una_cuota_recalcula_las_fichas_que_le_tocan() {
         Sesion admin = crearMiembro(RolMembresia.ADMIN);
         Evento e = sanMiguel(new BigDecimal("26"));
         putFicha(admin, e.getId(), fichaBase()).expectStatus().isOk()
-                .expectBody().jsonPath("$.cuota").isEqualTo(26.00);
+                .expectBody().jsonPath("$.cuota").isEqualTo(16.00);
 
         http.put().uri("/api/v1/eventos/" + e.getId())
                 .header(AUTHORIZATION, "Bearer " + admin.token())
                 .body(Map.of("nombre", e.getNombre(), "fecha", e.getFecha().toString(),
                         "fechaFin", e.getFechaFin().toString(),
-                        "cuentaId", cuenta("San Miguel").getId(), "cuotaMaxima", 30))
+                        "cuentaId", cuenta("San Miguel").getId(), "cuotaCubatas", 30))
                 .exchange().expectStatus().isOk();
 
         var a = asistencias.findByEventoIdAndUsuarioId(e.getId(), admin.id()).orElseThrow();
         assertThat(fichas.findByAsistenciaId(a.getId()).orElseThrow().getCuota())
-                .isEqualByComparingTo("30.00");
+                .isEqualByComparingTo("20.00");
     }
 }
