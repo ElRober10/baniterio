@@ -15,10 +15,9 @@ import { Cuentas } from './panel/cuentas/cuentas';
 import { EditorEvento } from './panel/eventos/editor-evento/editor-evento';
 import { EventoDetalleComponent } from './panel/eventos/evento-detalle/evento-detalle';
 import { Eventos } from './panel/eventos/eventos';
+import { EventosOcultos } from './panel/eventos/eventos-ocultos/eventos-ocultos';
 import { Miembros } from './panel/miembros/miembros';
 import { perfilCompletoGuard } from './panel/miembros/perfil-completo.guard';
-import { Responder } from './panel/responder/responder';
-import { respuestaPendienteGuard } from './panel/responder/respuesta-pendiente.guard';
 import { Registro } from './auth/registro/registro';
 import { SolicitarAcceso } from './auth/solicitar-acceso/solicitar-acceso';
 
@@ -34,42 +33,39 @@ export const routes: Routes = [
     component: Panel,
     canActivate: [authGuard],
     children: [
-      { path: '', component: PanelInicio, canActivate: [perfilCompletoGuard, respuestaPendienteGuard] },
+      { path: '', component: PanelInicio, canActivate: [perfilCompletoGuard] },
       // El editor de perfil es la ÚNICA hija sin `perfilCompletoGuard`: es donde
-      // ese guard atrapa a quien aún no ha completado el perfil. Tampoco lleva
-      // `respuestaPendienteGuard` (el perfil va primero).
+      // ese guard atrapa a quien aún no ha completado el perfil.
       { path: 'miembros/editar', component: EditorPerfil },
-      // Pantalla bloqueante de convocatorias: solo `perfilCompletoGuard`; el
-      // `respuestaPendienteGuard` la excluye para no rebotar sobre sí misma.
-      { path: 'responder', component: Responder, canActivate: [perfilCompletoGuard] },
-      { path: 'miembros', component: Miembros, canActivate: [perfilCompletoGuard, respuestaPendienteGuard] },
-      { path: 'eventos', component: Eventos, canActivate: [perfilCompletoGuard, respuestaPendienteGuard] },
+      { path: 'miembros', component: Miembros, canActivate: [perfilCompletoGuard] },
+      { path: 'eventos', component: Eventos, canActivate: [perfilCompletoGuard] },
       // Específicas antes de la comodín `:id`, o `nuevo`/`editar` caerían en el detalle.
-      { path: 'eventos/nuevo', component: EditorEvento, canActivate: [perfilCompletoGuard, respuestaPendienteGuard] },
-      { path: 'eventos/:id/editar', component: EditorEvento, canActivate: [perfilCompletoGuard, respuestaPendienteGuard] },
-      { path: 'eventos/:id', component: EventoDetalleComponent, canActivate: [perfilCompletoGuard, respuestaPendienteGuard] },
-      { path: 'cuentas', component: Cuentas, canActivate: [perfilCompletoGuard, respuestaPendienteGuard] },
-      { path: 'cuentas/:id', component: CuentaDetalleComponent, canActivate: [perfilCompletoGuard, respuestaPendienteGuard] },
+      { path: 'eventos/nuevo', component: EditorEvento, canActivate: [perfilCompletoGuard] },
+      { path: 'eventos/ocultos', component: EventosOcultos, canActivate: [perfilCompletoGuard] },
+      { path: 'eventos/:id/editar', component: EditorEvento, canActivate: [perfilCompletoGuard] },
+      { path: 'eventos/:id', component: EventoDetalleComponent, canActivate: [perfilCompletoGuard] },
+      { path: 'cuentas', component: Cuentas, canActivate: [perfilCompletoGuard] },
+      { path: 'cuentas/:id', component: CuentaDetalleComponent, canActivate: [perfilCompletoGuard] },
       // Índice de administración: sin areaGuard (cualquier miembro lo abre); solo
       // pinta las secciones para las que tiene área.
-      { path: 'administracion', component: AdminIndice, canActivate: [perfilCompletoGuard, respuestaPendienteGuard] },
+      { path: 'administracion', component: AdminIndice, canActivate: [perfilCompletoGuard] },
       // administracion/* → protegidas además por areaGuard (permiso concreto del panel).
       {
         path: 'administracion/solicitudes',
         component: AdminSolicitudes,
-        canActivate: [perfilCompletoGuard, respuestaPendienteGuard, areaGuard('ADMIN_SOLICITUDES')],
+        canActivate: [perfilCompletoGuard, areaGuard('ADMIN_SOLICITUDES')],
       },
       {
         path: 'administracion/permisos',
         component: AdminPermisos,
-        canActivate: [perfilCompletoGuard, respuestaPendienteGuard, areaGuard('ADMIN_PERMISOS')],
+        canActivate: [perfilCompletoGuard, areaGuard('ADMIN_PERMISOS')],
       },
       // Bebidas propuestas: cualquier admin/superadmin (no un área); el propio
       // componente rebota a /panel si no lo eres.
       {
         path: 'administracion/bebidas',
         component: AdminBebidas,
-        canActivate: [perfilCompletoGuard, respuestaPendienteGuard],
+        canActivate: [perfilCompletoGuard],
       },
     ],
   },

@@ -49,7 +49,7 @@ describe('EventosService', () => {
       fechaFin: null,
       cuentaId: 2,
       cuentaNueva: false,
-      cuotaMaxima: null,
+      cuotaCubatas: null,
     };
     service.crear(body).subscribe();
     const req = httpMock.expectOne(`${base}/eventos`);
@@ -67,7 +67,7 @@ describe('EventosService', () => {
       fechaFin: null,
       cuentaId: 2,
       cuentaNueva: false,
-      cuotaMaxima: null,
+      cuotaCubatas: null,
     };
     service.editar(7, body).subscribe();
     const req = httpMock.expectOne(`${base}/eventos/7`);
@@ -75,11 +75,25 @@ describe('EventosService', () => {
     req.flush({});
   });
 
-  it('borrar() hace DELETE a /eventos/:id', () => {
-    service.borrar(7).subscribe();
+  it('ocultar() hace DELETE a /eventos/:id', () => {
+    service.ocultar(7).subscribe();
     const req = httpMock.expectOne(`${base}/eventos/7`);
     expect(req.request.method).toBe('DELETE');
     req.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('recuperar() hace PUT a /eventos/:id/recuperar', () => {
+    service.recuperar(7).subscribe();
+    const req = httpMock.expectOne(`${base}/eventos/7/recuperar`);
+    expect(req.request.method).toBe('PUT');
+    req.flush({});
+  });
+
+  it('listarOcultos() hace GET a /eventos/ocultos', () => {
+    service.listarOcultos().subscribe();
+    const req = httpMock.expectOne(`${base}/eventos/ocultos`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ eventos: [] });
   });
 
   it('solicitarCrear() hace POST a /eventos/solicitudes con el mensaje', () => {
@@ -94,7 +108,14 @@ describe('EventosService', () => {
     service.responder(5, 'NO_VOY').subscribe();
     const req = httpMock.expectOne(`${base}/eventos/5/asistencia`);
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body).toEqual({ estado: 'NO_VOY' });
+    expect(req.request.body).toEqual({ estado: 'NO_VOY', paraUsuarioId: null });
+    req.flush({});
+  });
+
+  it('responder() por otro manda su paraUsuarioId', () => {
+    service.responder(5, 'APUNTADO', 9).subscribe();
+    const req = httpMock.expectOne(`${base}/eventos/5/asistencia`);
+    expect(req.request.body).toEqual({ estado: 'APUNTADO', paraUsuarioId: 9 });
     req.flush({});
   });
 

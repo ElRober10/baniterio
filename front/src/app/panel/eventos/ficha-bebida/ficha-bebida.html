@@ -20,15 +20,14 @@
       <label class="text-xs text-muted" for="fb-alcohol">Bebida alcohólica</label>
       <select
         id="fb-alcohol"
-        [value]="alcoholSel()"
         (change)="set(alcoholSel, $event)"
         class="mt-1 w-full rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
       >
-        <option value="">No bebo alcohol</option>
+        <option value="" [selected]="alcoholSel() === ''">No bebo alcohol</option>
         @for (b of catalogo.alcohol; track b.id) {
-          <option [value]="b.id">{{ b.nombre }}</option>
+          <option [value]="b.id" [selected]="esId(alcoholSel(), b.id)">{{ b.nombre }}</option>
         }
-        <option [value]="OTRA">Otra…</option>
+        <option [value]="OTRA" [selected]="alcoholSel() === OTRA">Otra…</option>
       </select>
       @if (alcoholSel() === OTRA) {
         <input
@@ -70,15 +69,14 @@
     <label class="text-xs text-muted" for="fb-refresco">Refresco</label>
     <select
       id="fb-refresco"
-      [value]="refrescoSel()"
       (change)="set(refrescoSel, $event)"
       class="mt-1 w-full rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
     >
-      <option value="" disabled>Elige…</option>
+      <option value="" disabled [selected]="refrescoSel() === ''">Elige…</option>
       @for (b of catalogo.refresco; track b.id) {
-        <option [value]="b.id">{{ b.nombre }}</option>
+        <option [value]="b.id" [selected]="esId(refrescoSel(), b.id)">{{ b.nombre }}</option>
       }
-      <option [value]="OTRA">Otra…</option>
+      <option [value]="OTRA" [selected]="refrescoSel() === OTRA">Otra…</option>
     </select>
     @if (refrescoSel() === OTRA) {
       <input

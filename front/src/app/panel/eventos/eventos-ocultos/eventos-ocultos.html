@@ -1,0 +1,51 @@
+<section class="mx-auto w-full max-w-2xl">
+  <div class="mb-4"><app-volver destino="/panel/eventos" /></div>
+
+  <h1 class="font-display text-2xl font-extrabold leading-tight">Eventos ocultos</h1>
+  <p class="mt-1 text-sm text-muted">Eventos "borrados". Se pueden recuperar.</p>
+
+  @if (aviso()) {
+    <p
+      role="status"
+      class="mt-4 rounded-xl border border-brand-bright/30 bg-brand/15 px-4 py-3 text-sm text-gold-soft"
+    >
+      {{ aviso() }}
+    </p>
+  }
+
+  <div class="mt-6">
+    @switch (estado()) {
+      @case ('cargando') {
+        <p class="text-sm text-muted">Cargando…</p>
+      }
+      @case ('error') {
+        <p class="text-sm text-red-300">No se han podido cargar los eventos ocultos.</p>
+      }
+      @case ('lista') {
+        <ul class="flex flex-col gap-3">
+          @for (e of eventos(); track e.id) {
+            <li class="carta-relieve flex items-center justify-between gap-4 rounded-2xl px-5 py-4">
+              <button
+                type="button"
+                (click)="abrir(e)"
+                class="min-w-0 flex-1 text-left transition hover:brightness-110"
+              >
+                <span class="block truncate font-display text-lg font-bold">{{ e.nombre }}</span>
+                <span class="block truncate text-xs text-muted">{{ e.fecha }}</span>
+              </button>
+              <button
+                type="button"
+                (click)="recuperar(e)"
+                class="shrink-0 rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-brand-bright/60"
+              >
+                Recuperar
+              </button>
+            </li>
+          } @empty {
+            <p class="text-sm text-muted">No hay ningún evento oculto.</p>
+          }
+        </ul>
+      }
+    }
+  </div>
+</section>
