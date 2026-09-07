@@ -50,9 +50,31 @@
                     <span class="shrink-0 text-sm font-bold text-gold-soft">
                       {{ a.cuota != null ? a.cuota + ' €' : 'sin cuota' }} ·
                       {{ a.pagado ? 'pagado' : 'pendiente' }}
+                      @if (a.pagado && a.metodoPago) {
+                        · {{ metodoTexto[a.metodoPago] }}
+                      }
                     </span>
                   </div>
                   <p class="mt-1 text-xs text-muted">{{ bebidaTexto(a) }}</p>
+                  @if (d.puedoConfirmarPagos && a.cuota != null) {
+                    @if (!a.pagado) {
+                      <button
+                        type="button"
+                        (click)="abrirConfirmar(a)"
+                        class="mt-2 rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-gold transition hover:bg-brand-dark"
+                      >
+                        Confirmar el pago
+                      </button>
+                    } @else {
+                      <button
+                        type="button"
+                        (click)="deshacerPago(a)"
+                        class="mt-2 text-xs font-medium text-muted underline transition hover:text-ink"
+                      >
+                        deshacer
+                      </button>
+                    }
+                  }
                 </div>
               }
             </div>
@@ -65,4 +87,53 @@
       }
     }
   </div>
+
+  @if (filaConfirmando(); as fila) {
+    <div
+      class="fixed inset-0 z-50 flex items-center justify-center bg-surface/90 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-label="Confirmar el pago"
+    >
+      <div class="carta-relieve w-full max-w-sm rounded-2xl p-6">
+        <h3 class="font-display text-lg font-extrabold">Confirmar el pago de {{ fila.nombre }}</h3>
+        <p class="mt-1 text-sm text-muted">Cuota: {{ fila.cuota }} €</p>
+        <p class="mt-4 text-sm font-semibold">¿Cómo lo ha pagado?</p>
+        <div class="mt-2 grid grid-cols-3 gap-2">
+          @for (m of metodos; track m.valor) {
+            <button
+              type="button"
+              (click)="metodoElegido.set(m.valor)"
+              [class]="
+                metodoElegido() === m.valor
+                  ? 'rounded-xl border border-brand bg-brand px-2 py-2 text-center text-sm font-bold text-gold'
+                  : 'rounded-xl border border-outline px-2 py-2 text-center text-sm font-medium text-ink hover:border-brand-bright/60'
+              "
+            >
+              {{ m.texto }}
+            </button>
+          }
+        </div>
+        @if (errorPago()) {
+          <p class="mt-3 text-sm text-red-300">{{ errorPago() }}</p>
+        }
+        <div class="mt-5 flex gap-2">
+          <button
+            type="button"
+            (click)="confirmarPago()"
+            [disabled]="guardandoPago()"
+            class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark disabled:opacity-50"
+          >
+            Confirmar
+          </button>
+          <button
+            type="button"
+            (click)="cerrarConfirmar()"
+            class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  }
 </div>
