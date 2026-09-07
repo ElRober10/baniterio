@@ -160,6 +160,49 @@ describe('EventoDetalleComponent', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Confirmar el pago');
   });
 
+  it('con el pago confirmado muestra "Ya he pagado" y su info', () => {
+    crear();
+    fixture.detectChanges();
+    const miFicha = {
+      alcoholBebidaId: null,
+      alcohol: 'No bebo alcohol',
+      refrescoBebidaId: 20,
+      refresco: 'Coca-Cola',
+      alternativa: 'NADA',
+      cervezaEspecial: null,
+      embarazada: false,
+      asisteDia1: true,
+      asisteDia2: true,
+      modalidad: 'SOLO_CERVEZA',
+      cuota: 16,
+      cuotaPendiente: false,
+      bebidaPendiente: false,
+      pagado: true,
+      metodoPago: 'BIZUM',
+      pagadoPor: 'Jefe',
+      pagadoAt: '2026-09-07T10:00:00Z',
+    };
+    responder({
+      asistencia: {
+        ...asistenciaBase,
+        miAsistencia: 'APUNTADO',
+        ficha: { llevaFicha: true, diasEvento: ['2026-09-25', '2026-09-26'], miFicha },
+      },
+    });
+    fixture.detectChanges();
+    const txt1 = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(txt1).toContain('Ya he pagado');
+    expect(txt1).not.toContain('Confirmar el pago');
+
+    Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Ya he pagado')!
+      .click();
+    fixture.detectChanges();
+    const txt2 = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(txt2).toContain('Jefe');
+    expect(txt2).toContain('Bizum');
+  });
+
   it('sin permisos no muestra botones de gestión', () => {
     crear();
     fixture.detectChanges();
