@@ -216,6 +216,21 @@ public class ApiExceptionHandler {
         return error(HttpStatus.CONFLICT, "FICHA_SIN_CUOTA");
     }
 
+    @ExceptionHandler(com.baniterio.api.evento.PagoDeclaradoYaPendienteException.class)
+    ResponseEntity<Map<String, Object>> pagoDeclaradoYaPendiente() {
+        return error(HttpStatus.CONFLICT, "PAGO_DECLARADO_YA_PENDIENTE");
+    }
+
+    @ExceptionHandler(com.baniterio.api.evento.PagoDeclaradoNoEncontradoException.class)
+    ResponseEntity<Map<String, Object>> pagoDeclaradoNoEncontrado() {
+        return error(HttpStatus.NOT_FOUND, "PAGO_DECLARADO_NO_ENCONTRADO");
+    }
+
+    @ExceptionHandler(com.baniterio.api.evento.PagoDeclaradoYaResueltoException.class)
+    ResponseEntity<Map<String, Object>> pagoDeclaradoYaResuelto() {
+        return error(HttpStatus.CONFLICT, "PAGO_DECLARADO_YA_RESUELTO");
+    }
+
     @ExceptionHandler(com.baniterio.api.cuenta.CuentaNoEncontradaException.class)
     ResponseEntity<Map<String, Object>> cuentaNoEncontrada() {
         return error(HttpStatus.NOT_FOUND, "CUENTA_NO_ENCONTRADA");

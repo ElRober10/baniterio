@@ -20,5 +20,6 @@ public record AsistenteFila(
         Long asistenciaId,
         String metodoPago,
         String pagadoPor,
-        Instant pagadoAt) {
+        Instant pagadoAt,
+        boolean declarado) {
 }

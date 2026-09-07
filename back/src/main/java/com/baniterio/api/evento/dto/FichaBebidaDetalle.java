@@ -21,6 +21,7 @@ public record FichaBebidaDetalle(boolean llevaFicha, List<LocalDate> diasEvento,
                           String alternativa, String cervezaEspecial, boolean embarazada,
                           boolean asisteDia1, boolean asisteDia2, String modalidad,
                           BigDecimal cuota, boolean cuotaPendiente, boolean bebidaPendiente,
-                          boolean pagado, String metodoPago, String pagadoPor, Instant pagadoAt) {
+                          boolean pagado, String metodoPago, String pagadoPor, Instant pagadoAt,
+                          MiPagoDeclarado miPagoDeclarado) {
     }
 }
