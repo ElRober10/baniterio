@@ -14,14 +14,16 @@ import java.util.List;
 public record FichaBebidaDetalle(boolean llevaFicha, List<LocalDate> diasEvento, MiFicha miFicha) {
 
     /**
-     * Si {@code pagado}, van rellenos {@code metodoPago}, {@code pagadoPor}
-     * (nombre de quien lo confirmó) y {@code pagadoAt}.
+     * {@code estadoPago} es uno de {@code EstadoPagoCuota}. Si está confirmado
+     * ({@code CONFIRMADO_PENDIENTE_ENVIO} o {@code CONFIRMADO_EN_CUENTA}), van
+     * rellenos {@code metodoPago}, {@code pagadoPor} (nombre de quien lo confirmó)
+     * y {@code pagadoAt}.
      */
     public record MiFicha(Long alcoholBebidaId, String alcohol, Long refrescoBebidaId, String refresco,
                           String alternativa, String cervezaEspecial, boolean embarazada,
                           boolean asisteDia1, boolean asisteDia2, String modalidad,
                           BigDecimal cuota, boolean cuotaPendiente, boolean bebidaPendiente,
-                          boolean pagado, String metodoPago, String pagadoPor, Instant pagadoAt,
+                          String estadoPago, String metodoPago, String pagadoPor, Instant pagadoAt,
                           MiPagoDeclarado miPagoDeclarado) {
     }
 }

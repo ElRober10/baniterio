@@ -15,6 +15,7 @@ import com.baniterio.api.evento.dto.MiPagoDeclarado;
 import com.baniterio.api.evento.dto.PagoDeclaradoPendiente;
 import com.baniterio.api.identidad.AsistenciaEvento;
 import com.baniterio.api.identidad.AsistenciaEventoRepository;
+import com.baniterio.api.identidad.EstadoPagoCuota;
 import com.baniterio.api.identidad.EstadoPagoDeclarado;
 import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
@@ -235,7 +236,7 @@ public class PagoDeclaradoService {
         for (Long asistenciaId : asistenciaIds) {
             FichaBebida f = fichas.findByAsistenciaId(asistenciaId)
                     .orElseThrow(FichaSinCuotaException::new);
-            f.setPagado(true);
+            f.setEstadoPago(EstadoPagoCuota.CONFIRMADO_EN_CUENTA);
             f.setMetodoPago(metodo);
             f.setPagadoConfirmadoPor(admin);
             f.setPagadoAt(ahora);
