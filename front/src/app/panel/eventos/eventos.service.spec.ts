@@ -222,4 +222,30 @@ describe('EventosService', () => {
     expect(req.request.method).toBe('POST');
     req.flush(null, { status: 204, statusText: 'No Content' });
   });
+
+  const listadoVacio = {
+    asistentes: [],
+    totalCuotas: 0,
+    totalPagado: 0,
+    puedoPagarPor: [],
+    miCuota: null,
+    puedoConfirmarPagos: true,
+  };
+
+  it('confirmarPago() hace PUT al endpoint de pago con el método', () => {
+    let resp: unknown;
+    service.confirmarPago(3, 7, 'BIZUM').subscribe((r) => (resp = r));
+    const req = httpMock.expectOne(`${base}/eventos/3/asistencias/7/pago`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ metodo: 'BIZUM' });
+    req.flush(listadoVacio);
+    expect(resp).toBeTruthy();
+  });
+
+  it('deshacerPago() hace DELETE al endpoint de pago', () => {
+    service.deshacerPago(3, 7).subscribe();
+    const req = httpMock.expectOne(`${base}/eventos/3/asistencias/7/pago`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(listadoVacio);
+  });
 });
