@@ -12,3 +12,28 @@ data class CuentaResumen(
     val nombre: String,
     val descripcion: String? = null,
 )
+
+/** Una fila del libro de una cuenta, con el saldo acumulado tras aplicarla. */
+@Serializable
+data class MovimientoFilaDto(
+    val concepto: String,
+    val importe: Double,
+    val fecha: String,
+    val saldoTras: Double,
+)
+
+/**
+ * Detalle de una cuenta (`GET /cuentas/{id}`): saldo, estimación y libro de
+ * movimientos. `porIngresar` es `null` si quien mira no es administrador.
+ */
+@Serializable
+data class CuentaDetalleDto(
+    val id: Long,
+    val nombre: String,
+    val descripcion: String? = null,
+    val saldo: Double = 0.0,
+    val estimacion: Double = 0.0,
+    val movimientos: List<MovimientoFilaDto> = emptyList(),
+    val puedoGestionar: Boolean = false,
+    val porIngresar: Double? = null,
+)

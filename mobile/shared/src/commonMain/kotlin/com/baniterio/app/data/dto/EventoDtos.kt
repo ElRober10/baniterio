@@ -62,7 +62,7 @@ data class FichaBebidaMiaDto(
     val cuota: Double? = null,
     val cuotaPendiente: Boolean = false,
     val bebidaPendiente: Boolean = false,
-    val pagado: Boolean = false,
+    val estadoPago: String? = null,
     val metodoPago: String? = null,
     val pagadoPor: String? = null,
     val pagadoAt: String? = null,
@@ -194,12 +194,11 @@ data class AsistenteFilaDto(
     val esManual: Boolean,
     val bebida: BebidaFilaDto? = null,
     val cuota: Double? = null,
-    val pagado: Boolean = false,
+    val estadoPago: String? = null,
     val asistenciaId: Long = 0,
     val metodoPago: String? = null,
     val pagadoPor: String? = null,
     val pagadoAt: String? = null,
-    val declarado: Boolean = false,
 )
 
 /** Alguien a quien puedo incluir en mi pago. `relacion` = PAREJA | HIJO | INVITADO. */

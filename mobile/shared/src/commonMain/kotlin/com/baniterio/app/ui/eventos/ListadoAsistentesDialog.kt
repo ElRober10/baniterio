@@ -44,6 +44,13 @@ private fun metodoLegible(m: String?) = when (m) {
     else -> m ?: ""
 }
 
+private fun estadoPagoTexto(e: String?) = when (e) {
+    "DECLARADO" -> "Pagado, pendiente de confirmar"
+    "CONFIRMADO_PENDIENTE_ENVIO" -> "Confirmado, pendiente de ingresar en la cuenta"
+    "CONFIRMADO_EN_CUENTA" -> "Confirmado y en la cuenta"
+    else -> "Pendiente de pago"
+}
+
 private val METODOS_PAGO = listOf(
     "BIZUM" to "Bizum",
     "TRANSFERENCIA" to "Transferencia",
@@ -105,14 +112,12 @@ fun ListadoAsistentesDialog(
                                     },
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
+                                val confirmado = a.estadoPago == "CONFIRMADO_EN_CUENTA" ||
+                                    a.estadoPago == "CONFIRMADO_PENDIENTE_ENVIO"
                                 Text(
                                     (a.cuota?.let { "${formatoImporte(it)} €" } ?: "sin cuota") +
-                                        " · " + (when {
-                                            a.pagado -> "pagado"
-                                            a.declarado -> "declarado"
-                                            else -> "pendiente"
-                                        }) +
-                                        (if (a.pagado && a.metodoPago != null) {
+                                        " · " + estadoPagoTexto(a.estadoPago) +
+                                        (if (confirmado && a.metodoPago != null) {
                                             " · ${metodoLegible(a.metodoPago)}"
                                         } else {
                                             ""
@@ -121,7 +126,7 @@ fun ListadoAsistentesDialog(
                                 )
                                 Text(bebidaTexto(a), style = MaterialTheme.typography.bodySmall)
                                 if (d.puedoConfirmarPagos && a.cuota != null) {
-                                    if (!a.pagado) {
+                                    if (!confirmado) {
                                         TextButton(onClick = {
                                             metodoElegido = "BIZUM"
                                             confirmando = a
