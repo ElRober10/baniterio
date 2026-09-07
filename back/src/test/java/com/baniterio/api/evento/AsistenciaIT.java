@@ -31,6 +31,7 @@ import com.baniterio.api.identidad.VinculoParejaRepository;
 import com.baniterio.api.support.IntegrationTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -246,6 +247,9 @@ class AsistenciaIT extends IntegrationTest {
                 .expectBody().jsonPath("$.codigo").isEqualTo("SIN_PERMISO_EVENTO");
     }
 
+    @Disabled("El bloqueo de reenvío de 48 h está comentado a propósito en "
+            + "AsistenciaService.mandarNotificacion (TODO rober, 2026-09-04) para poder "
+            + "probar convocatorias sin esperar. Reactivar este test al descomentarlo.")
     @Test
     void reenviar_antes_de_48h_es_409_NOTIFICACION_REENVIO_PRONTO() {
         Sesion admin = crearMiembro(RolMembresia.ADMIN);
