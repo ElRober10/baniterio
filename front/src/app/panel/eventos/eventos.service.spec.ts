@@ -57,6 +57,8 @@ describe('EventosService', () => {
       cuentaId: 2,
       cuentaNueva: false,
       cuotaCubatas: null,
+      precioCamiseta: null,
+      precioSudadera: null,
     };
     service.crear(body).subscribe();
     const req = httpMock.expectOne(`${base}/eventos`);
@@ -75,6 +77,8 @@ describe('EventosService', () => {
       cuentaId: 2,
       cuentaNueva: false,
       cuotaCubatas: null,
+      precioCamiseta: null,
+      precioSudadera: null,
     };
     service.editar(7, body).subscribe();
     const req = httpMock.expectOne(`${base}/eventos/7`);

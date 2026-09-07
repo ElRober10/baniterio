@@ -24,24 +24,72 @@ export const ESTADO_PAGO_TEXTO: Record<EstadoPagoCuota, string> = {
   CONFIRMADO_EN_CUENTA: 'Confirmado y en la cuenta',
 };
 
+export type CategoriaMovimiento =
+  | 'REFRESCOS'
+  | 'CERVEZA_Y_TINTO'
+  | 'ALCOHOL'
+  | 'COMIDA'
+  | 'HIELOS'
+  | 'MENAJE'
+  | 'ROPA'
+  | 'OTROS';
+
+export const CATEGORIA_TEXTO: Record<CategoriaMovimiento, string> = {
+  REFRESCOS: 'Refrescos',
+  CERVEZA_Y_TINTO: 'Cerveza y tinto',
+  ALCOHOL: 'Alcohol',
+  COMIDA: 'Comida',
+  HIELOS: 'Hielos',
+  MENAJE: 'Menaje',
+  ROPA: 'Ropa',
+  OTROS: 'Otros',
+};
+
 /** Una fila del libro de una cuenta, con el saldo acumulado tras aplicarla. */
 export interface MovimientoFila {
+  id: number;
   concepto: string;
+  categoria: string | null;
   importe: number;
   fecha: string;
   saldoTras: number;
+  reciboArchivo: string | null;
+  manual: boolean;
+  adelantadoPor: string | null;
 }
 
-/** Detalle de una cuenta: saldo, estimación y libro de movimientos. */
+/** Una fila de la tabla "Peñistas" del detalle de una cuenta. */
+export interface PenistaCuota {
+  asistenciaId: number;
+  nombre: string;
+  cuota: number;
+  estadoPago: EstadoPagoCuota | null;
+  metodoPago: string | null;
+  camisetaPagada: boolean;
+  sudaderaPagada: boolean;
+}
+
+export interface ResumenGasto {
+  categoria: string;
+  total: number;
+}
+
+/** Detalle de una cuenta: la hoja completa. */
 export interface CuentaDetalle {
   id: number;
   nombre: string;
   descripcion: string | null;
   saldo: number;
   estimacion: number;
-  movimientos: MovimientoFila[];
+  cobradoSinIngresar: number | null;
   puedoGestionar: boolean;
-  porIngresar: number | null;
+  precioCamiseta: number | null;
+  precioSudadera: number | null;
+  penistas: PenistaCuota[];
+  totalCuotas: number;
+  totalCobrado: number;
+  movimientos: MovimientoFila[];
+  resumenGastos: ResumenGasto[];
 }
 
 /** Códigos de error propios de cuentas (ver ApiExceptionHandler.java). */

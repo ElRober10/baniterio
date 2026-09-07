@@ -161,6 +161,8 @@ export interface EventoDetalle {
   cuotaCubatas1Dia: number | null;
   cuotaCervezas1Dia: number | null;
   cuotaEmbarazada: number | null;
+  precioCamiseta: number | null;
+  precioSudadera: number | null;
   creadoPor: { id: number; nombre: string } | null;
   puedoEditar: boolean;
   puedoBorrar: boolean;
@@ -219,6 +221,9 @@ export interface GuardarEventoRequest {
    * admin/superadmin. `null` = sin poner / sin cambio.
    */
   cuotaCubatas: number | null;
+  /** Precio de la camiseta / sudadera de la peña; solo admin. `null` = sin poner / sin cambio. */
+  precioCamiseta: number | null;
+  precioSudadera: number | null;
 }
 
 // --- Listado de asistentes y pago (pieza 4) ---

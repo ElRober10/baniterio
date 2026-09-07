@@ -91,6 +91,8 @@ describe('EditorEvento', () => {
       cuentaId: 2,
       cuentaNueva: false,
       cuotaCubatas: null,
+      precioCamiseta: null,
+      precioSudadera: null,
     });
     req.flush({ id: 3 });
   });

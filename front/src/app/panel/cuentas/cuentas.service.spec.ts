@@ -30,35 +30,59 @@ describe('CuentasService', () => {
     req.flush([]);
   });
 
+  const detalleVacio = {
+    id: 3,
+    nombre: 'San Miguel',
+    descripcion: null,
+    saldo: 91.13,
+    estimacion: 91.13,
+    cobradoSinIngresar: null,
+    puedoGestionar: false,
+    precioCamiseta: null,
+    precioSudadera: null,
+    penistas: [],
+    totalCuotas: 0,
+    totalCobrado: 0,
+    movimientos: [],
+    resumenGastos: [],
+  };
+
   it('detalle() hace GET a /cuentas/:id', () => {
     service.detalle(3).subscribe();
     const req = httpMock.expectOne(`${base}/cuentas/3`);
     expect(req.request.method).toBe('GET');
-    req.flush({
-      id: 3,
-      nombre: 'San Miguel',
-      descripcion: null,
-      saldo: 91.13,
-      estimacion: 91.13,
-      movimientos: [],
-      puedoGestionar: false,
-      porIngresar: null,
-    });
+    req.flush(detalleVacio);
   });
 
   it('marcarTransferido() hace POST a /cuentas/:id/transferencia-a-pena', () => {
     service.marcarTransferido(3).subscribe();
     const req = httpMock.expectOne(`${base}/cuentas/3/transferencia-a-pena`);
     expect(req.request.method).toBe('POST');
-    req.flush({
-      id: 3,
-      nombre: 'San Miguel',
-      descripcion: null,
-      saldo: 117.13,
-      estimacion: 117.13,
-      movimientos: [],
-      puedoGestionar: true,
-      porIngresar: 0,
-    });
+    req.flush(detalleVacio);
+  });
+
+  it('crearMovimiento() hace POST multipart a /cuentas/:id/movimientos', () => {
+    const fd = new FormData();
+    fd.set('tipo', 'GASTO');
+    service.crearMovimiento(3, fd).subscribe();
+    const req = httpMock.expectOne(`${base}/cuentas/3/movimientos`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body instanceof FormData).toBe(true);
+    req.flush(detalleVacio);
+  });
+
+  it('borrarMovimiento() hace DELETE a /cuentas/movimientos/:id', () => {
+    service.borrarMovimiento(9).subscribe();
+    const req = httpMock.expectOne(`${base}/cuentas/movimientos/9`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(detalleVacio);
+  });
+
+  it('marcarRopa() hace PUT a /cuentas/:id/asistencias/:asisId/ropa', () => {
+    service.marcarRopa(3, 11, { camiseta: true }).subscribe();
+    const req = httpMock.expectOne(`${base}/cuentas/3/asistencias/11/ropa`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ camiseta: true });
+    req.flush(detalleVacio);
   });
 });

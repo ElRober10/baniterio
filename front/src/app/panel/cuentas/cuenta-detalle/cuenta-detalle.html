@@ -10,54 +10,203 @@
     }
     @case ('listo') {
       @if (cuenta(); as c) {
+        <!-- Cabecera -->
         <article class="carta-relieve rounded-2xl p-6">
           <h1 class="font-display text-2xl font-extrabold">{{ c.nombre }}</h1>
-          @if (c.descripcion) {
-            <p class="mt-2 text-sm leading-relaxed text-muted">{{ c.descripcion }}</p>
+          <p class="mt-3 font-display text-3xl font-extrabold text-gold">{{ c.saldo }} €</p>
+          <p class="text-xs text-muted">Si pagan todos: {{ c.estimacion }} €</p>
+          @if (c.puedoGestionar && c.cobradoSinIngresar && c.cobradoSinIngresar > 0) {
+            <div class="mt-4 rounded-xl border border-gold/30 bg-gold/10 p-4 text-sm">
+              Tienes <strong>{{ c.cobradoSinIngresar }} €</strong> cobrados por bizum o efectivo sin
+              llevar al banco.
+              <button
+                type="button"
+                (click)="modalTransferir.set(true)"
+                class="ml-2 rounded-lg bg-gold px-3 py-1 text-xs font-semibold text-brand-dark"
+              >
+                He transferido al banco
+              </button>
+            </div>
           }
-          <p class="mt-4 font-display text-3xl font-extrabold text-gold">{{ c.saldo }} €</p>
-          <p class="text-xs text-muted">Estimado cuando todos paguen: {{ c.estimacion }} €</p>
         </article>
 
         @if (aviso(); as a) {
-          <p class="mt-3 rounded-xl border border-brand-bright/30 bg-brand/15 px-4 py-3 text-sm text-gold-soft">
+          <p class="mt-3 rounded-xl border border-brand-bright/30 bg-brand/15 px-4 py-2 text-sm text-gold-soft">
             {{ a }}
           </p>
         }
 
-        @if (c.puedoGestionar && c.porIngresar && c.porIngresar > 0) {
-          <div class="mt-4 rounded-2xl border border-gold/30 bg-gold/10 p-5">
-            <p class="text-sm">
-              Tienes <strong>{{ c.porIngresar }} €</strong> cobrados por bizum o efectivo sin ingresar
-              en la cuenta de la peña.
-            </p>
-            <button
-              type="button"
-              (click)="modalTransferir.set(true)"
-              class="mt-3 rounded-xl bg-gold px-4 py-2 text-sm font-semibold text-brand-dark transition hover:brightness-110"
-            >
-              He transferido el dinero a la peña
+        <!-- Peñistas -->
+        <div class="mt-6 flex items-baseline justify-between">
+          <h2 class="font-display text-lg font-bold">Peñistas</h2>
+          <span class="text-xs text-muted">{{ pagados() }} de {{ c.penistas.length }} han pagado</span>
+        </div>
+        <div class="mt-2 overflow-x-auto rounded-2xl border border-outline">
+          <table class="w-full text-sm">
+            <thead class="text-xs text-muted">
+              <tr>
+                <th class="px-3 py-2 text-left">Peñista</th>
+                <th class="px-3 py-2 text-right">Cuota</th>
+                <th class="px-3 py-2 text-left">Estado</th>
+                @if (c.precioCamiseta != null) { <th class="px-3 py-2">Camiseta</th> }
+                @if (c.precioSudadera != null) { <th class="px-3 py-2">Sudadera</th> }
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of c.penistas; track p.asistenciaId) {
+                <tr class="border-t border-outline/40">
+                  <td class="px-3 py-2">{{ p.nombre }}</td>
+                  <td class="px-3 py-2 text-right">{{ p.cuota }} €</td>
+                  <td class="px-3 py-2">
+                    {{ estadoTexto[p.estadoPago ?? 'PENDIENTE_PAGO'] }}
+                    @if (confirmado(p) && p.metodoPago) { · {{ p.metodoPago }} }
+                  </td>
+                  @if (c.precioCamiseta != null) {
+                    <td class="px-3 py-2 text-center">
+                      @if (c.puedoGestionar) {
+                        <input type="checkbox" [checked]="p.camisetaPagada"
+                          (change)="toggleRopa(p, 'camiseta', $any($event.target).checked)" />
+                      } @else {
+                        {{ p.camisetaPagada ? '✓' : '·' }}
+                      }
+                    </td>
+                  }
+                  @if (c.precioSudadera != null) {
+                    <td class="px-3 py-2 text-center">
+                      @if (c.puedoGestionar) {
+                        <input type="checkbox" [checked]="p.sudaderaPagada"
+                          (change)="toggleRopa(p, 'sudadera', $any($event.target).checked)" />
+                      } @else {
+                        {{ p.sudaderaPagada ? '✓' : '·' }}
+                      }
+                    </td>
+                  }
+                </tr>
+              } @empty {
+                <tr><td class="px-3 py-3 text-muted" colspan="5">Nadie apuntado con cuota todavía.</td></tr>
+              }
+            </tbody>
+            <tfoot class="border-t border-outline text-xs">
+              <tr>
+                <td class="px-3 py-2 font-semibold">Total en cuotas</td>
+                <td class="px-3 py-2 text-right font-semibold">{{ c.totalCuotas }} €</td>
+                <td class="px-3 py-2" colspan="3">cobrado: {{ c.totalCobrado }} €</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Movimientos -->
+        <div class="mt-6 flex items-baseline justify-between">
+          <h2 class="font-display text-lg font-bold">Movimientos</h2>
+          @if (c.puedoGestionar) {
+            <button type="button" (click)="formAbierto.set(!formAbierto())"
+              class="rounded-lg border border-outline px-3 py-1 text-xs font-medium hover:border-gold hover:text-gold">
+              + Gasto / Ingreso
             </button>
-          </div>
+          }
+        </div>
+
+        @if (formAbierto()) {
+          <form (ngSubmit)="guardarMovimiento()" class="mt-2 grid gap-2 rounded-2xl border border-outline p-4 text-sm sm:grid-cols-2">
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-muted">Tipo</span>
+              <select [(ngModel)]="form.tipo" name="tipo" class="rounded-lg border border-outline bg-surface px-2 py-1">
+                <option value="GASTO">Gasto</option>
+                <option value="INGRESO">Ingreso</option>
+              </select>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-muted">Importe (€)</span>
+              <input type="number" step="0.01" min="0" [(ngModel)]="form.importe" name="importe" required
+                class="rounded-lg border border-outline bg-surface px-2 py-1" />
+            </label>
+            <label class="flex flex-col gap-1 sm:col-span-2">
+              <span class="text-xs text-muted">Concepto</span>
+              <input type="text" [(ngModel)]="form.concepto" name="concepto" required
+                class="rounded-lg border border-outline bg-surface px-2 py-1" />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-muted">Fecha</span>
+              <input type="date" [(ngModel)]="form.fecha" name="fecha"
+                class="rounded-lg border border-outline bg-surface px-2 py-1" />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-xs text-muted">Categoría</span>
+              <select [(ngModel)]="form.categoria" name="categoria" class="rounded-lg border border-outline bg-surface px-2 py-1">
+                <option value="">—</option>
+                @for (cat of categorias; track cat.valor) {
+                  <option [value]="cat.valor">{{ cat.texto }}</option>
+                }
+              </select>
+            </label>
+            <label class="flex flex-col gap-1 sm:col-span-2">
+              <span class="text-xs text-muted">Recibo (PDF o foto)</span>
+              <input type="file" accept=".pdf,image/*" (change)="onRecibo($event)" />
+            </label>
+            <div class="flex gap-2 sm:col-span-2">
+              <button type="submit" [disabled]="guardandoMov()"
+                class="rounded-lg bg-gold px-3 py-1.5 text-xs font-semibold text-brand-dark disabled:opacity-50">
+                Guardar
+              </button>
+              <button type="button" (click)="formAbierto.set(false)"
+                class="rounded-lg border border-outline px-3 py-1.5 text-xs">Cancelar</button>
+            </div>
+          </form>
         }
 
-        <h2 class="mt-6 font-display text-lg font-bold">Movimientos</h2>
-        <ul class="mt-2 divide-y divide-outline/40 rounded-2xl border border-outline">
-          @for (m of c.movimientos; track $index) {
-            <li class="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-              <span class="min-w-0">
-                <span class="block truncate">{{ m.concepto }}</span>
-                <span class="text-xs text-muted">{{ m.fecha | date: 'd MMM y' }}</span>
-              </span>
-              <span class="shrink-0 text-right">
-                <span class="block" [class.text-red-300]="m.importe < 0">{{ m.importe }} €</span>
-                <span class="text-xs text-muted">{{ m.saldoTras }} €</span>
-              </span>
-            </li>
-          } @empty {
-            <li class="px-4 py-3 text-sm text-muted">Todavía no hay movimientos.</li>
-          }
-        </ul>
+        <div class="mt-2 overflow-x-auto rounded-2xl border border-outline">
+          <table class="w-full text-sm">
+            <thead class="text-xs text-muted">
+              <tr>
+                <th class="px-3 py-2 text-left">Fecha</th>
+                <th class="px-3 py-2 text-left">Concepto</th>
+                <th class="px-3 py-2 text-right">Entra</th>
+                <th class="px-3 py-2 text-right">Sale</th>
+                <th class="px-3 py-2 text-right">Saldo</th>
+                <th class="px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (m of c.movimientos; track m.id) {
+                <tr class="border-t border-outline/40">
+                  <td class="px-3 py-2 text-muted">{{ m.fecha | date: 'd MMM y' }}</td>
+                  <td class="px-3 py-2">
+                    {{ m.concepto }}
+                    @if (m.categoria) { <span class="text-xs text-muted">· {{ m.categoria }}</span> }
+                    @if (m.adelantadoPor) { <span class="text-xs text-muted">· adelantó {{ m.adelantadoPor }}</span> }
+                  </td>
+                  <td class="px-3 py-2 text-right">{{ m.importe > 0 ? (m.importe + ' €') : '' }}</td>
+                  <td class="px-3 py-2 text-right text-red-300">{{ m.importe < 0 ? ((-m.importe) + ' €') : '' }}</td>
+                  <td class="px-3 py-2 text-right font-medium">{{ m.saldoTras }} €</td>
+                  <td class="px-3 py-2 text-right whitespace-nowrap">
+                    @if (m.reciboArchivo) {
+                      <a [href]="urlRecibo(m.reciboArchivo)" target="_blank" rel="noopener"
+                        class="text-gold" title="Ver recibo">📄</a>
+                    }
+                    @if (c.puedoGestionar && m.manual) {
+                      <button type="button" (click)="borrarMovimiento(m.id)"
+                        class="ml-2 text-xs text-muted underline hover:text-red-300">borrar</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Resumen de gastos -->
+        @if (c.resumenGastos.length) {
+          <h2 class="mt-6 font-display text-lg font-bold">Resumen de gastos</h2>
+          <ul class="mt-2 divide-y divide-outline/40 rounded-2xl border border-outline text-sm">
+            @for (r of c.resumenGastos; track r.categoria) {
+              <li class="flex justify-between px-4 py-2">
+                <span>{{ r.categoria }}</span>
+                <span class="text-red-300">{{ r.total }} €</span>
+              </li>
+            }
+          </ul>
+        }
       }
     }
   }
@@ -67,24 +216,13 @@
       <div class="w-full max-w-sm rounded-2xl bg-surface p-6">
         <h3 class="font-display text-lg font-bold">¿Seguro que has hecho la transferencia?</h3>
         <p class="mt-2 text-sm text-muted">
-          Todo lo cobrado por bizum o efectivo pasará a constar como ingresado en la cuenta de la peña.
+          Solo apaga el aviso; el saldo no cambia (ese dinero ya contaba desde que se confirmó).
         </p>
         <div class="mt-5 flex justify-center gap-2">
-          <button
-            type="button"
-            [disabled]="enviando()"
-            (click)="confirmarTransferencia()"
-            class="rounded-xl bg-gold px-4 py-2 text-sm font-semibold text-brand-dark disabled:opacity-50"
-          >
-            Sí
-          </button>
-          <button
-            type="button"
-            (click)="modalTransferir.set(false)"
-            class="rounded-xl border border-outline px-4 py-2 text-sm"
-          >
-            No
-          </button>
+          <button type="button" [disabled]="enviandoTransfer()" (click)="confirmarTransferencia()"
+            class="rounded-xl bg-gold px-4 py-2 text-sm font-semibold text-brand-dark disabled:opacity-50">Sí</button>
+          <button type="button" (click)="modalTransferir.set(false)"
+            class="rounded-xl border border-outline px-4 py-2 text-sm">No</button>
         </div>
       </div>
     </div>
