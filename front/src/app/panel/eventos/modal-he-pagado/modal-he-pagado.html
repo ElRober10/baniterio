@@ -3,7 +3,7 @@
   role="dialog"
   aria-label="Confirmar el pago"
 >
-  <div class="carta-relieve flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl p-6">
+  <div class="carta-relieve flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl p-6">
     <div class="flex items-start justify-between gap-3">
       <h2 class="font-display text-xl font-extrabold">Confirmar el pago</h2>
       <button
@@ -25,10 +25,10 @@
       @case ('listo') {
         <div class="mt-4 flex-1 space-y-5 overflow-y-auto">
           <div>
-            <p class="text-sm font-semibold">¿A quién pagas?</p>
-            <div class="mt-2 flex flex-wrap gap-2">
+            <p class="text-center text-sm font-semibold">¿A quién pagas?</p>
+            <div class="mt-2 grid gap-2 grid-cols-[repeat(auto-fit,minmax(11rem,1fr))]">
               <span
-                class="rounded-xl border border-brand bg-brand px-4 py-2 text-sm font-bold text-gold"
+                class="rounded-xl border border-brand bg-brand px-4 py-3 text-center text-sm font-bold text-gold"
               >
                 Yo @if (miCuota() != null) {
                   <span class="font-medium text-gold/80">· {{ miCuota() }} €</span>
@@ -40,8 +40,8 @@
                   (click)="alternar(p)"
                   [class]="
                     estaMarcada(p)
-                      ? 'rounded-xl border border-brand bg-brand px-4 py-2 text-sm font-bold text-gold transition'
-                      : 'rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-brand-bright/60'
+                      ? 'rounded-xl border border-brand bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition'
+                      : 'rounded-xl border border-outline px-4 py-3 text-center text-sm font-medium text-ink transition hover:border-brand-bright/60'
                   "
                 >
                   {{ p.nombre }}
@@ -67,16 +67,16 @@
           </div>
 
           <div>
-            <p class="text-sm font-semibold">Cómo lo has pagado</p>
-            <div class="mt-2 flex flex-wrap gap-2">
+            <p class="text-center text-sm font-semibold">¿Cómo lo has pagado?</p>
+            <div class="mt-2 grid gap-2 grid-cols-1 sm:grid-cols-3">
               @for (m of metodos; track m.valor) {
                 <button
                   type="button"
                   (click)="metodo.set(m.valor)"
                   [class]="
                     metodo() === m.valor
-                      ? 'rounded-xl border border-brand bg-brand px-4 py-2 text-sm font-bold text-gold transition'
-                      : 'rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-brand-bright/60'
+                      ? 'flex items-center justify-center rounded-xl border border-brand bg-brand px-3 py-3 text-center text-sm font-bold text-gold transition'
+                      : 'flex items-center justify-center rounded-xl border border-outline px-3 py-3 text-center text-sm font-medium text-ink transition hover:border-brand-bright/60'
                   "
                 >
                   {{ m.texto }}

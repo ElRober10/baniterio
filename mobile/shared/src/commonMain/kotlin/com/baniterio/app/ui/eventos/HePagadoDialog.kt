@@ -2,18 +2,19 @@ package com.baniterio.app.ui.eventos
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MultiChoiceSegmentedButtonRow
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,9 +40,11 @@ data class PagoDeclarado(
     val cubreAsistenciaIds: List<Long>,
 )
 
+// Etiquetas cortas: caben en los tres segmentos de un móvil. Bizum siempre es al
+// administrador y la transferencia siempre a la cuenta de la peña.
 private val METODOS = listOf(
-    "TRANSFERENCIA" to "Transferencia a la cuenta de la peña",
-    "BIZUM" to "Bizum al administrador",
+    "TRANSFERENCIA" to "Transferencia",
+    "BIZUM" to "Bizum",
     "EFECTIVO" to "Efectivo",
 )
 
@@ -55,9 +58,10 @@ private fun relacionTexto(r: String) = when (r) {
 /**
  * Diálogo para declarar un pago (pieza 4). En esta tanda no persiste: valida y
  * llama a [onConfirmar] con el objeto; la pantalla solo muestra un aviso.
- * "A quién pagas" y "Cómo lo has pagado" van como chips que se marcan.
+ * "A quién pagas" y "Cómo lo has pagado" van como segmentos que se marcan,
+ * todos del mismo ancho.
  */
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HePagadoDialog(
     eventoId: Long,
@@ -109,30 +113,35 @@ fun HePagadoDialog(
                     Text("Cargando…")
                 } else {
                     Text("¿A quién pagas?", style = MaterialTheme.typography.bodyMedium)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AssistChip(
-                            onClick = {},
-                            enabled = false,
-                            label = {
-                                Text("Yo" + (d.miCuota?.let { " · ${formatoImporte(it)} €" } ?: ""))
-                            },
-                            colors = AssistChipDefaults.assistChipColors(
-                                disabledContainerColor = BaniterioColors.brand,
-                                disabledLabelColor = BaniterioColors.gold,
-                            ),
-                        )
+                    val personas = buildList {
+                        add(Triple("YO", "Yo" + (d.miCuota?.let { " · ${formatoImporte(it)} €" } ?: ""), true))
                         d.puedoPagarPor.forEach { p ->
-                            val esUsuario = p.usuarioId != null
-                            val id = p.usuarioId ?: p.asistenciaId ?: return@forEach
+                            val id = p.usuarioId ?: p.asistenciaId
+                            if (id != null) {
+                                add(Triple(
+                                    (if (p.usuarioId != null) "u$id" else "a$id"),
+                                    "${p.nombre} · ${formatoImporte(p.cuota)} €",
+                                    p.usuarioId != null,
+                                ))
+                            }
+                        }
+                    }
+                    MultiChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        personas.forEachIndexed { i, (clave, etiqueta, esUsuario) ->
+                            val yo = clave == "YO"
                             val lista = if (esUsuario) usuarioIds else asistenciaIds
-                            val marcado = lista.contains(id)
-                            FilterChip(
-                                selected = marcado,
-                                onClick = { if (marcado) lista.remove(id) else lista.add(id) },
-                                label = {
-                                    Text("${p.nombre} · ${relacionTexto(p.relacion)} · ${formatoImporte(p.cuota)} €")
+                            val num = clave.drop(1).toLongOrNull()
+                            val marcado = yo || (num != null && lista.contains(num))
+                            SegmentedButton(
+                                checked = marcado,
+                                onCheckedChange = {
+                                    if (num != null) {
+                                        if (marcado) lista.remove(num) else lista.add(num)
+                                    }
                                 },
-                            )
+                                enabled = !yo,
+                                shape = SegmentedButtonDefaults.itemShape(i, personas.size),
+                            ) { Text(etiqueta) }
                         }
                     }
 
@@ -142,16 +151,17 @@ fun HePagadoDialog(
                         label = { Text("Importe pagado (€)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
                     )
 
-                    Text("Cómo lo has pagado", style = MaterialTheme.typography.bodyMedium)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        METODOS.forEach { (valor, texto) ->
-                            FilterChip(
+                    Text("¿Cómo lo has pagado?", style = MaterialTheme.typography.bodyMedium)
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        METODOS.forEachIndexed { i, (valor, texto) ->
+                            SegmentedButton(
                                 selected = metodo == valor,
                                 onClick = { metodo = valor },
-                                label = { Text(texto) },
-                            )
+                                shape = SegmentedButtonDefaults.itemShape(i, METODOS.size),
+                            ) { Text(texto) }
                         }
                     }
                 }
