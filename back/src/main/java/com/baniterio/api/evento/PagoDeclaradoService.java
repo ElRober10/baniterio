@@ -55,11 +55,13 @@ public class PagoDeclaradoService {
     private final VinculoFamiliarService vinculoFamiliar;
     private final ServicioPermisos permisos;
     private final ApplicationEventPublisher publisher;
+    private final com.baniterio.api.cuenta.MovimientoCuentaService movimientoCuenta;
 
     public PagoDeclaradoService(PagoDeclaradoRepository pagos, EventoRepository eventos,
             AsistenciaEventoRepository asistencias, FichaBebidaRepository fichas,
             UsuarioRepository usuarios, VinculoFamiliarService vinculoFamiliar,
-            ServicioPermisos permisos, ApplicationEventPublisher publisher) {
+            ServicioPermisos permisos, ApplicationEventPublisher publisher,
+            com.baniterio.api.cuenta.MovimientoCuentaService movimientoCuenta) {
         this.pagos = pagos;
         this.eventos = eventos;
         this.asistencias = asistencias;
@@ -68,6 +70,7 @@ public class PagoDeclaradoService {
         this.vinculoFamiliar = vinculoFamiliar;
         this.permisos = permisos;
         this.publisher = publisher;
+        this.movimientoCuenta = movimientoCuenta;
     }
 
     // ---- Peñista ----
@@ -128,6 +131,8 @@ public class PagoDeclaradoService {
                 .cubre(cubre)
                 .build());
 
+        ponerEstado(cubre, EstadoPagoCuota.DECLARADO);
+
         String quien = p.getDeclaradoPor().getNombre();
         publisher.publishEvent(new AvisoPushEvent(new Audiencia.Administradores(),
                 TITULO_PUSH, quien + " dice que ha pagado su cuota de «" + e.getNombre() + "»."));
@@ -139,7 +144,9 @@ public class PagoDeclaradoService {
         PagoDeclarado p = pagos
                 .findByEventoIdAndDeclaradoPorIdAndEstado(eventoId, usuarioId, EstadoPagoDeclarado.PENDIENTE)
                 .orElseThrow(PagoDeclaradoNoEncontradoException::new);
+        Set<Long> cubre = new LinkedHashSet<>(p.getCubre());
         pagos.delete(p);
+        ponerEstado(cubre, EstadoPagoCuota.PENDIENTE_PAGO);
     }
 
     // ---- Administrador ----
@@ -158,7 +165,7 @@ public class PagoDeclaradoService {
         PagoDeclarado p = pagos.findById(pagoId).orElseThrow(PagoDeclaradoNoEncontradoException::new);
         exigirPendiente(p);
         Usuario admin = usuarios.findById(adminId).orElseThrow();
-        marcarPagadas(p.getCubre(), p.getMetodoPago(), admin);
+        aplicarConfirmacion(p.getCubre(), p.getMetodoPago(), admin);
         resolver(p, EstadoPagoDeclarado.CONFIRMADA, admin);
     }
 
@@ -168,6 +175,7 @@ public class PagoDeclaradoService {
         PagoDeclarado p = pagos.findById(pagoId).orElseThrow(PagoDeclaradoNoEncontradoException::new);
         exigirPendiente(p);
         resolver(p, EstadoPagoDeclarado.RECHAZADA, usuarios.findById(adminId).orElseThrow());
+        ponerEstado(p.getCubre(), EstadoPagoCuota.PENDIENTE_PAGO);
         publisher.publishEvent(new AvisoPushEvent(
                 new Audiencia.UsuarioUnico(p.getDeclaradoPor().getId()),
                 TITULO_PUSH, "Tu pago de «" + p.getEvento().getNombre() + "» no se pudo confirmar."));
@@ -189,16 +197,6 @@ public class PagoDeclaradoService {
     }
 
     // ---- Lectura para otros servicios ----
-
-    /** Ids de {@code asistencia_evento} cubiertos por alguna declaración PENDIENTE de ese evento. */
-    @Transactional(readOnly = true)
-    public Set<Long> asistenciasConDeclaracionPendiente(Long eventoId) {
-        Set<Long> out = new LinkedHashSet<>();
-        for (PagoDeclarado p : pagos.findByEventoIdAndEstado(eventoId, EstadoPagoDeclarado.PENDIENTE)) {
-            out.addAll(p.getCubre());
-        }
-        return out;
-    }
 
     /**
      * La última declaración del usuario en ese evento si está PENDIENTE o RECHAZADA
@@ -231,16 +229,36 @@ public class PagoDeclaradoService {
                 .orElseThrow(AsistenciaNoEncontradaException::new);
     }
 
-    private void marcarPagadas(Set<Long> asistenciaIds, MetodoPago metodo, Usuario admin) {
+    /**
+     * Aplica la confirmación de un admin a las fichas cubiertas: por método,
+     * {@code TRANSFERENCIA} → {@code CONFIRMADO_EN_CUENTA} (y movimiento en el
+     * libro de la cuenta); {@code BIZUM}/{@code EFECTIVO} → {@code CONFIRMADO_PENDIENTE_ENVIO}.
+     */
+    private void aplicarConfirmacion(Set<Long> asistenciaIds, MetodoPago metodo, Usuario admin) {
         Instant ahora = Instant.now();
+        EstadoPagoCuota destino = metodo == MetodoPago.TRANSFERENCIA
+                ? EstadoPagoCuota.CONFIRMADO_EN_CUENTA
+                : EstadoPagoCuota.CONFIRMADO_PENDIENTE_ENVIO;
         for (Long asistenciaId : asistenciaIds) {
             FichaBebida f = fichas.findByAsistenciaId(asistenciaId)
                     .orElseThrow(FichaSinCuotaException::new);
-            f.setEstadoPago(EstadoPagoCuota.CONFIRMADO_EN_CUENTA);
+            f.setEstadoPago(destino);
             f.setMetodoPago(metodo);
             f.setPagadoConfirmadoPor(admin);
             f.setPagadoAt(ahora);
             fichas.save(f);
+            if (destino == EstadoPagoCuota.CONFIRMADO_EN_CUENTA) {
+                movimientoCuenta.registrarCuota(f, admin);
+            }
+        }
+    }
+
+    private void ponerEstado(Set<Long> asistenciaIds, EstadoPagoCuota estado) {
+        for (Long asistenciaId : asistenciaIds) {
+            fichas.findByAsistenciaId(asistenciaId).ifPresent(f -> {
+                f.setEstadoPago(estado);
+                fichas.save(f);
+            });
         }
     }
 

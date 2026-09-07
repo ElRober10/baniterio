@@ -12,6 +12,7 @@ import com.baniterio.api.identidad.AsistenciaEventoRepository;
 import com.baniterio.api.identidad.CuentaRepository;
 import com.baniterio.api.identidad.EstadoPagoCuota;
 import com.baniterio.api.identidad.EstadoPagoDeclarado;
+import com.baniterio.api.identidad.MovimientoCuentaRepository;
 import com.baniterio.api.identidad.EstadoVinculo;
 import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
@@ -53,6 +54,7 @@ class PagoDeclaradoIT extends IntegrationTest {
     @Autowired FichaBebidaRepository fichas;
     @Autowired BebidaRepository bebidas;
     @Autowired PagoDeclaradoRepository pagos;
+    @Autowired MovimientoCuentaRepository movimientos;
     @Autowired VinculoParejaRepository vinculos;
     @Autowired PasswordEncoder passwordEncoder;
 
@@ -66,6 +68,8 @@ class PagoDeclaradoIT extends IntegrationTest {
 
     @AfterEach
     void limpiar() {
+        movimientos.deleteAll(movimientos.findAll().stream()
+                .filter(m -> m.getFichaAsistenciaId() != null).toList());
         pagos.deleteAllInBatch();
         fichas.deleteAllInBatch();
         asistencias.deleteAllInBatch();
@@ -276,8 +280,68 @@ class PagoDeclaradoIT extends IntegrationTest {
                 .exchange().expectStatus().isNoContent();
 
         assertThat(fichas.findByAsistenciaId(asisMio)).get()
-                .satisfies(f -> assertThat(f.getEstadoPago()).isEqualTo(EstadoPagoCuota.CONFIRMADO_EN_CUENTA));
+                .satisfies(f -> assertThat(f.getEstadoPago()).isEqualTo(EstadoPagoCuota.CONFIRMADO_PENDIENTE_ENVIO));
         assertThat(fichas.findByAsistenciaId(asisPareja)).get()
+                .satisfies(f -> assertThat(f.getEstadoPago()).isEqualTo(EstadoPagoCuota.CONFIRMADO_PENDIENTE_ENVIO));
+    }
+
+    @Test
+    void declarar_pone_la_ficha_en_DECLARADO() {
+        Sesion penista = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sanMiguel();
+        Long asisId = apuntarConFicha(penista, e.getId());
+        declarar(penista, e.getId(), "BIZUM", 16.0, List.of());
+        assertThat(fichas.findByAsistenciaId(asisId)).get()
+                .satisfies(f -> assertThat(f.getEstadoPago()).isEqualTo(EstadoPagoCuota.DECLARADO));
+    }
+
+    @Test
+    void anular_vuelve_la_ficha_a_PENDIENTE_PAGO() {
+        Sesion penista = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sanMiguel();
+        Long asisId = apuntarConFicha(penista, e.getId());
+        declarar(penista, e.getId(), "BIZUM", 16.0, List.of());
+        http.delete().uri("/api/v1/eventos/" + e.getId() + "/pagos-declarados/mia")
+                .header(AUTHORIZATION, "Bearer " + penista.token())
+                .exchange().expectStatus().isOk();
+        assertThat(fichas.findByAsistenciaId(asisId)).get()
+                .satisfies(f -> assertThat(f.getEstadoPago()).isEqualTo(EstadoPagoCuota.PENDIENTE_PAGO));
+    }
+
+    @Test
+    void confirmar_por_transferencia_deja_la_ficha_en_cuenta_y_crea_movimiento() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Sesion penista = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sanMiguel();
+        Long asisId = apuntarConFicha(penista, e.getId());
+        declarar(penista, e.getId(), "TRANSFERENCIA", 26.0, List.of());
+        Long pagoId = pagos.findByEstadoOrderByCreatedAtAsc(EstadoPagoDeclarado.PENDIENTE).get(0).getId();
+
+        http.post().uri("/api/v1/admin/pagos-declarados/" + pagoId + "/confirmar")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .exchange().expectStatus().isNoContent();
+
+        assertThat(fichas.findByAsistenciaId(asisId)).get()
                 .satisfies(f -> assertThat(f.getEstadoPago()).isEqualTo(EstadoPagoCuota.CONFIRMADO_EN_CUENTA));
+        assertThat(movimientos.findByFichaAsistenciaId(asisId)).isPresent();
+    }
+
+    @Test
+    void confirmar_por_bizum_deja_la_ficha_pendiente_de_envio_sin_movimiento() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Sesion penista = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sanMiguel();
+        Long asisId = apuntarConFicha(penista, e.getId());
+        declarar(penista, e.getId(), "BIZUM", 26.0, List.of());
+        Long pagoId = pagos.findByEstadoOrderByCreatedAtAsc(EstadoPagoDeclarado.PENDIENTE).get(0).getId();
+
+        http.post().uri("/api/v1/admin/pagos-declarados/" + pagoId + "/confirmar")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .exchange().expectStatus().isNoContent();
+
+        assertThat(fichas.findByAsistenciaId(asisId)).get()
+                .satisfies(f -> assertThat(f.getEstadoPago())
+                        .isEqualTo(EstadoPagoCuota.CONFIRMADO_PENDIENTE_ENVIO));
+        assertThat(movimientos.findByFichaAsistenciaId(asisId)).isEmpty();
     }
 }

@@ -122,7 +122,7 @@ class ConfirmacionPagoIT extends IntegrationTest {
                 .exchange().expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.totalPagado").isEqualTo(16.0)
-                .jsonPath("$.asistentes[0].estadoPago").isEqualTo("CONFIRMADO_EN_CUENTA")
+                .jsonPath("$.asistentes[0].estadoPago").isEqualTo("CONFIRMADO_PENDIENTE_ENVIO")
                 .jsonPath("$.asistentes[0].metodoPago").isEqualTo("BIZUM")
                 .jsonPath("$.asistentes[0].asistenciaId").isEqualTo(asisId.intValue());
     }

@@ -75,6 +75,7 @@ public class AsistenciaService {
     private final FichaBebidaRepository fichas;
     private final VinculoParejaRepository vinculosPareja;
     private final PagoDeclaradoService pagoDeclarado;
+    private final com.baniterio.api.cuenta.MovimientoCuentaService movimientoCuenta;
 
     public AsistenciaService(AsistenciaEventoRepository asistencias,
                              NotificacionEventoRepository notificaciones, EventoRepository eventos,
@@ -82,7 +83,8 @@ public class AsistenciaService {
                              ApplicationEventPublisher publisher, ResolutorAudiencia resolutor,
                              FichaBebidaService fichaBebida, VinculoFamiliarService vinculoFamiliar,
                              FichaBebidaRepository fichas, VinculoParejaRepository vinculosPareja,
-                             PagoDeclaradoService pagoDeclarado) {
+                             PagoDeclaradoService pagoDeclarado,
+                             com.baniterio.api.cuenta.MovimientoCuentaService movimientoCuenta) {
         this.asistencias = asistencias;
         this.notificaciones = notificaciones;
         this.eventos = eventos;
@@ -96,6 +98,7 @@ public class AsistenciaService {
         this.fichas = fichas;
         this.vinculosPareja = vinculosPareja;
         this.pagoDeclarado = pagoDeclarado;
+        this.movimientoCuenta = movimientoCuenta;
     }
 
     /** Un administrador de verdad, o quien organiza (creó) el evento. */
@@ -260,11 +263,17 @@ public class AsistenciaService {
             throw new FichaSinCuotaException();
         }
         Usuario admin = usuarios.findById(usuarioId).orElseThrow();
-        f.setEstadoPago(EstadoPagoCuota.CONFIRMADO_EN_CUENTA);
+        EstadoPagoCuota destino = metodo == MetodoPago.TRANSFERENCIA
+                ? EstadoPagoCuota.CONFIRMADO_EN_CUENTA
+                : EstadoPagoCuota.CONFIRMADO_PENDIENTE_ENVIO;
+        f.setEstadoPago(destino);
         f.setMetodoPago(metodo);
         f.setPagadoConfirmadoPor(admin);
         f.setPagadoAt(Instant.now());
         fichas.save(f);
+        if (destino == EstadoPagoCuota.CONFIRMADO_EN_CUENTA) {
+            movimientoCuenta.registrarCuota(f, admin);
+        }
         // Si esa asistencia estaba cubierta por una declaración pendiente, se cierra.
         pagoDeclarado.confirmarPorAtajo(eventoId, asistenciaId, admin);
         return listadoAsistentes(usuarioId, eventoId);
@@ -279,6 +288,7 @@ public class AsistenciaService {
         f.setPagadoConfirmadoPor(null);
         f.setPagadoAt(null);
         fichas.save(f);
+        movimientoCuenta.revertirCuota(f);
         return listadoAsistentes(usuarioId, eventoId);
     }
 
