@@ -71,6 +71,10 @@ export interface FichaBebidaMia {
   cuota: number | null;
   cuotaPendiente: boolean;
   bebidaPendiente: boolean;
+  pagado: boolean;
+  metodoPago: MetodoPago | null;
+  pagadoPor: string | null;
+  pagadoAt: string | null;
 }
 
 /** Sub-bloque `asistencia.ficha` de `EventoDetalle`. */
@@ -220,6 +224,10 @@ export interface AsistenteFila {
   bebida: BebidaFila | null;
   cuota: number | null;
   pagado: boolean;
+  asistenciaId: number;
+  metodoPago: MetodoPago | null;
+  pagadoPor: string | null;
+  pagadoAt: string | null;
 }
 
 /** Alguien a quien puedo incluir en mi pago (pareja, hijo mayor con cuenta, invitado propio). */
@@ -238,6 +246,7 @@ export interface ListadoAsistentes {
   totalPagado: number;
   puedoPagarPor: PersonaPagable[];
   miCuota: number | null;
+  puedoConfirmarPagos: boolean;
 }
 
 /** Códigos de error propios de eventos (ver ApiExceptionHandler.java). */
@@ -256,6 +265,7 @@ export type CodigoErrorEvento =
   | 'ASISTENCIA_NO_ENCONTRADA'
   | 'ASISTENCIA_NO_MANUAL'
   | 'EVENTO_SIN_FICHA'
+  | 'FICHA_SIN_CUOTA'
   | 'BEBIDA_NO_ENCONTRADA'
   | 'SIN_PERMISO'
   | 'VALIDACION';

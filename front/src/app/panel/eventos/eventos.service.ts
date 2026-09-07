@@ -14,6 +14,7 @@ import {
   GuardarEventoRequest,
   ListadoAsistentes,
   ListaEventosResponse,
+  MetodoPago,
   PendientesRespuestaResponse,
 } from './eventos.types';
 
@@ -63,6 +64,25 @@ export class EventosService {
   /** Quién va a un evento de San Miguel, qué bebe, su cuota y su estado de pago (pieza 4). */
   asistentesEvento(id: number): Observable<ListadoAsistentes> {
     return this.http.get<ListadoAsistentes>(`${this.base}/eventos/${id}/asistentes`);
+  }
+
+  /** Un administrador confirma el pago de una asistencia (pieza 5). Devuelve el listado recalculado. */
+  confirmarPago(
+    eventoId: number,
+    asistenciaId: number,
+    metodo: MetodoPago,
+  ): Observable<ListadoAsistentes> {
+    return this.http.put<ListadoAsistentes>(
+      `${this.base}/eventos/${eventoId}/asistencias/${asistenciaId}/pago`,
+      { metodo },
+    );
+  }
+
+  /** Deshace la confirmación de pago de una asistencia. */
+  deshacerPago(eventoId: number, asistenciaId: number): Observable<ListadoAsistentes> {
+    return this.http.delete<ListadoAsistentes>(
+      `${this.base}/eventos/${eventoId}/asistencias/${asistenciaId}/pago`,
+    );
   }
 
   solicitarCrear(mensaje?: string): Observable<{ id: number; estado: string }> {
