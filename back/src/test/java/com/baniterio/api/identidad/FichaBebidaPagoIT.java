@@ -53,12 +53,13 @@ class FichaBebidaPagoIT extends IntegrationTest {
                 .alternativa(Alternativa.NADA).modalidad(Modalidad.SOLO_CERVEZA)
                 .asisteDia1(true).asisteDia2(true)
                 .cuota(new BigDecimal("16.00"))
-                .pagado(true).metodoPago(MetodoPago.BIZUM).pagadoAt(Instant.now())
+                .estadoPago(EstadoPagoCuota.CONFIRMADO_EN_CUENTA)
+                .metodoPago(MetodoPago.BIZUM).pagadoAt(Instant.now())
                 .build());
         fichaId = f.getAsistenciaId();
 
         FichaBebida leida = fichas.findById(fichaId).orElseThrow();
-        assertThat(leida.isPagado()).isTrue();
+        assertThat(leida.getEstadoPago()).isEqualTo(EstadoPagoCuota.CONFIRMADO_EN_CUENTA);
         assertThat(leida.getMetodoPago()).isEqualTo(MetodoPago.BIZUM);
         assertThat(leida.getPagadoAt()).isNotNull();
     }

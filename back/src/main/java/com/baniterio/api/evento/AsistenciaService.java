@@ -26,6 +26,7 @@ import com.baniterio.api.evento.dto.PersonaPagable;
 import com.baniterio.api.identidad.AsistenciaEvento;
 import com.baniterio.api.identidad.AsistenciaEventoRepository;
 import com.baniterio.api.identidad.EstadoAsistencia;
+import com.baniterio.api.identidad.EstadoPagoCuota;
 import com.baniterio.api.identidad.EstadoVinculo;
 import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
@@ -259,7 +260,7 @@ public class AsistenciaService {
             throw new FichaSinCuotaException();
         }
         Usuario admin = usuarios.findById(usuarioId).orElseThrow();
-        f.setPagado(true);
+        f.setEstadoPago(EstadoPagoCuota.CONFIRMADO_EN_CUENTA);
         f.setMetodoPago(metodo);
         f.setPagadoConfirmadoPor(admin);
         f.setPagadoAt(Instant.now());
@@ -273,7 +274,7 @@ public class AsistenciaService {
     @Transactional
     public ListadoAsistentesResponse deshacerPago(Long usuarioId, Long eventoId, Long asistenciaId) {
         FichaBebida f = fichaParaPago(usuarioId, eventoId, asistenciaId);
-        f.setPagado(false);
+        f.setEstadoPago(EstadoPagoCuota.PENDIENTE_PAGO);
         f.setMetodoPago(null);
         f.setPagadoConfirmadoPor(null);
         f.setPagadoAt(null);
@@ -341,14 +342,12 @@ public class AsistenciaService {
         List<AsistenciaEvento> filas = asistencias.findByEventoIdAndEstadoIn(
                 eventoId, List.of(EstadoAsistencia.APUNTADO, EstadoAsistencia.EN_DUDA));
 
-        java.util.Set<Long> declaradas = pagoDeclarado.asistenciasConDeclaracionPendiente(eventoId);
-
         Comparator<AsistenciaEvento> orden = Comparator
                 .comparingInt((AsistenciaEvento a) -> a.getEstado() == EstadoAsistencia.APUNTADO ? 0 : 1)
                 .thenComparing(a -> nombreDe(a).toLowerCase());
 
         List<AsistenteFila> asistentes = filas.stream().sorted(orden)
-                .map(a -> aFila(a, fichaPorAsistencia.get(a.getId()), declaradas.contains(a.getId())))
+                .map(a -> aFila(a, fichaPorAsistencia.get(a.getId())))
                 .toList();
 
         BigDecimal totalCuotas = asistentes.stream()
@@ -359,9 +358,10 @@ public class AsistenciaService {
                 .map(a -> fichaPorAsistencia.get(a.getId()))
                 .map(FichaBebida::getCuota).orElse(null);
 
-        BigDecimal totalPagado = asistentes.stream()
-                .filter(AsistenteFila::pagado)
-                .map(AsistenteFila::cuota).filter(Objects::nonNull)
+        BigDecimal totalPagado = filas.stream()
+                .map(a -> fichaPorAsistencia.get(a.getId()))
+                .filter(f -> f != null && f.getEstadoPago() != null && f.getEstadoPago().confirmado())
+                .map(FichaBebida::getCuota).filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return new ListadoAsistentesResponse(asistentes, totalCuotas, totalPagado,
@@ -373,20 +373,21 @@ public class AsistenciaService {
         return a.getUsuario() != null ? a.getUsuario().getNombre() : a.getNombre();
     }
 
-    private static AsistenteFila aFila(AsistenciaEvento a, FichaBebida f, boolean declarado) {
+    private static AsistenteFila aFila(AsistenciaEvento a, FichaBebida f) {
         BebidaFila bebida = f == null ? null : new BebidaFila(
                 f.getAlcohol() != null ? f.getAlcohol().getNombre() : null,
                 f.getRefresco().getNombre(),
                 f.getAlternativa().name(),
                 f.getModalidad().name());
-        boolean pagado = f != null && f.isPagado();
+        EstadoPagoCuota estado = f == null ? null : f.getEstadoPago();
+        boolean confirmado = estado != null && estado.confirmado();
         return new AsistenteFila(nombreDe(a), a.getEstado().name(), a.getUsuario() == null,
-                bebida, f == null ? null : f.getCuota(), pagado, a.getId(),
-                pagado && f.getMetodoPago() != null ? f.getMetodoPago().name() : null,
-                pagado && f.getPagadoConfirmadoPor() != null
+                bebida, f == null ? null : f.getCuota(),
+                estado == null ? null : estado.name(), a.getId(),
+                confirmado && f.getMetodoPago() != null ? f.getMetodoPago().name() : null,
+                confirmado && f.getPagadoConfirmadoPor() != null
                         ? f.getPagadoConfirmadoPor().getNombre() : null,
-                pagado ? f.getPagadoAt() : null,
-                declarado && !pagado);
+                confirmado ? f.getPagadoAt() : null);
     }
 
     private List<PersonaPagable> puedoPagarPor(Long usuarioId, Long eventoId,

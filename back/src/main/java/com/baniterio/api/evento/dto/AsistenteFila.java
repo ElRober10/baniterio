@@ -6,9 +6,10 @@ import java.time.Instant;
 /**
  * Una fila del listado de asistentes. {@code estado} es {@code APUNTADO} o
  * {@code EN_DUDA} (los {@code NO_VOY} no salen). {@code bebida} y {@code cuota}
- * son {@code null} si la asistencia no tiene ficha. Si {@code pagado}, van
- * rellenos {@code metodoPago} ({@code BIZUM}|{@code TRANSFERENCIA}|{@code EFECTIVO}),
- * {@code pagadoPor} (nombre de quien lo confirmó) y {@code pagadoAt}.
+ * son {@code null} si la asistencia no tiene ficha. {@code estadoPago} es uno de
+ * {@code EstadoPagoCuota} ({@code null} si no hay ficha). Si el pago está
+ * confirmado, van rellenos {@code metodoPago}, {@code pagadoPor} (nombre de quien
+ * lo confirmó) y {@code pagadoAt}.
  */
 public record AsistenteFila(
         String nombre,
@@ -16,10 +17,9 @@ public record AsistenteFila(
         boolean esManual,
         BebidaFila bebida,
         BigDecimal cuota,
-        boolean pagado,
+        String estadoPago,
         Long asistenciaId,
         String metodoPago,
         String pagadoPor,
-        Instant pagadoAt,
-        boolean declarado) {
+        Instant pagadoAt) {
 }

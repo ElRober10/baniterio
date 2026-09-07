@@ -10,6 +10,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import com.baniterio.api.identidad.AsistenciaEventoRepository;
 import com.baniterio.api.identidad.CuentaRepository;
+import com.baniterio.api.identidad.EstadoPagoCuota;
 import com.baniterio.api.identidad.EstadoPagoDeclarado;
 import com.baniterio.api.identidad.EstadoVinculo;
 import com.baniterio.api.identidad.Evento;
@@ -201,11 +202,11 @@ class PagoDeclaradoIT extends IntegrationTest {
                 .exchange().expectStatus().isNoContent();
 
         assertThat(fichas.findByAsistenciaId(asisId)).get()
-                .satisfies(f -> assertThat(f.isPagado()).isTrue());
+                .satisfies(f -> assertThat(f.getEstadoPago()).isEqualTo(EstadoPagoCuota.CONFIRMADO_EN_CUENTA));
         http.get().uri("/api/v1/eventos/" + e.getId())
                 .header(AUTHORIZATION, "Bearer " + penista.token())
                 .exchange().expectStatus().isOk()
-                .expectBody().jsonPath("$.asistencia.ficha.miFicha.pagado").isEqualTo(true);
+                .expectBody().jsonPath("$.asistencia.ficha.miFicha.estadoPago").isEqualTo("CONFIRMADO_EN_CUENTA");
     }
 
     @Test
@@ -222,7 +223,7 @@ class PagoDeclaradoIT extends IntegrationTest {
                 .exchange().expectStatus().isNoContent();
 
         assertThat(fichas.findByAsistenciaId(asisId)).get()
-                .satisfies(f -> assertThat(f.isPagado()).isFalse());
+                .satisfies(f -> assertThat(f.getEstadoPago()).isEqualTo(EstadoPagoCuota.PENDIENTE_PAGO));
         assertThat(pagos.findById(pagoId)).get()
                 .satisfies(p -> assertThat(p.getEstado()).isEqualTo(EstadoPagoDeclarado.RECHAZADA));
         http.get().uri("/api/v1/eventos/" + e.getId())
@@ -274,7 +275,9 @@ class PagoDeclaradoIT extends IntegrationTest {
                 .header(AUTHORIZATION, "Bearer " + admin.token())
                 .exchange().expectStatus().isNoContent();
 
-        assertThat(fichas.findByAsistenciaId(asisMio)).get().satisfies(f -> assertThat(f.isPagado()).isTrue());
-        assertThat(fichas.findByAsistenciaId(asisPareja)).get().satisfies(f -> assertThat(f.isPagado()).isTrue());
+        assertThat(fichas.findByAsistenciaId(asisMio)).get()
+                .satisfies(f -> assertThat(f.getEstadoPago()).isEqualTo(EstadoPagoCuota.CONFIRMADO_EN_CUENTA));
+        assertThat(fichas.findByAsistenciaId(asisPareja)).get()
+                .satisfies(f -> assertThat(f.getEstadoPago()).isEqualTo(EstadoPagoCuota.CONFIRMADO_EN_CUENTA));
     }
 }

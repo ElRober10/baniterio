@@ -122,7 +122,7 @@ class ConfirmacionPagoIT extends IntegrationTest {
                 .exchange().expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.totalPagado").isEqualTo(16.0)
-                .jsonPath("$.asistentes[0].pagado").isEqualTo(true)
+                .jsonPath("$.asistentes[0].estadoPago").isEqualTo("CONFIRMADO_EN_CUENTA")
                 .jsonPath("$.asistentes[0].metodoPago").isEqualTo("BIZUM")
                 .jsonPath("$.asistentes[0].asistenciaId").isEqualTo(asisId.intValue());
     }
@@ -171,7 +171,7 @@ class ConfirmacionPagoIT extends IntegrationTest {
                 .exchange().expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.totalPagado").isEqualTo(0.0)
-                .jsonPath("$.asistentes[0].pagado").isEqualTo(false);
+                .jsonPath("$.asistentes[0].estadoPago").isEqualTo("PENDIENTE_PAGO");
     }
 
     @Test
@@ -205,7 +205,7 @@ class ConfirmacionPagoIT extends IntegrationTest {
                 .header(AUTHORIZATION, "Bearer " + penista.token())
                 .exchange().expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.asistencia.ficha.miFicha.pagado").isEqualTo(true)
+                .jsonPath("$.asistencia.ficha.miFicha.estadoPago").isEqualTo("CONFIRMADO_EN_CUENTA")
                 .jsonPath("$.asistencia.ficha.miFicha.metodoPago").isEqualTo("TRANSFERENCIA")
                 .jsonPath("$.asistencia.ficha.miFicha.pagadoPor").isNotEmpty();
     }

@@ -79,8 +79,10 @@ public class FichaBebida {
     @Column(precision = 7, scale = 2)
     private BigDecimal cuota;
 
-    @Column(nullable = false)
-    private boolean pagado;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "estado_pago", nullable = false, length = 28)
+    @Builder.Default
+    private EstadoPagoCuota estadoPago = EstadoPagoCuota.PENDIENTE_PAGO;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "metodo_pago", length = 16)
