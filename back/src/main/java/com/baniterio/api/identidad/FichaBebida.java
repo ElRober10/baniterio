@@ -79,6 +79,20 @@ public class FichaBebida {
     @Column(precision = 7, scale = 2)
     private BigDecimal cuota;
 
+    @Column(nullable = false)
+    private boolean pagado;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "metodo_pago", length = 16)
+    private MetodoPago metodoPago;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pagado_confirmado_por")
+    private Usuario pagadoConfirmadoPor;
+
+    @Column(name = "pagado_at")
+    private Instant pagadoAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
