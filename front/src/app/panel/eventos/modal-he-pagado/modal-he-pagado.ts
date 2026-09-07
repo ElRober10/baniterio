@@ -76,6 +76,22 @@ export class ModalHePagado implements OnInit {
     this.importe.set(Number((e.target as HTMLInputElement).value) || 0);
   }
 
+  /** ¿Está incluida en el pago esta persona? */
+  protected estaMarcada(p: PersonaPagable): boolean {
+    return p.usuarioId != null
+      ? this.usuariosMarcados().has(p.usuarioId)
+      : this.asistenciasMarcadas().has(p.asistenciaId!);
+  }
+
+  /** Añade o quita a esta persona del pago (unifica usuario e invitado). */
+  protected alternar(p: PersonaPagable): void {
+    if (p.usuarioId != null) {
+      this.marcarUsuario(p.usuarioId);
+    } else {
+      this.marcarAsistencia(p.asistenciaId!);
+    }
+  }
+
   protected marcarUsuario(id: number): void {
     this.usuariosMarcados.update((s) => {
       const n = new Set(s);
