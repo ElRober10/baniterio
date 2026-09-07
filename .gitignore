@@ -28,3 +28,6 @@ back/config/*
 
 # Fotos de perfil subidas (volumen de media local)
 media-baniterio/
+
+# Chuleta personal de comandos (notas de aprendizaje)
+COMANDOS.md
