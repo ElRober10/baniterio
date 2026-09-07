@@ -134,6 +134,14 @@
                   >
                     Ya he pagado
                   </button>
+                } @else if (pagoDeclaradoPendiente()) {
+                  <button
+                    type="button"
+                    (click)="modalPagoDeclarado.set(true)"
+                    class="rounded-xl border border-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand/20"
+                  >
+                    Ver mi pago declarado
+                  </button>
                 } @else {
                   <button
                     type="button"
@@ -145,6 +153,11 @@
                 }
               }
             </div>
+            @if (pagoRechazado() && !pagoConfirmado()) {
+              <p class="mt-2 text-sm text-red-300">
+                Tu pago anterior no se pudo confirmar. Vuelve a declararlo.
+              </p>
+            }
           }
 
           @if (e.descripcion) {
@@ -286,8 +299,49 @@
           <app-modal-he-pagado
             [eventoId]="e.id"
             (cerrar)="modalPago.set(false)"
-            (enviado)="onPagoEnviado()"
+            (enviado)="onPagoEnviado($event)"
           />
+        }
+        @if (modalPagoDeclarado() && e.asistencia.ficha.miFicha?.miPagoDeclarado; as p) {
+          <div
+            class="fixed inset-0 z-50 flex items-center justify-center bg-surface/90 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-label="Mi pago declarado"
+          >
+            <div class="carta-relieve w-full max-w-sm rounded-2xl p-6">
+              <h3 class="font-display text-lg font-extrabold">Tu pago declarado</h3>
+              <p class="mt-3 text-sm">
+                <strong>{{ p.importe }} €</strong> por <strong>{{ metodoDeclaradoTexto() }}</strong>.
+              </p>
+              @if (p.cubre.length > 1) {
+                <p class="mt-1 text-sm text-muted">
+                  Cubre:
+                  @for (c of p.cubre; track $index) {
+                    {{ c.nombre }}@if (!$last) {, }
+                  }
+                </p>
+              }
+              <p class="mt-3 text-sm text-muted">
+                Pendiente de que un administrador lo confirme.
+              </p>
+              <div class="mt-5 flex justify-center gap-2">
+                <button
+                  type="button"
+                  (click)="anularPagoDeclarado()"
+                  class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink"
+                >
+                  Anular declaración
+                </button>
+                <button
+                  type="button"
+                  (click)="modalPagoDeclarado.set(false)"
+                  class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
         }
         @if (modalPagoInfo() && e.asistencia.ficha.miFicha; as f) {
           <div

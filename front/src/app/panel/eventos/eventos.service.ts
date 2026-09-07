@@ -15,6 +15,7 @@ import {
   ListadoAsistentes,
   ListaEventosResponse,
   MetodoPago,
+  PagoDeclaradoPendiente,
   PendientesRespuestaResponse,
 } from './eventos.types';
 
@@ -83,6 +84,32 @@ export class EventosService {
     return this.http.delete<ListadoAsistentes>(
       `${this.base}/eventos/${eventoId}/asistencias/${asistenciaId}/pago`,
     );
+  }
+
+  /** Un peñista (o admin, para sí mismo) declara que ha pagado su cuota. Devuelve el detalle recargado. */
+  declararPago(
+    eventoId: number,
+    body: { importe: number; metodo: MetodoPago; cubreUsuarioIds: number[]; cubreAsistenciaIds: number[] },
+  ): Observable<EventoDetalle> {
+    return this.http.post<EventoDetalle>(`${this.base}/eventos/${eventoId}/pagos-declarados`, body);
+  }
+
+  /** Anula mi declaración de pago pendiente de un evento. Devuelve el detalle recargado. */
+  anularPagoDeclarado(eventoId: number): Observable<EventoDetalle> {
+    return this.http.delete<EventoDetalle>(`${this.base}/eventos/${eventoId}/pagos-declarados/mia`);
+  }
+
+  /** Cola de declaraciones de pago pendientes (solo admin/superadmin). */
+  pagosDeclaradosPendientes(): Observable<PagoDeclaradoPendiente[]> {
+    return this.http.get<PagoDeclaradoPendiente[]>(`${this.base}/admin/pagos-declarados`);
+  }
+
+  confirmarPagoDeclarado(id: number): Observable<void> {
+    return this.http.post<void>(`${this.base}/admin/pagos-declarados/${id}/confirmar`, {});
+  }
+
+  rechazarPagoDeclarado(id: number): Observable<void> {
+    return this.http.post<void>(`${this.base}/admin/pagos-declarados/${id}/rechazar`, {});
   }
 
   solicitarCrear(mensaje?: string): Observable<{ id: number; estado: string }> {
