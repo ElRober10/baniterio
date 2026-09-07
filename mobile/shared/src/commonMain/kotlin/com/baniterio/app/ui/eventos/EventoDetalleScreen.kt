@@ -14,11 +14,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,6 +46,13 @@ private sealed interface EstadoDetalle {
     data object Cargando : EstadoDetalle
     data class Cargado(val evento: EventoDetalle) : EstadoDetalle
     data class Error(val mensaje: String) : EstadoDetalle
+}
+
+private fun metodoLegible(m: String?) = when (m) {
+    "BIZUM" -> "Bizum"
+    "TRANSFERENCIA" -> "Transferencia"
+    "EFECTIVO" -> "Efectivo"
+    else -> m ?: ""
 }
 
 /** (valor de backend, etiqueta) de los tres estados de asistencia. */
@@ -104,6 +113,7 @@ fun EventoDetalleScreen(
                 val ev = e.evento
                 var verAsistentes by remember { mutableStateOf(false) }
                 var verPago by remember { mutableStateOf(false) }
+                var verPagoInfo by remember { mutableStateOf(false) }
                 Column(
                     modifier = Modifier.fillMaxWidth()
                         .relieveDeCarta(RoundedCornerShape(18.dp))
@@ -235,12 +245,19 @@ fun EventoDetalleScreen(
                                 colors = botonPeña,
                                 modifier = Modifier.weight(1f),
                             ) { Text("Listado de asistentes", fontWeight = FontWeight.Bold) }
-                            if (ev.asistencia.ficha.miFicha?.cuota != null) {
-                                Button(
-                                    onClick = { verPago = true },
-                                    colors = botonPeña,
-                                    modifier = Modifier.weight(1f),
-                                ) { Text("Confirmar el pago", fontWeight = FontWeight.Bold) }
+                            ev.asistencia.ficha.miFicha?.let { f ->
+                                if (f.cuota != null) {
+                                    Button(
+                                        onClick = { if (f.pagado) verPagoInfo = true else verPago = true },
+                                        colors = botonPeña,
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        Text(
+                                            if (f.pagado) "Ya he pagado" else "Confirmar el pago",
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
