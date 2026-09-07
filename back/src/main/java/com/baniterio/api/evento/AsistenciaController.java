@@ -3,6 +3,7 @@ package com.baniterio.api.evento;
 import com.baniterio.api.auth.UsuarioPrincipal;
 import com.baniterio.api.evento.dto.AnadirAsistenteRequest;
 import com.baniterio.api.evento.dto.AsistenciaResumen;
+import com.baniterio.api.evento.dto.ConfirmarPagoRequest;
 import com.baniterio.api.evento.dto.EventoDetalle;
 import com.baniterio.api.evento.dto.ListadoAsistentesResponse;
 import com.baniterio.api.evento.dto.MandarNotificacionRequest;
@@ -77,5 +78,20 @@ public class AsistenciaController {
     public void quitar(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long id, @PathVariable Long asistenciaId) {
         asistenciaService.quitarAMano(principal.id(), id, asistenciaId);
+    }
+
+    @PutMapping("/{id}/asistencias/{asistenciaId}/pago")
+    public ListadoAsistentesResponse confirmarPago(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long id, @PathVariable Long asistenciaId,
+            @Valid @RequestBody ConfirmarPagoRequest req) {
+        return asistenciaService.confirmarPago(principal.id(), id, asistenciaId, req.metodo());
+    }
+
+    @DeleteMapping("/{id}/asistencias/{asistenciaId}/pago")
+    public ListadoAsistentesResponse deshacerPago(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long id, @PathVariable Long asistenciaId) {
+        return asistenciaService.deshacerPago(principal.id(), id, asistenciaId);
     }
 }

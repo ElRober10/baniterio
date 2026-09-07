@@ -31,6 +31,7 @@ import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
 import com.baniterio.api.identidad.FichaBebida;
 import com.baniterio.api.identidad.FichaBebidaRepository;
+import com.baniterio.api.identidad.MetodoPago;
 import com.baniterio.api.identidad.NotificacionEvento;
 import com.baniterio.api.identidad.NotificacionEventoRepository;
 import com.baniterio.api.identidad.PenaRepository;
@@ -241,6 +242,54 @@ public class AsistenciaService {
     }
 
     /**
+     * Un administrador confirma el pago de la cuota de una asistencia (pieza 5).
+     * Sobrescribe si ya estaba confirmado. 403 si no puede gestionar; 404 si la
+     * asistencia no es de ese evento o no tiene ficha; 409 {@code EVENTO_SIN_FICHA}
+     * si el evento no es de San Miguel; 409 {@code FICHA_SIN_CUOTA} si la ficha
+     * aún no tiene cuota. Devuelve el listado recalculado.
+     */
+    @Transactional
+    public ListadoAsistentesResponse confirmarPago(Long usuarioId, Long eventoId,
+            Long asistenciaId, MetodoPago metodo) {
+        FichaBebida f = fichaParaPago(usuarioId, eventoId, asistenciaId);
+        if (f.getCuota() == null) {
+            throw new FichaSinCuotaException();
+        }
+        f.setPagado(true);
+        f.setMetodoPago(metodo);
+        f.setPagadoConfirmadoPor(usuarios.findById(usuarioId).orElseThrow());
+        f.setPagadoAt(Instant.now());
+        fichas.save(f);
+        return listadoAsistentes(usuarioId, eventoId);
+    }
+
+    /** Deshace {@link #confirmarPago}: vuelve la ficha a "pendiente". */
+    @Transactional
+    public ListadoAsistentesResponse deshacerPago(Long usuarioId, Long eventoId, Long asistenciaId) {
+        FichaBebida f = fichaParaPago(usuarioId, eventoId, asistenciaId);
+        f.setPagado(false);
+        f.setMetodoPago(null);
+        f.setPagadoConfirmadoPor(null);
+        f.setPagadoAt(null);
+        fichas.save(f);
+        return listadoAsistentes(usuarioId, eventoId);
+    }
+
+    private FichaBebida fichaParaPago(Long usuarioId, Long eventoId, Long asistenciaId) {
+        Evento e = cargar(eventoId);
+        if (!puedeGestionar(usuarioId, e)) {
+            throw new SinPermisoEventoException();
+        }
+        if (!e.getCuenta().isLlevaFichaBebida()) {
+            throw new EventoSinFichaException();
+        }
+        AsistenciaEvento a = asistencias.findByIdAndEventoId(asistenciaId, eventoId)
+                .orElseThrow(AsistenciaNoEncontradaException::new);
+        return fichas.findByAsistenciaId(a.getId())
+                .orElseThrow(AsistenciaNoEncontradaException::new);
+    }
+
+    /**
      * El bloque de asistencia que va dentro de {@code EventoDetalle} para el
      * usuario que pregunta: su respuesta, si puede mandar la notificación, cuándo
      * se puede reenviar y los recuentos. {@code sinContestar} reutiliza la misma
@@ -302,8 +351,14 @@ public class AsistenciaService {
                 .map(a -> fichaPorAsistencia.get(a.getId()))
                 .map(FichaBebida::getCuota).orElse(null);
 
-        return new ListadoAsistentesResponse(asistentes, totalCuotas, BigDecimal.ZERO,
-                puedoPagarPor(usuarioId, eventoId, fichaPorAsistencia), miCuota);
+        BigDecimal totalPagado = asistentes.stream()
+                .filter(AsistenteFila::pagado)
+                .map(AsistenteFila::cuota).filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return new ListadoAsistentesResponse(asistentes, totalCuotas, totalPagado,
+                puedoPagarPor(usuarioId, eventoId, fichaPorAsistencia), miCuota,
+                puedeGestionar(usuarioId, e));
     }
 
     private static String nombreDe(AsistenciaEvento a) {
@@ -316,8 +371,13 @@ public class AsistenciaService {
                 f.getRefresco().getNombre(),
                 f.getAlternativa().name(),
                 f.getModalidad().name());
+        boolean pagado = f != null && f.isPagado();
         return new AsistenteFila(nombreDe(a), a.getEstado().name(), a.getUsuario() == null,
-                bebida, f == null ? null : f.getCuota(), false);
+                bebida, f == null ? null : f.getCuota(), pagado, a.getId(),
+                pagado && f.getMetodoPago() != null ? f.getMetodoPago().name() : null,
+                pagado && f.getPagadoConfirmadoPor() != null
+                        ? f.getPagadoConfirmadoPor().getNombre() : null,
+                pagado ? f.getPagadoAt() : null);
     }
 
     private List<PersonaPagable> puedoPagarPor(Long usuarioId, Long eventoId,
