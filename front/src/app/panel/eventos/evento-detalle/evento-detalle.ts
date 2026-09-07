@@ -6,8 +6,14 @@ import { Volver } from '../../../shared/volver/volver';
 import { FichaBebida } from '../ficha-bebida/ficha-bebida';
 import { ModalAsistentes } from '../modal-asistentes/modal-asistentes';
 import { ModalHePagado } from '../modal-he-pagado/modal-he-pagado';
-import { CatalogoBebidas, EventoDetalle, FichaBebidaBody } from '../eventos.types';
+import { CatalogoBebidas, EventoDetalle, FichaBebidaBody, MetodoPago } from '../eventos.types';
 import { EventosService } from '../eventos.service';
+
+const METODO_PAGO_TEXTO: Record<MetodoPago, string> = {
+  BIZUM: 'Bizum',
+  TRANSFERENCIA: 'Transferencia',
+  EFECTIVO: 'Efectivo',
+};
 
 /**
  * Vista de un evento: sus datos y —solo si `puedoEditar`/`puedoBorrar`, es
@@ -34,7 +40,18 @@ export class EventoDetalleComponent implements OnInit {
   protected readonly aviso = signal('');
   protected readonly modalAsistentes = signal(false);
   protected readonly modalPago = signal(false);
+  protected readonly modalPagoInfo = signal(false);
   private readonly id = Number(this.route.snapshot.paramMap.get('id'));
+
+  /** El pago del peñista ya lo confirmó un administrador. */
+  protected readonly pagoConfirmado = computed(
+    () => !!this.evento()?.asistencia.ficha.miFicha?.pagado,
+  );
+
+  protected readonly metodoPagoTexto = computed(() => {
+    const m = this.evento()?.asistencia.ficha.miFicha?.metodoPago;
+    return m ? METODO_PAGO_TEXTO[m] : '';
+  });
 
   /** Se muestra el bloque de cuotas solo si un admin ha puesto al menos una. */
   protected readonly hayCuotas = computed(() => {
