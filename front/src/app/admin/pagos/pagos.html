@@ -1,0 +1,65 @@
+<section class="mx-auto w-full max-w-3xl">
+  <div class="mb-6"><app-volver destino="/panel/administracion" /></div>
+
+  <h1 class="font-display text-2xl font-extrabold leading-tight">Confirmar pagos</h1>
+  <p class="mt-2 text-sm leading-relaxed text-muted">
+    Pagos que la gente ha declarado desde el detalle del evento. Al confirmar,
+    la cuota de cada persona cubierta queda marcada como pagada.
+  </p>
+
+  @if (aviso()) {
+    <p role="status" class="mt-4 text-sm text-gold-soft">{{ aviso() }}</p>
+  }
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <p class="mt-6 text-sm text-muted">Cargando…</p>
+    }
+    @case ('error') {
+      <p class="mt-6 text-sm text-red-300">No se ha podido cargar.</p>
+    }
+    @case ('lista') {
+      @if (pendientes().length === 0) {
+        <p class="mt-6 rounded-2xl border border-outline bg-panel p-6 text-sm text-muted">
+          No hay pagos pendientes de confirmar.
+        </p>
+      } @else {
+        <ul class="mt-6 space-y-3">
+          @for (p of pendientes(); track p.id) {
+            <li class="rounded-2xl border border-outline bg-panel p-4">
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p class="font-semibold">
+                    {{ p.declaradoPor }} · {{ p.importe }} € · {{ metodoTexto[p.metodoPago] }}
+                  </p>
+                  <p class="text-xs text-muted">
+                    {{ p.eventoNombre }} · {{ p.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+                  </p>
+                  @if (p.cubre.length > 1) {
+                    <p class="mt-1 text-xs text-muted">Cubre: {{ cubiertos(p) }}</p>
+                  }
+                </div>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    (click)="confirmar(p)"
+                    class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark"
+                  >
+                    Confirmar
+                  </button>
+                  <button
+                    type="button"
+                    (click)="rechazar(p)"
+                    class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-red-400/50 hover:text-red-300"
+                  >
+                    Rechazar
+                  </button>
+                </div>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    }
+  }
+</section>

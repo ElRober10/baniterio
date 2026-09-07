@@ -75,6 +75,23 @@ export interface FichaBebidaMia {
   metodoPago: MetodoPago | null;
   pagadoPor: string | null;
   pagadoAt: string | null;
+  /** Mi declaración de pago si está PENDIENTE o RECHAZADA (si está confirmada lo dice `pagado`). */
+  miPagoDeclarado: MiPagoDeclarado | null;
+}
+
+/** Una persona a la que cubre un pago: su nombre y su cuota. */
+export interface CubiertoPago {
+  nombre: string;
+  cuota: number | null;
+}
+
+/** Mi declaración de pago pendiente (o rechazada) para un evento. */
+export interface MiPagoDeclarado {
+  importe: number;
+  metodoPago: MetodoPago;
+  estado: 'PENDIENTE' | 'RECHAZADA';
+  createdAt: string;
+  cubre: CubiertoPago[];
 }
 
 /** Sub-bloque `asistencia.ficha` de `EventoDetalle`. */
@@ -228,6 +245,20 @@ export interface AsistenteFila {
   metodoPago: MetodoPago | null;
   pagadoPor: string | null;
   pagadoAt: string | null;
+  /** Hay una declaración de pago PENDIENTE que cubre a este asistente (y aún no está pagado). */
+  declarado: boolean;
+}
+
+/** Una fila de la cola "Confirmar pagos" del panel de administración. */
+export interface PagoDeclaradoPendiente {
+  id: number;
+  eventoId: number;
+  eventoNombre: string;
+  declaradoPor: string;
+  importe: number;
+  metodoPago: MetodoPago;
+  createdAt: string;
+  cubre: CubiertoPago[];
 }
 
 /** Alguien a quien puedo incluir en mi pago (pareja, hijo mayor con cuenta, invitado propio). */
@@ -266,6 +297,9 @@ export type CodigoErrorEvento =
   | 'ASISTENCIA_NO_MANUAL'
   | 'EVENTO_SIN_FICHA'
   | 'FICHA_SIN_CUOTA'
+  | 'PAGO_DECLARADO_YA_PENDIENTE'
+  | 'PAGO_DECLARADO_NO_ENCONTRADO'
+  | 'PAGO_DECLARADO_YA_RESUELTO'
   | 'BEBIDA_NO_ENCONTRADA'
   | 'SIN_PERMISO'
   | 'VALIDACION';

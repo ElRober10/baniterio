@@ -5,7 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Volver } from '../../../shared/volver/volver';
 import { FichaBebida } from '../ficha-bebida/ficha-bebida';
 import { ModalAsistentes } from '../modal-asistentes/modal-asistentes';
-import { ModalHePagado } from '../modal-he-pagado/modal-he-pagado';
+import { ModalHePagado, PagoDeclarado } from '../modal-he-pagado/modal-he-pagado';
 import { CatalogoBebidas, EventoDetalle, FichaBebidaBody, MetodoPago } from '../eventos.types';
 import { EventosService } from '../eventos.service';
 
@@ -41,6 +41,7 @@ export class EventoDetalleComponent implements OnInit {
   protected readonly modalAsistentes = signal(false);
   protected readonly modalPago = signal(false);
   protected readonly modalPagoInfo = signal(false);
+  protected readonly modalPagoDeclarado = signal(false);
   private readonly id = Number(this.route.snapshot.paramMap.get('id'));
 
   /** El pago del peñista ya lo confirmó un administrador. */
@@ -48,8 +49,23 @@ export class EventoDetalleComponent implements OnInit {
     () => !!this.evento()?.asistencia.ficha.miFicha?.pagado,
   );
 
+  /** Hay una declaración de pago propia esperando a que un admin la confirme. */
+  protected readonly pagoDeclaradoPendiente = computed(
+    () => this.evento()?.asistencia.ficha.miFicha?.miPagoDeclarado?.estado === 'PENDIENTE',
+  );
+
+  /** La última declaración propia se rechazó y la cuota sigue sin pagar. */
+  protected readonly pagoRechazado = computed(
+    () => this.evento()?.asistencia.ficha.miFicha?.miPagoDeclarado?.estado === 'RECHAZADA',
+  );
+
   protected readonly metodoPagoTexto = computed(() => {
     const m = this.evento()?.asistencia.ficha.miFicha?.metodoPago;
+    return m ? METODO_PAGO_TEXTO[m] : '';
+  });
+
+  protected readonly metodoDeclaradoTexto = computed(() => {
+    const m = this.evento()?.asistencia.ficha.miFicha?.miPagoDeclarado?.metodoPago;
     return m ? METODO_PAGO_TEXTO[m] : '';
   });
 
@@ -113,9 +129,40 @@ export class EventoDetalleComponent implements OnInit {
     this.router.navigate(['/panel/eventos', this.id, 'editar']);
   }
 
-  protected onPagoEnviado(): void {
-    this.modalPago.set(false);
-    this.aviso.set('Pago confirmado. Un administrador lo revisará.');
+  protected onPagoEnviado(pago: PagoDeclarado): void {
+    this.eventosService
+      .declararPago(this.id, {
+        importe: pago.importe,
+        metodo: pago.metodo,
+        cubreUsuarioIds: pago.cubre.usuarioIds,
+        cubreAsistenciaIds: pago.cubre.asistenciaIds,
+      })
+      .subscribe({
+        next: (e) => {
+          this.evento.set(e);
+          this.modalPago.set(false);
+          this.aviso.set('Pago enviado. Un administrador lo confirmará.');
+        },
+        error: (err: HttpErrorResponse) => {
+          this.modalPago.set(false);
+          this.aviso.set(
+            err.error?.codigo === 'PAGO_DECLARADO_YA_PENDIENTE'
+              ? 'Ya tienes un pago declarado pendiente de confirmar.'
+              : 'No se pudo enviar el pago.',
+          );
+        },
+      });
+  }
+
+  protected anularPagoDeclarado(): void {
+    this.eventosService.anularPagoDeclarado(this.id).subscribe({
+      next: (e) => {
+        this.evento.set(e);
+        this.modalPagoDeclarado.set(false);
+        this.aviso.set('Declaración anulada.');
+      },
+      error: () => this.aviso.set('No se pudo anular la declaración.'),
+    });
   }
 
   protected abrirEditorFicha(): void {

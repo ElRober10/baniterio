@@ -203,6 +203,78 @@ describe('EventoDetalleComponent', () => {
     expect(txt2).toContain('Bizum');
   });
 
+  it('con pago declarado pendiente muestra "Ver mi pago declarado" y permite anular', () => {
+    crear();
+    fixture.detectChanges();
+    const miFicha = {
+      alcoholBebidaId: null,
+      alcohol: 'No bebo alcohol',
+      refrescoBebidaId: 20,
+      refresco: 'Coca-Cola',
+      alternativa: 'NADA',
+      cervezaEspecial: null,
+      embarazada: false,
+      asisteDia1: true,
+      asisteDia2: true,
+      modalidad: 'SOLO_CERVEZA',
+      cuota: 16,
+      cuotaPendiente: false,
+      bebidaPendiente: false,
+      pagado: false,
+      metodoPago: null,
+      pagadoPor: null,
+      pagadoAt: null,
+      miPagoDeclarado: {
+        importe: 16,
+        metodoPago: 'BIZUM',
+        estado: 'PENDIENTE',
+        createdAt: '2026-09-07T10:00:00Z',
+        cubre: [{ nombre: 'Yo', cuota: 16 }],
+      },
+    };
+    responder({
+      asistencia: {
+        ...asistenciaBase,
+        miAsistencia: 'APUNTADO',
+        ficha: { llevaFicha: true, diasEvento: ['2026-09-25', '2026-09-26'], miFicha },
+      },
+    });
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('Ver mi pago declarado');
+    expect(el.textContent).not.toContain('Confirmar el pago');
+
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Ver mi pago declarado')!
+      .click();
+    fixture.detectChanges();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Anular declaración')!
+      .click();
+    const req = httpMock.expectOne(`${base}/eventos/5/pagos-declarados/mia`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush({
+      id: 5,
+      nombre: 'San Miguel',
+      descripcion: null,
+      lugar: null,
+      fecha: '2026-09-25',
+      fechaFin: null,
+      pasado: false,
+      cuenta: { id: 2, nombre: 'San Miguel' },
+      cuotaCubatas: null,
+      cuotaCervezas: null,
+      cuotaCubatas1Dia: null,
+      cuotaCervezas1Dia: null,
+      cuotaEmbarazada: null,
+      creadoPor: null,
+      puedoEditar: false,
+      puedoBorrar: false,
+      oculto: false,
+      asistencia: asistenciaBase,
+    });
+  });
+
   it('sin permisos no muestra botones de gestión', () => {
     crear();
     fixture.detectChanges();

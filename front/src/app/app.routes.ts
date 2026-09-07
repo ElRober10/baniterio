@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { areaGuard } from './admin/area.guard';
 import { AdminBebidas } from './admin/bebidas/bebidas';
+import { AdminPagos } from './admin/pagos/pagos';
 import { AdminIndice } from './admin/indice/indice';
 import { AdminPermisos } from './admin/permisos/permisos';
 import { AdminSolicitudes } from './admin/solicitudes/solicitudes';
@@ -65,6 +66,13 @@ export const routes: Routes = [
       {
         path: 'administracion/bebidas',
         component: AdminBebidas,
+        canActivate: [perfilCompletoGuard],
+      },
+      // Confirmar pagos: cualquier admin/superadmin (no un área); el componente
+      // rebota a /panel si no lo eres.
+      {
+        path: 'administracion/pagos',
+        component: AdminPagos,
         canActivate: [perfilCompletoGuard],
       },
     ],

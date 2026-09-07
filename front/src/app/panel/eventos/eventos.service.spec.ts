@@ -248,4 +248,47 @@ describe('EventosService', () => {
     expect(req.request.method).toBe('DELETE');
     req.flush(listadoVacio);
   });
+
+  it('declararPago() hace POST a /eventos/:id/pagos-declarados con el cuerpo', () => {
+    service
+      .declararPago(3, { importe: 16, metodo: 'BIZUM', cubreUsuarioIds: [9], cubreAsistenciaIds: [] })
+      .subscribe();
+    const req = httpMock.expectOne(`${base}/eventos/3/pagos-declarados`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({
+      importe: 16,
+      metodo: 'BIZUM',
+      cubreUsuarioIds: [9],
+      cubreAsistenciaIds: [],
+    });
+    req.flush({});
+  });
+
+  it('anularPagoDeclarado() hace DELETE a /eventos/:id/pagos-declarados/mia', () => {
+    service.anularPagoDeclarado(3).subscribe();
+    const req = httpMock.expectOne(`${base}/eventos/3/pagos-declarados/mia`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush({});
+  });
+
+  it('pagosDeclaradosPendientes() hace GET a /admin/pagos-declarados', () => {
+    service.pagosDeclaradosPendientes().subscribe();
+    const req = httpMock.expectOne(`${base}/admin/pagos-declarados`);
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
+
+  it('confirmarPagoDeclarado() hace POST a /admin/pagos-declarados/:id/confirmar', () => {
+    service.confirmarPagoDeclarado(5).subscribe();
+    const req = httpMock.expectOne(`${base}/admin/pagos-declarados/5/confirmar`);
+    expect(req.request.method).toBe('POST');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('rechazarPagoDeclarado() hace POST a /admin/pagos-declarados/:id/rechazar', () => {
+    service.rechazarPagoDeclarado(5).subscribe();
+    const req = httpMock.expectOne(`${base}/admin/pagos-declarados/5/rechazar`);
+    expect(req.request.method).toBe('POST');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
 });

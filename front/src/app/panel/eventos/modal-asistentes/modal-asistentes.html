@@ -49,7 +49,7 @@
                     </span>
                     <span class="shrink-0 text-sm font-bold text-gold-soft">
                       {{ a.cuota != null ? a.cuota + ' €' : 'sin cuota' }} ·
-                      {{ a.pagado ? 'pagado' : 'pendiente' }}
+                      {{ a.pagado ? 'pagado' : a.declarado ? 'declarado' : 'pendiente' }}
                       @if (a.pagado && a.metodoPago) {
                         · {{ metodoTexto[a.metodoPago] }}
                       }
