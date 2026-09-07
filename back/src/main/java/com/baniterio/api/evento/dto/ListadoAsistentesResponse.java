@@ -8,11 +8,14 @@ import java.util.List;
  * su cuota y —de momento siempre {@code false}— si ha pagado. {@code puedoPagarPor}
  * es a quién puede cubrir en un pago el usuario que pregunta; {@code miCuota} es
  * su propia cuota ({@code null} si no tiene ficha o el evento no tiene cuotas).
+ * {@code puedoConfirmarPagos} es {@code true} si quien pregunta puede confirmar
+ * pagos (administrador u organizador del evento).
  */
 public record ListadoAsistentesResponse(
         List<AsistenteFila> asistentes,
         BigDecimal totalCuotas,
         BigDecimal totalPagado,
         List<PersonaPagable> puedoPagarPor,
-        BigDecimal miCuota) {
+        BigDecimal miCuota,
+        boolean puedoConfirmarPagos) {
 }

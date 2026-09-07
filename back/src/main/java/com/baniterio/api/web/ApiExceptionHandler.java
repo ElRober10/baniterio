@@ -211,6 +211,11 @@ public class ApiExceptionHandler {
         return error(HttpStatus.CONFLICT, "EVENTO_SIN_FICHA");
     }
 
+    @ExceptionHandler(com.baniterio.api.evento.FichaSinCuotaException.class)
+    ResponseEntity<Map<String, Object>> fichaSinCuota() {
+        return error(HttpStatus.CONFLICT, "FICHA_SIN_CUOTA");
+    }
+
     @ExceptionHandler(com.baniterio.api.cuenta.CuentaNoEncontradaException.class)
     ResponseEntity<Map<String, Object>> cuentaNoEncontrada() {
         return error(HttpStatus.NOT_FOUND, "CUENTA_NO_ENCONTRADA");
