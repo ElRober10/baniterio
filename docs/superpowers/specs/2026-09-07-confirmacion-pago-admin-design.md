@@ -182,7 +182,7 @@ Mapear `FichaSinCuotaException` → `409 FICHA_SIN_CUOTA`.
   `+ pagadoAt: String? = null`.
 - `ConfirmarPagoBody(val metodo: String)`.
 
-### `AsistenciaRepository` / `AsistenciaRepositoryImpl`
+### `EventosRepository` / `EventosRepositoryImpl` (donde ya vive `asistentes(...)`)
 
 - `suspend fun confirmarPago(eventoId: Long, asistenciaId: Long, metodo: String): ResultadoEvento<ListadoAsistentesDto>`.
 - `suspend fun deshacerPago(eventoId: Long, asistenciaId: Long): ResultadoEvento<ListadoAsistentesDto>`.
