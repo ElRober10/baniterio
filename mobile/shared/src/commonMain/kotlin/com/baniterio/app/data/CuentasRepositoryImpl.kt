@@ -1,5 +1,6 @@
 package com.baniterio.app.data
 
+import com.baniterio.app.data.dto.CuentaDetalleDto
 import com.baniterio.app.data.dto.CuentaResumen
 import com.baniterio.app.data.dto.ErrorResponse
 import io.ktor.client.HttpClient
@@ -8,6 +9,7 @@ import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.post
 import io.ktor.http.HttpHeaders
 import kotlinx.coroutines.CancellationException
 
@@ -25,8 +27,12 @@ class CuentasRepositoryImpl(
         http.get("$API_BASE_URL/cuentas") { auth() }.body()
     }
 
-    override suspend fun detalle(id: Long): ResultadoCuenta<CuentaResumen> = peticion {
+    override suspend fun detalle(id: Long): ResultadoCuenta<CuentaDetalleDto> = peticion {
         http.get("$API_BASE_URL/cuentas/$id") { auth() }.body()
+    }
+
+    override suspend fun marcarTransferido(id: Long): ResultadoCuenta<CuentaDetalleDto> = peticion {
+        http.post("$API_BASE_URL/cuentas/$id/transferencia-a-pena") { auth() }.body()
     }
 
     /**

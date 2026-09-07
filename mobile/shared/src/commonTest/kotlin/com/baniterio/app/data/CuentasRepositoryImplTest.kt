@@ -60,12 +60,27 @@ class CuentasRepositoryImplTest {
     }
 
     @Test
-    fun detalle_hace_get_por_id() = runTest {
-        val (r, vistas) = repo(cuerpoRespuesta =
-            """{"id":3,"nombre":"Migas Santas","descripcion":"Balance"}""")
+    fun detalle_hace_get_por_id_y_deserializa_saldo() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = """
+            {"id":3,"nombre":"San Miguel","saldo":91.13,"estimacion":107.13,
+             "movimientos":[{"concepto":"Saldo del año anterior","importe":91.13,
+                             "fecha":"2026-01-01","saldoTras":91.13}],
+             "puedoGestionar":true,"porIngresar":16.0}
+        """.trimIndent())
         val res = r.detalle(3)
-        assertIs<ResultadoCuenta.Exito<*>>(res)
+        assertIs<ResultadoCuenta.Exito<com.baniterio.app.data.dto.CuentaDetalleDto>>(res)
         assertEquals("/api/v1/cuentas/3", vistas[0].path)
+        assertEquals(91.13, res.dato.saldo)
+        assertEquals(1, res.dato.movimientos.size)
+    }
+
+    @Test
+    fun marcarTransferido_hace_post() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta =
+            """{"id":3,"nombre":"San Miguel","saldo":107.13,"estimacion":107.13,"puedoGestionar":true,"porIngresar":0.0}""")
+        r.marcarTransferido(3)
+        assertEquals("POST", vistas[0].metodo)
+        assertEquals("/api/v1/cuentas/3/transferencia-a-pena", vistas[0].path)
     }
 
     @Test

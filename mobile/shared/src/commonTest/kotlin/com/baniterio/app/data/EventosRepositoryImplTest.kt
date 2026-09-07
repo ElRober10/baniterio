@@ -69,7 +69,7 @@ class EventosRepositoryImplTest {
             {"asistentes":[
               {"nombre":"Ana","estado":"APUNTADO","esManual":false,
                "bebida":{"alcohol":"Barceló","refresco":"Coca-Cola","alternativa":"NADA","modalidad":"COMPLETA"},
-               "cuota":45.0,"pagado":false}],
+               "cuota":45.0,"estadoPago":"PENDIENTE_PAGO"}],
              "totalCuotas":45.0,"totalPagado":0.0,"miCuota":45.0,
              "puedoPagarPor":[
               {"nombre":"Luis","cuota":45.0,"relacion":"HIJO","usuarioId":9,"asistenciaId":null}]}

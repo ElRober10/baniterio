@@ -248,11 +248,13 @@ fun EventoDetalleScreen(
                             ) { Text("Listado de asistentes", fontWeight = FontWeight.Bold) }
                             ev.asistencia.ficha.miFicha?.let { f ->
                                 if (f.cuota != null) {
-                                    val declarada = f.miPagoDeclarado?.estado == "PENDIENTE"
+                                    val confirmado = f.estadoPago == "CONFIRMADO_EN_CUENTA" ||
+                                        f.estadoPago == "CONFIRMADO_PENDIENTE_ENVIO"
+                                    val declarada = f.estadoPago == "DECLARADO"
                                     Button(
                                         onClick = {
                                             when {
-                                                f.pagado -> verPagoInfo = true
+                                                confirmado -> verPagoInfo = true
                                                 declarada -> verPagoDeclarado = true
                                                 else -> verPago = true
                                             }
@@ -262,7 +264,7 @@ fun EventoDetalleScreen(
                                     ) {
                                         Text(
                                             when {
-                                                f.pagado -> "Ya he pagado"
+                                                confirmado -> "Ya he pagado"
                                                 declarada -> "Ver mi pago declarado"
                                                 else -> "Confirmar el pago"
                                             },
@@ -338,6 +340,34 @@ fun EventoDetalleScreen(
                                             "Pendiente de que un administrador lo confirme.",
                                             color = BaniterioColors.muted,
                                         )
+                                    }
+                                },
+                            )
+                        }
+                    }
+                    if (verPagoInfo) {
+                        ev.asistencia.ficha.miFicha?.let { f ->
+                            AlertDialog(
+                                onDismissRequest = { verPagoInfo = false },
+                                confirmButton = {
+                                    TextButton(onClick = { verPagoInfo = false }) { Text("Cerrar") }
+                                },
+                                title = { Text("Tu pago está confirmado") },
+                                text = {
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text(
+                                            "Lo confirmó ${f.pagadoPor ?: "un administrador"}" +
+                                                (f.pagadoAt?.let { " el $it" } ?: "") + ".",
+                                        )
+                                        f.metodoPago?.let {
+                                            Text("Has pagado por ${metodoLegible(it)}.")
+                                        }
+                                        if (f.estadoPago == "CONFIRMADO_PENDIENTE_ENVIO") {
+                                            Text(
+                                                "Pendiente de ingresar en la cuenta de la peña.",
+                                                color = BaniterioColors.muted,
+                                            )
+                                        }
                                     }
                                 },
                             )

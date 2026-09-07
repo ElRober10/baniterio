@@ -1,5 +1,6 @@
 package com.baniterio.app.data
 
+import com.baniterio.app.data.dto.CuentaDetalleDto
 import com.baniterio.app.data.dto.CuentaResumen
 
 /**
@@ -9,5 +10,8 @@ import com.baniterio.app.data.dto.CuentaResumen
  */
 interface CuentasRepository {
     suspend fun listar(): ResultadoCuenta<List<CuentaResumen>>
-    suspend fun detalle(id: Long): ResultadoCuenta<CuentaResumen>
+    suspend fun detalle(id: Long): ResultadoCuenta<CuentaDetalleDto>
+
+    /** El admin marca que ha ingresado en la cuenta de la peña lo cobrado por bizum/efectivo. */
+    suspend fun marcarTransferido(id: Long): ResultadoCuenta<CuentaDetalleDto>
 }
