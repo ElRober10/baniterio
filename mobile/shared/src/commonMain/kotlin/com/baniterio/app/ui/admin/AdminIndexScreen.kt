@@ -100,6 +100,13 @@ fun AdminIndexScreen(
                 onClick = { onAbrir(Screen.AdminBebidas) },
             )
             Spacer(Modifier.height(16.dp))
+            TarjetaAdmin(
+                nombre = "Confirmar pagos",
+                descripcion = "Confirma o rechaza los pagos que la gente declara en el detalle del evento.",
+                cuenta = 0,
+                onClick = { onAbrir(Screen.AdminPagos) },
+            )
+            Spacer(Modifier.height(16.dp))
         }
         if (!esAdmin && areas.none { it == "ADMIN_SOLICITUDES" || it == "ADMIN_PERMISOS" }) {
             Text(

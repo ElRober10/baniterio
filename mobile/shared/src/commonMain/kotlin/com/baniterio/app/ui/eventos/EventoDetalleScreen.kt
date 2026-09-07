@@ -114,6 +114,7 @@ fun EventoDetalleScreen(
                 var verAsistentes by remember { mutableStateOf(false) }
                 var verPago by remember { mutableStateOf(false) }
                 var verPagoInfo by remember { mutableStateOf(false) }
+                var verPagoDeclarado by remember { mutableStateOf(false) }
                 Column(
                     modifier = Modifier.fillMaxWidth()
                         .relieveDeCarta(RoundedCornerShape(18.dp))
@@ -247,13 +248,24 @@ fun EventoDetalleScreen(
                             ) { Text("Listado de asistentes", fontWeight = FontWeight.Bold) }
                             ev.asistencia.ficha.miFicha?.let { f ->
                                 if (f.cuota != null) {
+                                    val declarada = f.miPagoDeclarado?.estado == "PENDIENTE"
                                     Button(
-                                        onClick = { if (f.pagado) verPagoInfo = true else verPago = true },
+                                        onClick = {
+                                            when {
+                                                f.pagado -> verPagoInfo = true
+                                                declarada -> verPagoDeclarado = true
+                                                else -> verPago = true
+                                            }
+                                        },
                                         colors = botonPeña,
                                         modifier = Modifier.weight(1f),
                                     ) {
                                         Text(
-                                            if (f.pagado) "Ya he pagado" else "Confirmar el pago",
+                                            when {
+                                                f.pagado -> "Ya he pagado"
+                                                declarada -> "Ver mi pago declarado"
+                                                else -> "Confirmar el pago"
+                                            },
                                             fontWeight = FontWeight.Bold,
                                         )
                                     }
@@ -271,13 +283,65 @@ fun EventoDetalleScreen(
                         HePagadoDialog(
                             eventoId = eventoId,
                             repo = eventosRepo,
-                            onConfirmar = {
+                            onConfirmar = { pago ->
                                 verPago = false
-                                // TODO(pagos): cuando se defina el modelo de pagos, mandar 'it' al backend.
-                                aviso = "Pago confirmado. Un administrador lo revisará."
+                                scope.launch {
+                                    val r = eventosRepo.declararPago(
+                                        eventoId,
+                                        com.baniterio.app.data.dto.DeclararPagoBody(
+                                            importe = pago.importe,
+                                            metodo = pago.metodo,
+                                            cubreUsuarioIds = pago.cubreUsuarioIds,
+                                            cubreAsistenciaIds = pago.cubreAsistenciaIds,
+                                        ),
+                                    )
+                                    aviso = when (r) {
+                                        is ResultadoEvento.Exito -> "Pago enviado. Un administrador lo confirmará."
+                                        is ResultadoEvento.Error -> r.mensaje
+                                    }
+                                    intento++
+                                }
                             },
                             onCerrar = { verPago = false },
                         )
+                    }
+                    if (verPagoDeclarado) {
+                        ev.asistencia.ficha.miFicha?.miPagoDeclarado?.let { d ->
+                            AlertDialog(
+                                onDismissRequest = { verPagoDeclarado = false },
+                                confirmButton = {
+                                    TextButton(onClick = { verPagoDeclarado = false }) { Text("Cerrar") }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = {
+                                        verPagoDeclarado = false
+                                        scope.launch {
+                                            when (val r = eventosRepo.anularPagoDeclarado(eventoId)) {
+                                                is ResultadoEvento.Exito -> aviso = "Declaración anulada."
+                                                is ResultadoEvento.Error -> aviso = r.mensaje
+                                            }
+                                            intento++
+                                        }
+                                    }) { Text("Anular declaración") }
+                                },
+                                title = { Text("Tu pago declarado") },
+                                text = {
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text("${formatoImporte(d.importe)} € por ${metodoLegible(d.metodoPago)}.")
+                                        if (d.cubre.size > 1) {
+                                            Text(
+                                                "Cubre: " + d.cubre.joinToString(", ") { it.nombre },
+                                                color = BaniterioColors.muted,
+                                            )
+                                        }
+                                        Text(
+                                            "Pendiente de que un administrador lo confirme.",
+                                            color = BaniterioColors.muted,
+                                        )
+                                    }
+                                },
+                            )
+                        }
                     }
 
                     if (ev.puedoEditar || ev.puedoBorrar) {

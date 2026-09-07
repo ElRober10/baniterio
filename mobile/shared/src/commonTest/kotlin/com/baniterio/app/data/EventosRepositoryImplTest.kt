@@ -172,6 +172,47 @@ class EventosRepositoryImplTest {
     }
 
     @Test
+    fun declararPago_hace_post_con_el_cuerpo() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = """{"id":3,"nombre":"X","fecha":"2999-01-01",
+            "pasado":false,"cuenta":{"id":1,"nombre":"San Miguel"},
+            "puedoEditar":false,"puedoBorrar":false,"oculto":false}""")
+        val res = r.declararPago(3, com.baniterio.app.data.dto.DeclararPagoBody(
+            importe = 16.0, metodo = "BIZUM", cubreUsuarioIds = listOf(9)))
+        assertIs<ResultadoEvento.Exito<*>>(res)
+        assertEquals("POST", vistas[0].metodo)
+        assertEquals("/api/v1/eventos/3/pagos-declarados", vistas[0].path)
+        assertTrue(vistas[0].cuerpo.contains("\"metodo\":\"BIZUM\""), vistas[0].cuerpo)
+        assertTrue(vistas[0].cuerpo.contains("\"cubreUsuarioIds\":[9]"), vistas[0].cuerpo)
+    }
+
+    @Test
+    fun anularPagoDeclarado_hace_delete() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = """{"id":3,"nombre":"X","fecha":"2999-01-01",
+            "pasado":false,"cuenta":{"id":1,"nombre":"San Miguel"},
+            "puedoEditar":false,"puedoBorrar":false,"oculto":false}""")
+        r.anularPagoDeclarado(3)
+        assertEquals("DELETE", vistas[0].metodo)
+        assertEquals("/api/v1/eventos/3/pagos-declarados/mia", vistas[0].path)
+    }
+
+    @Test
+    fun pagosDeclaradosPendientes_hace_get_a_admin() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = "[]")
+        val res = r.pagosDeclaradosPendientes()
+        assertIs<ResultadoEvento.Exito<*>>(res)
+        assertEquals("GET", vistas[0].metodo)
+        assertEquals("/api/v1/admin/pagos-declarados", vistas[0].path)
+    }
+
+    @Test
+    fun confirmarPagoDeclarado_hace_post() = runTest {
+        val (r, vistas) = repo(status = HttpStatusCode.NoContent)
+        r.confirmarPagoDeclarado(5)
+        assertEquals("POST", vistas[0].metodo)
+        assertEquals("/api/v1/admin/pagos-declarados/5/confirmar", vistas[0].path)
+    }
+
+    @Test
     fun listarOcultos_hace_get() = runTest {
         val (r, vistas) = repo(cuerpoRespuesta = """{"eventos":[]}""")
         val res = r.listarOcultos()

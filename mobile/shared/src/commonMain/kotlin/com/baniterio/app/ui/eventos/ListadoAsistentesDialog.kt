@@ -107,7 +107,11 @@ fun ListadoAsistentesDialog(
                                 )
                                 Text(
                                     (a.cuota?.let { "${formatoImporte(it)} €" } ?: "sin cuota") +
-                                        " · " + (if (a.pagado) "pagado" else "pendiente") +
+                                        " · " + (when {
+                                            a.pagado -> "pagado"
+                                            a.declarado -> "declarado"
+                                            else -> "pendiente"
+                                        }) +
                                         (if (a.pagado && a.metodoPago != null) {
                                             " · ${metodoLegible(a.metodoPago)}"
                                         } else {

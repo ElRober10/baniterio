@@ -3,8 +3,10 @@ package com.baniterio.app.data
 import com.baniterio.app.data.dto.EventoDetalle
 import com.baniterio.app.data.dto.EventoResumen
 import com.baniterio.app.data.dto.GuardarEventoRequest
+import com.baniterio.app.data.dto.DeclararPagoBody
 import com.baniterio.app.data.dto.ListadoAsistentesDto
 import com.baniterio.app.data.dto.ListaEventosResponse
+import com.baniterio.app.data.dto.PagoDeclaradoPendienteDto
 
 /**
  * Endpoints de la sección Eventos (`/api/v1/eventos*`). Misma mecánica que
@@ -37,5 +39,19 @@ interface EventosRepository {
         eventoId: Long,
         asistenciaId: Long,
     ): ResultadoEvento<ListadoAsistentesDto>
+
+    /** Un peñista (o admin, para sí mismo) declara que ha pagado. Devuelve el detalle recargado. */
+    suspend fun declararPago(eventoId: Long, body: DeclararPagoBody): ResultadoEvento<EventoDetalle>
+
+    /** Anula mi declaración de pago pendiente. Devuelve el detalle recargado. */
+    suspend fun anularPagoDeclarado(eventoId: Long): ResultadoEvento<EventoDetalle>
+
+    /** Cola de declaraciones de pago pendientes (solo admin/superadmin). */
+    suspend fun pagosDeclaradosPendientes(): ResultadoEvento<List<PagoDeclaradoPendienteDto>>
+
+    suspend fun confirmarPagoDeclarado(id: Long): ResultadoEvento<Unit>
+
+    suspend fun rechazarPagoDeclarado(id: Long): ResultadoEvento<Unit>
+
     suspend fun solicitarCrear(mensaje: String?): ResultadoEvento<Unit>
 }
