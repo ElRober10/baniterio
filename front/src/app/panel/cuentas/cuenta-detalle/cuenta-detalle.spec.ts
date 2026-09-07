@@ -13,9 +13,17 @@ function detalle(over: Partial<CuentaDetalle> = {}): CuentaDetalle {
     descripcion: null,
     saldo: 91.13,
     estimacion: 107.13,
-    movimientos: [],
+    cobradoSinIngresar: null,
     puedoGestionar: false,
-    porIngresar: null,
+    precioCamiseta: null,
+    precioSudadera: null,
+    penistas: [],
+    totalCuotas: 0,
+    totalCobrado: 0,
+    movimientos: [
+      { id: 1, concepto: 'Saldo del año anterior', categoria: null, importe: 91.13, fecha: '2026-01-01', saldoTras: 91.13, reciboArchivo: null, manual: false, adelantadoPor: null },
+    ],
+    resumenGastos: [],
     ...over,
   };
 }
@@ -38,7 +46,7 @@ describe('CuentaDetalleComponent', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('pinta saldo y estimación', () => {
+  it('pinta saldo, estimación y el libro', () => {
     const fixture = TestBed.createComponent(CuentaDetalleComponent);
     fixture.detectChanges();
     httpMock.expectOne(`${base}/cuentas/3`).flush(detalle());
@@ -46,35 +54,47 @@ describe('CuentaDetalleComponent', () => {
     const txt = fixture.nativeElement.textContent as string;
     expect(txt).toContain('91.13');
     expect(txt).toContain('107.13');
+    expect(txt).toContain('Saldo del año anterior');
   });
 
-  it('sin puedoGestionar no muestra el botón de transferencia', () => {
+  it('sin puedoGestionar no muestra "+ Gasto / Ingreso" ni casillas', () => {
     const fixture = TestBed.createComponent(CuentaDetalleComponent);
     fixture.detectChanges();
-    httpMock.expectOne(`${base}/cuentas/3`).flush(detalle({ puedoGestionar: false, porIngresar: null }));
+    httpMock.expectOne(`${base}/cuentas/3`).flush(
+      detalle({
+        puedoGestionar: false,
+        precioCamiseta: 10,
+        penistas: [
+          { asistenciaId: 11, nombre: 'Ana', cuota: 16, estadoPago: 'PENDIENTE_PAGO', metodoPago: null, camisetaPagada: false, sudaderaPagada: false },
+        ],
+      }),
+    );
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).not.toContain('He transferido el dinero a la peña');
+    expect(fixture.nativeElement.textContent).not.toContain('+ Gasto / Ingreso');
+    expect(fixture.nativeElement.querySelector('input[type=checkbox]')).toBeFalsy();
   });
 
-  it('con porIngresar el botón abre el modal y "Sí" llama a marcarTransferido', () => {
+  it('marca la camiseta llamando a marcarRopa', () => {
     const fixture = TestBed.createComponent(CuentaDetalleComponent);
     fixture.detectChanges();
-    httpMock.expectOne(`${base}/cuentas/3`).flush(detalle({ puedoGestionar: true, porIngresar: 16 }));
+    httpMock.expectOne(`${base}/cuentas/3`).flush(
+      detalle({
+        puedoGestionar: true,
+        precioCamiseta: 10,
+        penistas: [
+          { asistenciaId: 11, nombre: 'Ana', cuota: 16, estadoPago: 'PENDIENTE_PAGO', metodoPago: null, camisetaPagada: false, sudaderaPagada: false },
+        ],
+      }),
+    );
     fixture.detectChanges();
 
-    const btn = [...fixture.nativeElement.querySelectorAll('button')].find(
-      (b: HTMLButtonElement) => b.textContent?.includes('He transferido el dinero a la peña'),
-    ) as HTMLButtonElement;
-    btn.click();
-    fixture.detectChanges();
+    const cb = fixture.nativeElement.querySelector('input[type=checkbox]') as HTMLInputElement;
+    cb.checked = true;
+    cb.dispatchEvent(new Event('change'));
 
-    const si = [...fixture.nativeElement.querySelectorAll('button')].find(
-      (b: HTMLButtonElement) => b.textContent?.trim() === 'Sí',
-    ) as HTMLButtonElement;
-    si.click();
-
-    const req = httpMock.expectOne(`${base}/cuentas/3/transferencia-a-pena`);
-    expect(req.request.method).toBe('POST');
-    req.flush(detalle({ saldo: 107.13, puedoGestionar: true, porIngresar: 0 }));
+    const req = httpMock.expectOne(`${base}/cuentas/3/asistencias/11/ropa`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ camiseta: true });
+    req.flush(detalle());
   });
 });

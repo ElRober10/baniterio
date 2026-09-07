@@ -22,8 +22,34 @@ export class CuentasService {
     return this.http.get<CuentaDetalle>(`${this.base}/cuentas/${id}`);
   }
 
-  /** El admin marca que ha ingresado en la cuenta de la peña lo cobrado por bizum/efectivo. */
+  /** El admin marca que ha ingresado en el banco lo cobrado por bizum/efectivo. */
   marcarTransferido(id: number): Observable<CuentaDetalle> {
     return this.http.post<CuentaDetalle>(`${this.base}/cuentas/${id}/transferencia-a-pena`, {});
+  }
+
+  /** Alta de un gasto o ingreso manual. `datos` es un FormData (puede llevar el recibo). */
+  crearMovimiento(id: number, datos: FormData): Observable<CuentaDetalle> {
+    return this.http.post<CuentaDetalle>(`${this.base}/cuentas/${id}/movimientos`, datos);
+  }
+
+  borrarMovimiento(movId: number): Observable<CuentaDetalle> {
+    return this.http.delete<CuentaDetalle>(`${this.base}/cuentas/movimientos/${movId}`);
+  }
+
+  /** Marca/desmarca la camiseta o la sudadera de un peñista (admin). */
+  marcarRopa(
+    cuentaId: number,
+    asistenciaId: number,
+    cambio: { camiseta?: boolean; sudadera?: boolean },
+  ): Observable<CuentaDetalle> {
+    return this.http.put<CuentaDetalle>(
+      `${this.base}/cuentas/${cuentaId}/asistencias/${asistenciaId}/ropa`,
+      cambio,
+    );
+  }
+
+  /** URL del recibo de un movimiento (se sirve por /media, nombre UUID). */
+  urlRecibo(archivo: string): string {
+    return `${this.base}/media/recibos/${archivo}`;
   }
 }

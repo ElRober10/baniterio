@@ -59,6 +59,8 @@ export class EditorEvento implements OnInit {
     fechaFin: [''],
     cuenta: ['', Validators.required],
     cuotaCubatas: [''],
+    precioCamiseta: [''],
+    precioSudadera: [''],
   });
 
   ngOnInit(): void {
@@ -79,6 +81,8 @@ export class EditorEvento implements OnInit {
             fechaFin: e.fechaFin ?? '',
             cuenta: String(e.cuenta.id),
             cuotaCubatas: e.cuotaCubatas != null ? String(e.cuotaCubatas) : '',
+            precioCamiseta: e.precioCamiseta != null ? String(e.precioCamiseta) : '',
+            precioSudadera: e.precioSudadera != null ? String(e.precioSudadera) : '',
           }),
         error: () => this.error.set('No se ha podido cargar el evento.'),
       });
@@ -102,6 +106,11 @@ export class EditorEvento implements OnInit {
     if (!cubatas.valido) {
       return;
     }
+    const camiseta = this.numeroCuota(v.precioCamiseta, 'camiseta');
+    const sudadera = this.numeroCuota(v.precioSudadera, 'sudadera');
+    if (!camiseta.valido || !sudadera.valido) {
+      return;
+    }
 
     const body: GuardarEventoRequest = {
       nombre: v.nombre.trim(),
@@ -112,6 +121,8 @@ export class EditorEvento implements OnInit {
       cuentaId: cuentaNueva ? null : Number(v.cuenta),
       cuentaNueva,
       cuotaCubatas: cubatas.valor,
+      precioCamiseta: camiseta.valor,
+      precioSudadera: sudadera.valor,
     };
     if (body.fechaFin && body.fechaFin < body.fecha) {
       this.error.set('La fecha de fin no puede ser anterior a la de inicio.');
