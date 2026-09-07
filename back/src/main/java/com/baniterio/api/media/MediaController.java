@@ -17,13 +17,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class MediaController {
 
     private static final Pattern NOMBRE_FOTO = Pattern.compile("^[0-9a-fA-F-]{36}\\.jpg$");
+    private static final Pattern NOMBRE_RECIBO = Pattern.compile("^[0-9a-fA-F-]{36}\\.(pdf|jpg|png)$");
 
     private final CatalogoAvatares catalogo;
     private final AlmacenImagenes almacen;
+    private final AlmacenRecibos recibos;
 
-    public MediaController(CatalogoAvatares catalogo, AlmacenImagenes almacen) {
+    public MediaController(CatalogoAvatares catalogo, AlmacenImagenes almacen, AlmacenRecibos recibos) {
         this.catalogo = catalogo;
         this.almacen = almacen;
+        this.recibos = recibos;
     }
 
     @GetMapping("/avatares/{id}.png")
@@ -48,6 +51,19 @@ public class MediaController {
                 .map(bytes -> ResponseEntity.ok()
                         .contentType(MediaType.IMAGE_JPEG)
                         .cacheControl(CacheControl.maxAge(Duration.ofDays(7)).cachePublic())
+                        .body(bytes))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/recibos/{archivo}")
+    ResponseEntity<byte[]> recibo(@PathVariable String archivo) {
+        if (!NOMBRE_RECIBO.matcher(archivo).matches()) {
+            return ResponseEntity.badRequest().build();
+        }
+        return recibos.leer(archivo)
+                .map(bytes -> ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(AlmacenRecibos.contentTypeDe(archivo)))
+                        .cacheControl(CacheControl.maxAge(Duration.ofDays(7)).cachePrivate())
                         .body(bytes))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }

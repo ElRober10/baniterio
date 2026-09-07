@@ -19,6 +19,7 @@ public record EventoDetalle(Long id, String nombre, String descripcion, String l
                             BigDecimal cuotaCubatas, BigDecimal cuotaCervezas,
                             BigDecimal cuotaCubatas1Dia, BigDecimal cuotaCervezas1Dia,
                             BigDecimal cuotaEmbarazada,
+                            BigDecimal precioCamiseta, BigDecimal precioSudadera,
                             CreadoPor creadoPor,
                             boolean puedoEditar, boolean puedoBorrar, boolean oculto,
                             AsistenciaDetalle asistencia) {

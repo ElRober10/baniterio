@@ -4,13 +4,18 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * Detalle de una cuenta. {@code saldo} = suma del libro; {@code estimacion} = lo
- * que habrá cuando todos paguen. {@code porIngresar} (lo que el admin ha cobrado
- * y aún no ha pasado a la cuenta) es {@code null} si {@code !puedoGestionar}.
+ * Detalle de una cuenta, la hoja completa: cabecera con el saldo, tabla de
+ * peñistas (quién ha pagado), libro de movimientos con saldo corriente y resumen
+ * de gastos por categoría. Los campos de admin ({@code cobradoSinIngresar}) van a
+ * {@code null} si {@code !puedoGestionar}.
  */
 public record CuentaDetalle(
         Long id, String nombre, String descripcion,
-        BigDecimal saldo, BigDecimal estimacion,
+        BigDecimal saldo, BigDecimal estimacion, BigDecimal cobradoSinIngresar,
+        boolean puedoGestionar,
+        BigDecimal precioCamiseta, BigDecimal precioSudadera,
+        List<PenistaCuota> penistas,
+        BigDecimal totalCuotas, BigDecimal totalCobrado,
         List<MovimientoFila> movimientos,
-        boolean puedoGestionar, BigDecimal porIngresar) {
+        List<ResumenGasto> resumenGastos) {
 }

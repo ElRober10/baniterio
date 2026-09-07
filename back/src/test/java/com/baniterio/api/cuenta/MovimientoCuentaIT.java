@@ -65,7 +65,7 @@ class MovimientoCuentaIT extends IntegrationTest {
     @AfterEach
     void limpiar() {
         movimientos.deleteAll(movimientos.findAll().stream()
-                .filter(m -> m.getFichaAsistenciaId() != null).toList());
+                .filter(m -> m.getOrigen() != OrigenMovimiento.SALDO_INICIAL).toList());
         pagos.deleteAllInBatch();
         fichas.deleteAllInBatch();
         asistencias.deleteAllInBatch();
@@ -161,7 +161,7 @@ class MovimientoCuentaIT extends IntegrationTest {
                 .jsonPath("$.saldo").isEqualTo(91.13)
                 .jsonPath("$.movimientos.length()").isEqualTo(1)
                 .jsonPath("$.puedoGestionar").isEqualTo(false)
-                .jsonPath("$.porIngresar").doesNotExist();
+                .jsonPath("$.cobradoSinIngresar").doesNotExist();
     }
 
     @Test
@@ -192,12 +192,12 @@ class MovimientoCuentaIT extends IntegrationTest {
                 .exchange().expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.saldo").isEqualTo(107.13)
-                .jsonPath("$.porIngresar").isEqualTo(0.0)
+                .jsonPath("$.cobradoSinIngresar").isEqualTo(0.0)
                 .jsonPath("$.movimientos.length()").isEqualTo(2);
     }
 
     @Test
-    void confirmar_bizum_sube_por_ingresar_no_el_saldo_y_marcar_transferido_lo_pasa() {
+    void confirmar_bizum_sube_el_saldo_y_el_aviso_y_marcar_transferido_solo_apaga_el_aviso() {
         Sesion admin = crearMiembro(RolMembresia.ADMIN);
         Sesion penista = crearMiembro(RolMembresia.MIEMBRO);
         Evento e = sanMiguel();
@@ -209,15 +209,85 @@ class MovimientoCuentaIT extends IntegrationTest {
                 .header(AUTHORIZATION, "Bearer " + admin.token())
                 .exchange().expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.saldo").isEqualTo(91.13)
-                .jsonPath("$.porIngresar").isEqualTo(16.0);
+                .jsonPath("$.saldo").isEqualTo(107.13)
+                .jsonPath("$.cobradoSinIngresar").isEqualTo(16.0);
 
         http.post().uri("/api/v1/cuentas/" + cuentaSanMiguelId() + "/transferencia-a-pena")
                 .header(AUTHORIZATION, "Bearer " + admin.token())
                 .exchange().expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.saldo").isEqualTo(107.13)
-                .jsonPath("$.porIngresar").isEqualTo(0.0);
+                .jsonPath("$.cobradoSinIngresar").isEqualTo(0.0);
+    }
+
+    @Test
+    void gasto_con_recibo_aparece_en_el_libro_baja_el_saldo_y_se_puede_borrar() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Long cuentaId = cuentaSanMiguelId();
+
+        var form = new org.springframework.util.LinkedMultiValueMap<String, Object>();
+        form.add("tipo", "GASTO");
+        form.add("concepto", "Cerveza y Coca-Colas");
+        form.add("importe", "24.33");
+        form.add("categoria", "CERVEZA_Y_TINTO");
+        form.add("recibo", new org.springframework.core.io.ByteArrayResource("%PDF-1.4 test".getBytes()) {
+            @Override public String getFilename() {
+                return "ticket.pdf";
+            }
+        });
+
+        http.post().uri("/api/v1/cuentas/" + cuentaId + "/movimientos")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA)
+                .body(form)
+                .exchange().expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.saldo").isEqualTo(66.8)
+                .jsonPath("$.movimientos[1].concepto").isEqualTo("Cerveza y Coca-Colas")
+                .jsonPath("$.movimientos[1].reciboArchivo").isNotEmpty()
+                .jsonPath("$.movimientos[1].manual").isEqualTo(true)
+                .jsonPath("$.resumenGastos[0].categoria").isEqualTo("Cerveza y tinto");
+
+        Long movId = movimientos.findByCuentaIdOrderByFechaAscIdAsc(cuentaId).stream()
+                .filter(m -> m.getOrigen() == com.baniterio.api.identidad.OrigenMovimiento.GASTO)
+                .findFirst().orElseThrow().getId();
+
+        http.method(org.springframework.http.HttpMethod.DELETE)
+                .uri("/api/v1/cuentas/movimientos/" + movId)
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.saldo").isEqualTo(91.13);
+    }
+
+    @Test
+    void marcar_camiseta_sin_precio_es_409_y_con_precio_suma_al_saldo() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Sesion penista = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sanMiguel();
+        Long asisId = apuntarConFicha(penista, e.getId());
+
+        http.put().uri("/api/v1/cuentas/" + cuentaSanMiguelId() + "/asistencias/" + asisId + "/ropa")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("camiseta", true))
+                .exchange().expectStatus().isEqualTo(409)
+                .expectBody().jsonPath("$.codigo").isEqualTo("SIN_PRECIO_ROPA");
+
+        eventos.findById(e.getId()).ifPresent(ev -> {
+            ev.setPrecioCamiseta(new BigDecimal("12.00"));
+            eventos.save(ev);
+        });
+
+        http.put().uri("/api/v1/cuentas/" + cuentaSanMiguelId() + "/asistencias/" + asisId + "/ropa")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("camiseta", true))
+                .exchange().expectStatus().isOk();
+
+        http.get().uri("/api/v1/cuentas/" + cuentaSanMiguelId())
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .exchange().expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.saldo").isEqualTo(103.13)
+                .jsonPath("$.penistas[0].camisetaPagada").isEqualTo(true);
     }
 
     @Test

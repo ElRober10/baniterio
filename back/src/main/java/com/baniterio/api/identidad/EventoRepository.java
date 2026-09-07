@@ -64,6 +64,9 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
     List<Evento> pendientesRespuesta(@Param("penaId") Long penaId,
             @Param("usuarioId") Long usuarioId, @Param("hoy") LocalDate hoy);
 
+    /** Todos los eventos de una cuenta (todos los años). Lo usa {@code CuentaService} para el precio de la ropa. */
+    List<Evento> findByCuentaId(Long cuentaId);
+
     /** Eventos ocultos ("borrados") de la peña, para poder recuperarlos. Más recientes primero. */
     @Query("""
             select e from Evento e
