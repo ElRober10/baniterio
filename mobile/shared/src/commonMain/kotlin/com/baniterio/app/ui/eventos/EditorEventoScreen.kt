@@ -70,6 +70,8 @@ fun EditorEventoScreen(
     var fecha by remember { mutableStateOf("") }
     var fechaFin by remember { mutableStateOf("") }
     var cuotaCubatas by remember { mutableStateOf("") }
+    var precioCamiseta by remember { mutableStateOf("") }
+    var precioSudadera by remember { mutableStateOf("") }
     var cuentas by remember { mutableStateOf<List<CuentaResumen>>(emptyList()) }
     // Cuenta elegida: un id de cuenta existente, o `cuentaNueva` para crear una
     // con el nombre del evento. Nunca las dos a la vez.
@@ -97,6 +99,8 @@ fun EditorEventoScreen(
                 fecha = r.dato.fecha
                 fechaFin = r.dato.fechaFin ?: ""
                 cuotaCubatas = r.dato.cuotaCubatas?.let { formatoImporte(it) } ?: ""
+                precioCamiseta = r.dato.precioCamiseta?.let { formatoImporte(it) } ?: ""
+                precioSudadera = r.dato.precioSudadera?.let { formatoImporte(it) } ?: ""
                 cuentaId = r.dato.cuenta.id
                 cuentaNueva = false
                 estado = EstadoEditorEvento.Listo
@@ -157,6 +161,8 @@ fun EditorEventoScreen(
                 cuentaId = if (cuentaNueva) null else cuentaId,
                 cuentaNueva = cuentaNueva,
                 cuotaCubatas = cubatas,
+                precioCamiseta = numeroCuota(precioCamiseta, "camiseta"),
+                precioSudadera = numeroCuota(precioSudadera, "sudadera"),
             )
             val r = if (eventoId != null) eventosRepo.editar(eventoId, req) else eventosRepo.crear(req)
             when (r) {
@@ -237,6 +243,18 @@ fun EditorEventoScreen(
                         OutlinedTextField(
                             value = cuotaCubatas, onValueChange = { cuotaCubatas = it },
                             label = { Text("Cubatas €") }, singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedTextField(
+                            value = precioCamiseta, onValueChange = { precioCamiseta = it },
+                            label = { Text("Precio camiseta €") }, singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedTextField(
+                            value = precioSudadera, onValueChange = { precioSudadera = it },
+                            label = { Text("Precio sudadera €") }, singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             modifier = Modifier.fillMaxWidth(),
                         )

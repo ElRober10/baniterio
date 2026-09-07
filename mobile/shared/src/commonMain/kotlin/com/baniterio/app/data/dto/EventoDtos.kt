@@ -149,6 +149,8 @@ data class EventoDetalle(
     val cuotaCubatas1Dia: Double? = null,
     val cuotaCervezas1Dia: Double? = null,
     val cuotaEmbarazada: Double? = null,
+    val precioCamiseta: Double? = null,
+    val precioSudadera: Double? = null,
     val creadoPor: CreadoPor? = null,
     val puedoEditar: Boolean,
     val puedoBorrar: Boolean,
@@ -281,6 +283,8 @@ data class GuardarEventoRequest(
      * admin/superadmin.
      */
     val cuotaCubatas: Double? = null,
+    val precioCamiseta: Double? = null,
+    val precioSudadera: Double? = null,
 )
 
 /** Fila del bloque de administración "Solicitudes de evento". */
