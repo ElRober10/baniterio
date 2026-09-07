@@ -34,6 +34,31 @@ describe('CuentasService', () => {
     service.detalle(3).subscribe();
     const req = httpMock.expectOne(`${base}/cuentas/3`);
     expect(req.request.method).toBe('GET');
-    req.flush({ id: 3, nombre: 'San Miguel', descripcion: null });
+    req.flush({
+      id: 3,
+      nombre: 'San Miguel',
+      descripcion: null,
+      saldo: 91.13,
+      estimacion: 91.13,
+      movimientos: [],
+      puedoGestionar: false,
+      porIngresar: null,
+    });
+  });
+
+  it('marcarTransferido() hace POST a /cuentas/:id/transferencia-a-pena', () => {
+    service.marcarTransferido(3).subscribe();
+    const req = httpMock.expectOne(`${base}/cuentas/3/transferencia-a-pena`);
+    expect(req.request.method).toBe('POST');
+    req.flush({
+      id: 3,
+      nombre: 'San Miguel',
+      descripcion: null,
+      saldo: 117.13,
+      estimacion: 117.13,
+      movimientos: [],
+      puedoGestionar: true,
+      porIngresar: 0,
+    });
   });
 });

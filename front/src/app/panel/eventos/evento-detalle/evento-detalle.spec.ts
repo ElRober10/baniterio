@@ -148,6 +148,7 @@ describe('EventoDetalleComponent', () => {
       cuota: 16,
       cuotaPendiente: false,
       bebidaPendiente: false,
+      estadoPago: 'PENDIENTE_PAGO',
     };
     responder({
       asistencia: {
@@ -177,7 +178,7 @@ describe('EventoDetalleComponent', () => {
       cuota: 16,
       cuotaPendiente: false,
       bebidaPendiente: false,
-      pagado: true,
+      estadoPago: 'CONFIRMADO_EN_CUENTA',
       metodoPago: 'BIZUM',
       pagadoPor: 'Jefe',
       pagadoAt: '2026-09-07T10:00:00Z',
@@ -220,7 +221,7 @@ describe('EventoDetalleComponent', () => {
       cuota: 16,
       cuotaPendiente: false,
       bebidaPendiente: false,
-      pagado: false,
+      estadoPago: 'DECLARADO',
       metodoPago: null,
       pagadoPor: null,
       pagadoAt: null,

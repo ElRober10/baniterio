@@ -358,6 +358,11 @@
                 }.
               </p>
               <p class="mt-2 text-sm">Has pagado por <strong>{{ metodoPagoTexto() }}</strong>.</p>
+              @if (pagoPendienteDeIngreso()) {
+                <p class="mt-2 text-sm text-muted">
+                  Pendiente de ingresar en la cuenta de la peña.
+                </p>
+              }
               <button
                 type="button"
                 (click)="modalPagoInfo.set(false)"

@@ -49,15 +49,15 @@
                     </span>
                     <span class="shrink-0 text-sm font-bold text-gold-soft">
                       {{ a.cuota != null ? a.cuota + ' €' : 'sin cuota' }} ·
-                      {{ a.pagado ? 'pagado' : a.declarado ? 'declarado' : 'pendiente' }}
-                      @if (a.pagado && a.metodoPago) {
+                      {{ estadoPagoTexto(a.estadoPago) }}
+                      @if (confirmado(a) && a.metodoPago) {
                         · {{ metodoTexto[a.metodoPago] }}
                       }
                     </span>
                   </div>
                   <p class="mt-1 text-xs text-muted">{{ bebidaTexto(a) }}</p>
                   @if (d.puedoConfirmarPagos && a.cuota != null) {
-                    @if (!a.pagado) {
+                    @if (!confirmado(a)) {
                       <button
                         type="button"
                         (click)="abrirConfirmar(a)"

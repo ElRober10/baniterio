@@ -44,15 +44,24 @@ export class EventoDetalleComponent implements OnInit {
   protected readonly modalPagoDeclarado = signal(false);
   private readonly id = Number(this.route.snapshot.paramMap.get('id'));
 
-  /** El pago del peñista ya lo confirmó un administrador. */
+  private readonly estadoPago = computed(
+    () => this.evento()?.asistencia.ficha.miFicha?.estadoPago ?? null,
+  );
+
+  /** El pago del peñista ya lo confirmó un administrador (esté ya en la cuenta o no). */
   protected readonly pagoConfirmado = computed(
-    () => !!this.evento()?.asistencia.ficha.miFicha?.pagado,
+    () =>
+      this.estadoPago() === 'CONFIRMADO_EN_CUENTA' ||
+      this.estadoPago() === 'CONFIRMADO_PENDIENTE_ENVIO',
+  );
+
+  /** El admin ya lo confirmó, pero aún no ha pasado el dinero a la cuenta de la peña. */
+  protected readonly pagoPendienteDeIngreso = computed(
+    () => this.estadoPago() === 'CONFIRMADO_PENDIENTE_ENVIO',
   );
 
   /** Hay una declaración de pago propia esperando a que un admin la confirme. */
-  protected readonly pagoDeclaradoPendiente = computed(
-    () => this.evento()?.asistencia.ficha.miFicha?.miPagoDeclarado?.estado === 'PENDIENTE',
-  );
+  protected readonly pagoDeclaradoPendiente = computed(() => this.estadoPago() === 'DECLARADO');
 
   /** La última declaración propia se rechazó y la cuota sigue sin pagar. */
   protected readonly pagoRechazado = computed(
