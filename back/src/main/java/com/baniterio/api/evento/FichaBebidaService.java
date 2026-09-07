@@ -210,6 +210,11 @@ public class FichaBebidaService {
                 re.getId(), re.getNombre(),
                 f.getAlternativa().name(), f.getCervezaEspecial(),
                 f.isEmbarazada(), f.isAsisteDia1(), f.isAsisteDia2(),
-                f.getModalidad().name(), f.getCuota(), f.getCuota() == null, bebidaPendiente);
+                f.getModalidad().name(), f.getCuota(), f.getCuota() == null, bebidaPendiente,
+                f.isPagado(),
+                f.isPagado() && f.getMetodoPago() != null ? f.getMetodoPago().name() : null,
+                f.isPagado() && f.getPagadoConfirmadoPor() != null
+                        ? f.getPagadoConfirmadoPor().getNombre() : null,
+                f.isPagado() ? f.getPagadoAt() : null);
     }
 }

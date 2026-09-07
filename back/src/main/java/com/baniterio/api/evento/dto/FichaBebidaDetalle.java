@@ -1,6 +1,7 @@
 package com.baniterio.api.evento.dto;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -12,9 +13,14 @@ import java.util.List;
  */
 public record FichaBebidaDetalle(boolean llevaFicha, List<LocalDate> diasEvento, MiFicha miFicha) {
 
+    /**
+     * Si {@code pagado}, van rellenos {@code metodoPago}, {@code pagadoPor}
+     * (nombre de quien lo confirmó) y {@code pagadoAt}.
+     */
     public record MiFicha(Long alcoholBebidaId, String alcohol, Long refrescoBebidaId, String refresco,
                           String alternativa, String cervezaEspecial, boolean embarazada,
                           boolean asisteDia1, boolean asisteDia2, String modalidad,
-                          BigDecimal cuota, boolean cuotaPendiente, boolean bebidaPendiente) {
+                          BigDecimal cuota, boolean cuotaPendiente, boolean bebidaPendiente,
+                          boolean pagado, String metodoPago, String pagadoPor, Instant pagadoAt) {
     }
 }
