@@ -1,378 +1,222 @@
-# Saldo de cuentas, estados de pago y libro de movimientos
+# Saldo de cuentas: hoja tipo Excel, estados de pago, movimientos, ropa y recibos
 
-**Fecha:** 2026-09-07
-**Estado:** aprobado, pendiente de plan
-**Depende de:** V27 (`pago_declarado`), V26 (`ficha_bebida` pago), sección Cuentas (listar/detalle), sección admin "Confirmar pagos".
+**Fecha:** 2026-09-07 (rev. 2)
+**Estado:** aprobado, en implementación en `feature/saldo-cuentas`
+**Depende de:** V27 (`pago_declarado`), V26 (`ficha_bebida` pago), sección Cuentas, media (`AlmacenImagenes`, `${app.media.dir}`).
 
-## Contexto
+## Contexto y qué cambia respecto a la rev. 1
 
-La sección Cuentas hoy solo lista las cuentas de la peña y muestra nombre y
-descripción; el detalle dice "los movimientos todavía están en construcción". El
-pago de la cuota de San Miguel se modeló en dos capas: `ficha_bebida.pagado`
-(booleano, lo confirma un admin) y `pago_declarado` (el peñista declara que ha
-pagado y un admin confirma o rechaza).
+La rev. 1 (commits `a204980`, `d0823dd`, `7f5424d`, `9543fab`) añadió `movimiento_cuenta`,
+`ficha_bebida.estado_pago` de 4 niveles y una vista de cuenta con saldo + estimación + lista de
+movimientos. El usuario la rechazó: (1) el saldo no reflejaba los pagos confirmados por
+bizum/efectivo (se quedaban en `CONFIRMADO_PENDIENTE_ENVIO`, fuera del saldo hasta pulsar "He
+transferido"); (2) la vista no se parece a su Excel — no se ve de un vistazo quién ha pagado ni en
+qué se ha gastado el dinero.
 
-Falta lo que da sentido a todo: un **saldo real** por cuenta, que solo sube
-cuando el dinero está de verdad en la cuenta bancaria de la peña, y la distinción
-entre "el admin ha recibido el bizum" y "el admin ya lo ha pasado a la cuenta de
-la peña". El tesorero lleva esto en un Excel cuya columna central es un **saldo
-corriente** que arranca con lo que sobró el año pasado (91,13 €) y va cambiando
-fila a fila.
+**Esta revisión, sobre lo ya hecho:**
 
-## Objetivo
+1. **El saldo cuenta todo pago confirmado**, sea el método que sea. Confirmar = línea en el libro.
+   `CONFIRMADO_PENDIENTE_ENVIO` sigue existiendo pero es solo un aviso ("tienes X € en efectivo/bizum
+   sin llevar al banco"); "He transferido el dinero a la peña" apaga el aviso y **no cambia el saldo**.
+2. **La vista de la cuenta se rehace** como la hoja del Excel: tres bloques — cabecera con el saldo,
+   tabla de **peñistas** (quién ha pagado cuota / camiseta / sudadera), tabla de **movimientos** con
+   entra/sale/saldo corriente, y resumen de gastos por categoría.
+3. **Ropa por peñista**: `precio_camiseta` / `precio_sudadera` en el evento; casilla
+   `camiseta_pagada` / `sudadera_pagada` por peñista que marca el admin; marcarla mete un ingreso en
+   el libro.
+4. **Gastos e ingresos manuales** con categoría y **recibo** adjunto (PDF/JPG/PNG).
 
-1. Estado de pago de la cuota con cuatro niveles, no un booleano.
-2. Saldo por cuenta = saldo inicial + cuotas que ya están en la cuenta de la peña.
-3. Bolsa "por ingresar": lo que el admin ha cobrado por bizum/efectivo y todavía
-   no ha transferido a la peña, con un botón para marcarlo como transferido de
-   golpe.
-4. Estimación: lo que habrá cuando todos paguen (cuenta desde que la gente dice
-   que va y qué bebe).
-5. Libro de movimientos por cuenta, con saldo corriente, al estilo del Excel.
+## Modelo de datos — migración V29 (sobre V28)
 
-**Fuera de esta tanda:** merchandising (camiseta/sudadera), gastos manuales,
-ajustes de saldo por la UI, y todo el inventario/lista de la compra del Excel.
-Los gastos entrarán como movimientos negativos sin rediseñar nada.
+```sql
+-- Amplía los orígenes del libro y añade categoría, recibo y quién lo adelantó.
+ALTER TABLE movimiento_cuenta DROP CONSTRAINT ck_movimiento_origen;
+ALTER TABLE movimiento_cuenta ADD CONSTRAINT ck_movimiento_origen
+    CHECK (origen IN ('SALDO_INICIAL', 'CUOTA', 'CAMISETA', 'SUDADERA',
+                      'GASTO', 'INGRESO', 'AJUSTE'));
+ALTER TABLE movimiento_cuenta ADD COLUMN categoria      VARCHAR(24);
+ALTER TABLE movimiento_cuenta ADD COLUMN recibo_archivo VARCHAR(80);
+ALTER TABLE movimiento_cuenta ADD COLUMN adelantado_por BIGINT REFERENCES usuario (id) ON DELETE SET NULL;
 
-## Máquina de estados de la cuota
+-- Precio de la ropa por evento (lo fija el admin, como las cuotas).
+ALTER TABLE evento ADD COLUMN precio_camiseta NUMERIC(7,2);
+ALTER TABLE evento ADD COLUMN precio_sudadera NUMERIC(7,2);
 
-El estado vive en `ficha_bebida.estado_pago`. Es la única fuente de verdad del
-estado actual; `pago_declarado` sigue guardando el registro de cada declaración
-(importe, método, a quién cubre, quién y cuándo la resolvió).
+-- Ropa pagada por peñista.
+ALTER TABLE ficha_bebida ADD COLUMN camiseta_pagada BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE ficha_bebida ADD COLUMN sudadera_pagada BOOLEAN NOT NULL DEFAULT false;
+```
 
-| Estado | Significado | ¿Suma al saldo? | ¿En estimación? |
-|---|---|---|---|
-| `PENDIENTE_PAGO` | Dijo que va, cuota fijada, no ha pagado | No | Sí |
-| `DECLARADO` | El peñista pulsó "he pagado", espera al admin | No | Sí |
-| `CONFIRMADO_PENDIENTE_ENVIO` | El admin recibió el bizum/efectivo, aún no lo pasó a la peña | No (va a "por ingresar") | Sí |
-| `CONFIRMADO_EN_CUENTA` | El dinero está en la cuenta bancaria de la peña | **Sí** | Sí |
+- `movimiento_cuenta.importe`: sigue siendo `+` entra / `−` sale. `CUOTA`, `CAMISETA`, `SUDADERA`,
+  `INGRESO` positivos; `GASTO` negativo; `SALDO_INICIAL`/`AJUSTE` cualquiera.
+- `ux_movimiento_ficha` (único por `ficha_asistencia_id`) **se elimina** — ahora una ficha puede
+  tener 3 movimientos (cuota, camiseta, sudadera). Se sustituye por un único parcial por
+  `(ficha_asistencia_id, origen)`:
+  ```sql
+  DROP INDEX ux_movimiento_ficha;
+  CREATE UNIQUE INDEX ux_movimiento_ficha_origen
+      ON movimiento_cuenta (ficha_asistencia_id, origen) WHERE ficha_asistencia_id IS NOT NULL;
+  ```
+- Categorías (enum en código, no en BBDD): `REFRESCOS, CERVEZA_Y_TINTO, ALCOHOL, COMIDA, HIELOS,
+  MENAJE, ROPA, OTROS`. Solo aplican a `GASTO`/`INGRESO`.
 
-Etiquetas para la UI:
+## Máquina de estados de la cuota (sin cambios de rev.1 salvo el saldo)
 
-- `PENDIENTE_PAGO` → "Pendiente de pago"
-- `DECLARADO` → "Pagado, pendiente de confirmar"
-- `CONFIRMADO_PENDIENTE_ENVIO` → "Confirmado, pendiente de ingresar en la cuenta"
-- `CONFIRMADO_EN_CUENTA` → "Confirmado y en la cuenta"
-
-### Transiciones
-
-| Disparador | Origen | Destino | Efecto extra |
-|---|---|---|---|
-| Se fija la cuota de la ficha | (sin estado) | `PENDIENTE_PAGO` | — |
-| Peñista declara el pago | `PENDIENTE_PAGO` | `DECLARADO` (todas las fichas cubiertas) | crea `pago_declarado` PENDIENTE, push a admins |
-| Peñista anula su declaración | `DECLARADO` | `PENDIENTE_PAGO` | borra `pago_declarado` |
-| Admin rechaza la declaración | `DECLARADO` | `PENDIENTE_PAGO` | `pago_declarado` RECHAZADA, push al peñista |
-| Admin confirma la declaración, método = `TRANSFERENCIA` | `DECLARADO` | `CONFIRMADO_EN_CUENTA` | `pago_declarado` CONFIRMADA; un movimiento `CUOTA` por ficha |
-| Admin confirma la declaración, método = `BIZUM`/`EFECTIVO` | `DECLARADO` | `CONFIRMADO_PENDIENTE_ENVIO` | `pago_declarado` CONFIRMADA |
-| Atajo del admin en el modal Asistentes, método = `TRANSFERENCIA` | cualquiera salvo `CONFIRMADO_EN_CUENTA` | `CONFIRMADO_EN_CUENTA` | cierra `pago_declarado` PENDIENTE que la cubriera; movimiento `CUOTA` |
-| Atajo del admin en el modal Asistentes, método = `BIZUM`/`EFECTIVO` | cualquiera salvo `CONFIRMADO_EN_CUENTA` | `CONFIRMADO_PENDIENTE_ENVIO` | cierra `pago_declarado` PENDIENTE que la cubriera |
-| Admin: "He transferido el dinero a la peña" (por cuenta) | `CONFIRMADO_PENDIENTE_ENVIO` (todas las de esa cuenta) | `CONFIRMADO_EN_CUENTA` | un movimiento `CUOTA` por cada ficha |
-| Admin deshace el pago | `CONFIRMADO_*` | `PENDIENTE_PAGO` | si había movimiento de esa ficha, se borra |
-
-El método lo elige el peñista al declarar y el admin al usar el atajo; en ambos
-casos el reparto entre los dos estados "confirmado" es automático.
+`ficha_bebida.estado_pago` sigue con `PENDIENTE_PAGO / DECLARADO / CONFIRMADO_PENDIENTE_ENVIO /
+CONFIRMADO_EN_CUENTA`. Transiciones iguales, **con un cambio**: al confirmar (declaración o atajo
+del admin), se crea el movimiento `CUOTA` **siempre**, no solo si el método es transferencia. El
+estado destino sigue dependiendo del método (`TRANSFERENCIA` → `CONFIRMADO_EN_CUENTA`;
+`BIZUM`/`EFECTIVO` → `CONFIRMADO_PENDIENTE_ENVIO`) pero solo para el aviso "sin ingresar".
+`marcarTransferido` pasa las fichas `PENDIENTE_ENVIO` → `EN_CUENTA` y **no crea movimientos**
+(ya existen). `deshacerPago` / rechazo / anulación borran el movimiento `CUOTA` de esa ficha.
 
 ## Fórmulas
 
-Todas por cuenta. Una cuenta agrupa varios eventos (uno por año); el dinero es
-acumulado.
-
-- **Saldo** = `SUM(movimiento_cuenta.importe)` de esa cuenta.
-- **Por ingresar** (solo lo ve el admin) = `SUM(ficha.cuota)` de las fichas en
-  `CONFIRMADO_PENDIENTE_ENVIO` cuyos eventos pertenecen a esa cuenta.
-- **Estimación** = saldo + `SUM(ficha.cuota)` de las fichas con cuota de
-  asistentes `APUNTADO` o `EN_DUDA` en eventos de esa cuenta que **todavía no
-  están** en `CONFIRMADO_EN_CUENTA` (esas ya están dentro del saldo). Es decir:
-  lo que hay en la cuenta más lo que falta por entrar cuando todos paguen.
-
-La estimación no resta gastos porque todavía no hay gastos; cuando los haya, ya
-van restados en el saldo (movimientos negativos) y se descontarán además los
-gastos previstos.
-
-## Modelo de datos — migración V28
-
-### `movimiento_cuenta` (nueva)
-
-```sql
-CREATE TABLE movimiento_cuenta (
-    id                  BIGINT       GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-    cuenta_id           BIGINT       NOT NULL REFERENCES cuenta (id) ON DELETE CASCADE,
-    concepto            VARCHAR(200) NOT NULL,
-    importe             NUMERIC(9,2) NOT NULL,          -- + ingreso, - gasto
-    fecha               DATE         NOT NULL DEFAULT current_date,
-    origen              VARCHAR(16)  NOT NULL,
-    ficha_asistencia_id BIGINT       REFERENCES ficha_bebida (asistencia_id) ON DELETE SET NULL,
-    creado_por          BIGINT       REFERENCES usuario (id) ON DELETE SET NULL,
-    created_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    CONSTRAINT ck_movimiento_origen CHECK (origen IN ('SALDO_INICIAL', 'CUOTA', 'AJUSTE'))
-);
-CREATE INDEX ix_movimiento_cuenta ON movimiento_cuenta (cuenta_id, fecha, id);
-CREATE UNIQUE INDEX ux_movimiento_ficha
-    ON movimiento_cuenta (ficha_asistencia_id) WHERE ficha_asistencia_id IS NOT NULL;
-```
-
-Semilla del saldo inicial de San Miguel (idempotente por el índice único no
-sirve porque `ficha_asistencia_id` es NULL; se usa `NOT EXISTS`):
-
-```sql
-INSERT INTO movimiento_cuenta (cuenta_id, concepto, importe, fecha, origen)
-SELECT c.id, 'Saldo del año anterior', 91.13, DATE '2026-01-01', 'SALDO_INICIAL'
-FROM cuenta c
-JOIN pena p ON p.id = c.pena_id
-WHERE p.slug = 'baniterio' AND c.nombre = 'San Miguel'
-  AND NOT EXISTS (
-      SELECT 1 FROM movimiento_cuenta m
-      WHERE m.cuenta_id = c.id AND m.origen = 'SALDO_INICIAL'
-  );
-```
-
-### `ficha_bebida.estado_pago` (sustituye a `pagado`)
-
-```sql
-ALTER TABLE ficha_bebida ADD COLUMN estado_pago VARCHAR(28) NOT NULL DEFAULT 'PENDIENTE_PAGO';
-UPDATE ficha_bebida
-   SET estado_pago = CASE WHEN pagado THEN 'CONFIRMADO_EN_CUENTA' ELSE 'PENDIENTE_PAGO' END;
-ALTER TABLE ficha_bebida DROP COLUMN pagado;
-ALTER TABLE ficha_bebida ADD CONSTRAINT ck_ficha_estado_pago
-    CHECK (estado_pago IN ('PENDIENTE_PAGO', 'DECLARADO',
-                           'CONFIRMADO_PENDIENTE_ENVIO', 'CONFIRMADO_EN_CUENTA'));
-```
-
-Se conservan `metodo_pago`, `pagado_confirmado_por`, `pagado_at` con su
-significado actual ("confirmado por / cuándo / con qué método"). Las fichas que
-en el momento de la migración tengan una `pago_declarado` PENDIENTE que las
-cubra se pueden dejar en `PENDIENTE_PAGO`; la migración no intenta reconstruir
-`DECLARADO` (entorno de desarrollo, se puede rehacer la declaración).
-
-### `pago_declarado`
-
-Sin cambios de esquema.
+- **Saldo** = `Σ movimiento_cuenta.importe` de la cuenta.
+- **Cobrado sin ingresar** (aviso, solo admin) = `Σ ficha.cuota` de fichas `CONFIRMADO_PENDIENTE_ENVIO`
+  de la cuenta. Botón "He transferido" las pasa a `EN_CUENTA`.
+- **Estimación** = saldo + `Σ ficha.cuota` de asistentes `APUNTADO`/`EN_DUDA` con cuota cuyo
+  `estado_pago` es `PENDIENTE_PAGO` o `DECLARADO` (las confirmadas ya están en el saldo) +
+  `Σ precio_camiseta/sudadera` de la ropa marcada como pendiente… **no**: la estimación solo cuenta
+  cuotas (la ropa es opcional y su recaudación va aparte). Estimación = saldo + cuotas aún sin confirmar.
 
 ## Backend
 
-### Nuevo
+### Entidades / enums
+- `OrigenMovimiento` + `CAMISETA, SUDADERA, GASTO, INGRESO`.
+- `CategoriaMovimiento` (enum nuevo, `identidad`): los 8 valores + `legible()`.
+- `MovimientoCuenta` + `CategoriaMovimiento categoria`, `String reciboArchivo`, `Usuario adelantadoPor`.
+- `Evento` + `BigDecimal precioCamiseta`, `BigDecimal precioSudadera`.
+- `FichaBebida` + `boolean camisetaPagada`, `boolean sudaderaPagada`.
 
-- **`EstadoPagoCuota`** (enum en `identidad`): los cuatro valores, con
-  `legible()` que devuelve la etiqueta de UI.
-- **`MovimientoCuenta`** (entidad) + **`MovimientoCuentaRepository`**
-  (`findByCuentaIdOrderByFechaAscIdAsc`, `existsByFichaAsistenciaId`,
-  `findByFichaAsistenciaId`).
-- **`OrigenMovimiento`** (enum): `SALDO_INICIAL`, `CUOTA`, `AJUSTE`.
-- **`MovimientoCuentaService`**: servicio fino, sin dependencias de los servicios
-  de evento (evita ciclos). API:
-  - `registrarCuota(FichaBebida ficha, Usuario admin)` — inserta un movimiento
-    `CUOTA` con `importe = ficha.cuota`, `concepto = "Cuota de " + nombre + " — " + evento.nombre`,
-    `cuenta = ficha.asistencia.evento.cuenta`, `ficha_asistencia_id = ficha.id`.
-    No hace nada si ya existe uno para esa ficha.
-  - `revertirCuota(FichaBebida ficha)` — borra el movimiento `CUOTA` de esa ficha
-    si existe.
-  - `saldo(Long cuentaId): BigDecimal`.
-- **DTOs** en `cuenta.dto`:
-  - `MovimientoFila(String concepto, BigDecimal importe, LocalDate fecha, BigDecimal saldoTras)`
-  - `CuentaDetalle(Long id, String nombre, String descripcion, BigDecimal saldo,
-    BigDecimal estimacion, List<MovimientoFila> movimientos, boolean puedoGestionar,
-    BigDecimal porIngresar)` — `porIngresar` es `null` si `!puedoGestionar`.
-- **Endpoint** `POST /api/v1/cuentas/{id}/transferencia-a-pena` → `CuentaDetalle`.
-  403 `SIN_PERMISO` si no es admin.
+### `MovimientoCuentaService`
+- `registrarCuota(ficha, admin)` — igual, idempotente por `(ficha, CUOTA)`.
+- `revertirCuota(ficha)` — igual.
+- `registrarRopa(ficha, OrigenMovimiento tipo, BigDecimal precio, Usuario admin)` /
+  `revertirRopa(ficha, tipo)` — análogos, origen `CAMISETA`/`SUDADERA`, importe `+precio`,
+  concepto "Camiseta de X" / "Sudadera de X".
+- `crearManual(Cuenta, tipo GASTO|INGRESO, concepto, importe, fecha, CategoriaMovimiento, Usuario adelantadoPor, Usuario admin, String reciboArchivo)` → devuelve el `MovimientoCuenta`.
+- `borrarManual(Long movId, Usuario admin)` — solo `GASTO`/`INGRESO`; borra el recibo del disco si lo hay.
+- `saldo(cuentaId)`.
 
-### Cambios
+### Recibos
+- `AlmacenRecibos` (media, análogo a `AlmacenImagenes`): `${app.media.dir}/recibos/`, nombre
+  `UUID.<ext>` con `ext ∈ {pdf,jpg,png}`. `guardar(byte[], contentType) → archivo`, `leer(archivo)
+  → Optional<byte[]>` + su content-type, `borrar(archivo)`, `existe`.
+- Endpoint autenticado (cualquier miembro) `GET /api/v1/cuentas/movimientos/{movId}/recibo` →
+  el fichero con su `Content-Type` (404 si el movimiento no existe o no tiene recibo).
+- Subida: parte del `POST /cuentas/{id}/movimientos` como `multipart/form-data` (campo `recibo`
+  opcional) **o** `POST /api/v1/cuentas/movimientos/{movId}/recibo` (multipart) para añadirlo/cambiarlo después.
 
-- **`FichaBebida`**: `boolean pagado` → `@Enumerated(STRING) EstadoPagoCuota estadoPago`.
-- **`FichaBebidaService.aMiFicha`**: el campo `pagado` de `MiFicha` pasa a
-  `estadoPago` (String). Se mantienen `metodoPago`, `pagadoPor`, `pagadoAt`,
-  `miPagoDeclarado`. El front decide el botón por `estadoPago`.
-- **`AsistenciaService`**:
-  - `aFila`: `AsistenteFila` deja de tener `pagado` y `declarado`; gana
-    `estadoPago` (String). `totalPagado` en `ListadoAsistentesResponse` pasa a
-    ser la suma de las cuotas en `CONFIRMADO_EN_CUENTA` o
-    `CONFIRMADO_PENDIENTE_ENVIO` (todo lo confirmado).
-  - `confirmarPago(usuarioId, eventoId, asistenciaId, metodo)`: según `metodo`,
-    deja la ficha en `CONFIRMADO_EN_CUENTA` (+ `movimientoCuenta.registrarCuota`)
-    o en `CONFIRMADO_PENDIENTE_ENVIO`. Luego `pagoDeclarado.confirmarPorAtajo`.
-  - `deshacerPago`: ficha a `PENDIENTE_PAGO` + `movimientoCuenta.revertirCuota`.
-  - Se elimina la llamada a `pagoDeclarado.asistenciasConDeclaracionPendiente`
-    (el estado se lee de la ficha).
-- **`PagoDeclaradoService`**:
-  - Inyecta `MovimientoCuentaService`.
-  - `declarar`: además de crear la `pago_declarado`, pone cada ficha cubierta en
-    `DECLARADO`.
-  - `anularMia`: fichas cubiertas de vuelta a `PENDIENTE_PAGO`.
-  - `rechazar`: fichas cubiertas de vuelta a `PENDIENTE_PAGO`.
-  - `confirmar`: por cada ficha cubierta, según `p.metodoPago`:
-    `CONFIRMADO_EN_CUENTA` (+ `registrarCuota`) o `CONFIRMADO_PENDIENTE_ENVIO`.
-  - `confirmarPorAtajo`: sin cambios de firma; solo cierra la `pago_declarado`.
-  - `miPagoDeclarado`: igual (sigue devolviendo PENDIENTE/RECHAZADA para el aviso).
-  - `asistenciasConDeclaracionPendiente`: se puede borrar si nadie más la usa.
-- **`CuentaService`**:
-  - Inyecta `MovimientoCuentaService`, `FichaBebidaRepository`,
-    `AsistenciaEventoRepository` (o consultas equivalentes), `ServicioPermisos`.
-  - `detalle(usuarioId, cuentaId)` (gana el `usuarioId`): construye `CuentaDetalle`
-    con saldo, estimación, lista de movimientos (calculando `saldoTras` acumulado),
-    y si `permisos.esAdministrador(usuarioId)` también `porIngresar`.
-  - `marcarTransferido(adminId, cuentaId)`: 403 si no admin; busca las fichas
-    `CONFIRMADO_PENDIENTE_ENVIO` de los eventos de esa cuenta, las pasa a
-    `CONFIRMADO_EN_CUENTA` y llama `registrarCuota` por cada una; devuelve el
-    detalle recalculado.
-- **`CuentaController`**: `GET /{id}` pasa el `principal.id()` al servicio; nuevo
-  `POST /{id}/transferencia-a-pena`.
-- **Consultas nuevas** en `FichaBebidaRepository`:
-  - `findByEstadoPagoAndAsistencia_Evento_Cuenta_Id(EstadoPagoCuota, Long)`
-  - fichas con cuota de asistentes APUNTADO/EN_DUDA por cuenta (para la estimación)
-    — se puede hacer con un `@Query` que una `ficha_bebida` → `asistencia_evento`
-    → `evento` filtrando por `cuenta_id` y `estado IN (APUNTADO, EN_DUDA)` y
-    `cuota IS NOT NULL`.
+### Endpoints
+- `GET /api/v1/cuentas/{id}` → `CuentaDetalle` (ver DTO abajo). Pasa `principal.id()`.
+- `POST /api/v1/cuentas/{id}/transferencia-a-pena` (admin) → `CuentaDetalle`. **Ya no crea movimientos.**
+- `POST /api/v1/cuentas/{id}/movimientos` (admin, `multipart/form-data`): campos `tipo`
+  (`GASTO`|`INGRESO`), `concepto`, `importe` (>0), `fecha` (ISO), `categoria`, `adelantadoPorId`
+  (opcional), `recibo` (fichero opcional). Para `GASTO` el importe se guarda negado. → `CuentaDetalle`.
+- `DELETE /api/v1/cuentas/movimientos/{movId}` (admin) → `CuentaDetalle` (necesita saber la cuenta:
+  se resuelve del movimiento). 409 `MOVIMIENTO_NO_MANUAL` si no es `GASTO`/`INGRESO`.
+- `PUT /api/v1/eventos/{id}/asistencias/{asisId}/ropa` (admin) body `{camiseta: bool, sudadera: bool}`
+  → pone cada flag; al pasar de false→true registra el ingreso (exige `evento.precio_*` no nulo →
+  409 `SIN_PRECIO_ROPA`), true→false lo revierte. Devuelve `ListadoAsistentesResponse` recalculado.
+- `GuardarEventoRequest` + `precioCamiseta`, `precioSudadera` (solo admin los fija; `EventoService.crear/editar`).
+  `EventoDetalle` + los dos.
 
-### Dependencias entre servicios
+### DTOs (`cuenta.dto`)
+```java
+record MovimientoFila(Long id, String concepto, String categoria, BigDecimal importe,
+                      LocalDate fecha, BigDecimal saldoTras, boolean tieneRecibo, boolean manual,
+                      String adelantadoPor) {}
 
-`MovimientoCuentaService` no depende de ningún servicio (solo repos). Lo inyectan
-`AsistenciaService`, `PagoDeclaradoService` y `CuentaService`. `PagoDeclaradoService`
-sigue sin depender de `AsistenciaService`/`FichaBebidaService`. Sin ciclos.
+record PenistaCuota(Long asistenciaId, String nombre, BigDecimal cuota, String estadoPago,
+                    String metodoPago, boolean camisetaPagada, boolean sudaderaPagada) {}
 
-## Web
+record ResumenGasto(String categoria, BigDecimal total) {}
 
-### `cuentas.types.ts`
-
-```ts
-export type EstadoPagoCuota =
-  | 'PENDIENTE_PAGO' | 'DECLARADO'
-  | 'CONFIRMADO_PENDIENTE_ENVIO' | 'CONFIRMADO_EN_CUENTA';
-
-export interface MovimientoFila {
-  concepto: string;
-  importe: number;
-  fecha: string;      // ISO date
-  saldoTras: number;
-}
-
-export interface CuentaDetalle {
-  id: number;
-  nombre: string;
-  descripcion: string | null;
-  saldo: number;
-  estimacion: number;
-  movimientos: MovimientoFila[];
-  puedoGestionar: boolean;
-  porIngresar: number | null;
-}
+record CuentaDetalle(Long id, String nombre, String descripcion,
+                     BigDecimal saldo, BigDecimal estimacion, BigDecimal cobradoSinIngresar,
+                     boolean puedoGestionar,
+                     BigDecimal precioCamiseta, BigDecimal precioSudadera,
+                     List<PenistaCuota> penistas,
+                     BigDecimal totalCuotas, BigDecimal totalCobrado,
+                     List<MovimientoFila> movimientos,
+                     List<ResumenGasto> resumenGastos) {}
 ```
+`cobradoSinIngresar`/`puedoGestionar`-dependientes van a `null` si no es admin. `penistas` = todos
+los asistentes `APUNTADO`/`EN_DUDA` con cuota de cualquier evento de la cuenta, orden: primero los
+que no han pagado, luego por nombre.
 
-`AsistenteFila`: quita `pagado`/`declarado`, añade `estadoPago: EstadoPagoCuota`.
-`FichaBebidaMia`: `pagado` → `estadoPago: EstadoPagoCuota`.
+### `AsistenteFila` / `MiFicha`
+Sin cambios respecto a rev.1 (ya llevan `estadoPago`). Se puede añadir `camisetaPagada`/`sudaderaPagada`
+a `AsistenteFila` si el modal de asistentes los muestra — **no** en esta tanda, la ropa se ve en la
+pantalla de la cuenta.
 
-### `cuentas.service.ts`
+## Web — `cuenta-detalle` rehecho
 
-- `detalle(id)` ahora devuelve `Observable<CuentaDetalle>`.
-- `marcarTransferido(id): Observable<CuentaDetalle>` — `POST .../transferencia-a-pena`.
+Tres secciones (boceto aprobado):
 
-### `cuenta-detalle`
+1. **Cabecera**: nombre, `Saldo actual` grande, `Si pagan todos` (estimación), y si admin y
+   `cobradoSinIngresar > 0`: línea + botón `He transferido al banco` (modal ¿seguro? Sí/No).
+2. **Peñistas**: tabla `nombre · cuota · estado · camiseta · sudadera`. `estado` = etiqueta de
+   `EstadoPagoCuota` (+ `· {método}` si confirmado). `camiseta`/`sudadera`: ✓/✗; si admin y hay
+   precio, son casillas que llaman a `PUT .../ropa`. Pie: `Total en cuotas: X € · cobrado: Y €`,
+   `N de M han pagado`.
+3. **Movimientos**: tabla `fecha · concepto · categoría · entra · sale · saldo`. Fila con recibo →
+   botón `📄` que hace `GET .../recibo` como *blob* (con el interceptor del token) y
+   `window.open(URL.createObjectURL(blob))`. Si admin: fila `GASTO`/`INGRESO` con botón borrar, y
+   arriba botón `+ Gasto / Ingreso` → formulario (tipo, concepto, importe, fecha, categoría,
+   "lo adelantó" opcional = select de peñistas, subir recibo `<input type=file accept=".pdf,image/*">`).
+4. **Resumen de gastos**: lista `categoría — total` (solo las que tienen gasto).
 
-Fuera el cartel de "en construcción". Layout:
+Editor de evento: dos inputs `Precio camiseta (€)` / `Precio sudadera (€)` (solo admin), como
+`cuotaCubatas`.
 
-- Cabecera: nombre + descripción (como ahora).
-- **Saldo** grande (formato `1.234,56 €`).
-- **Estimación** debajo, en tono menor: "Estimado cuando todos paguen: X €".
-- Si `puedoGestionar` y `porIngresar > 0`: tarjeta destacada
-  "Tienes X € cobrados sin ingresar en la cuenta de la peña" +
-  botón **"He transferido el dinero a la peña"**.
-  - Al pulsar: modal "¿Seguro que has hecho la transferencia?" con
-    **Sí** / **No**. "Sí" → `marcarTransferido(id)`, refresca el detalle y
-    muestra aviso "Hecho, X € ingresados".
-- **Movimientos**: tabla/lista `fecha · concepto · importe (+/-) · saldo`. El
-  más reciente arriba o abajo — abajo, como el Excel (orden ascendente, saldo
-  corriente creciente). Vacía salvo el saldo inicial → solo esa fila.
+`cuentas.types.ts`: `MovimientoFila`, `PenistaCuota`, `ResumenGasto`, `CuentaDetalle` (arriba);
+`CategoriaMovimiento` unión de strings + `CATEGORIA_TEXTO`.
+`cuentas.service.ts`: `detalle`, `marcarTransferido`, `crearMovimiento(id, FormData)`,
+`borrarMovimiento(movId)`, `marcarRopa(eventoId, asisId, {camiseta,sudadera})`,
+`urlRecibo(movId)` / `verRecibo(movId): Observable<Blob>`.
 
-### `evento-detalle`
+## Móvil — `cuenta-detalle`
 
-El botón de pago lo decide `ficha.estadoPago`:
-
-| Estado | Botón | Al pulsar |
-|---|---|---|
-| `PENDIENTE_PAGO` | "Confirmar el pago" | modal declarar pago (importe + método + a quién cubre) |
-| `DECLARADO` | "Ver mi pago declarado" | modal con el detalle + "Anular declaración" |
-| `CONFIRMADO_PENDIENTE_ENVIO` | "Ya he pagado" | modal info: "confirmado por X el …, has pagado por {método}. Pendiente de ingresar en la cuenta de la peña." |
-| `CONFIRMADO_EN_CUENTA` | "Ya he pagado" | modal info: "confirmado por X el …, has pagado por {método}." |
-
-El aviso de rechazo (`miPagoDeclarado.estado === 'RECHAZADA'`) se mantiene igual.
-
-### `modal-asistentes`
-
-La celda de estado de cada fila usa `estadoPago` con las cuatro etiquetas. El
-botón de atajo del admin ("Confirmar el pago" / sub-modal de método / "deshacer")
-se mantiene; "deshacer" aparece si el estado es cualquiera de los `CONFIRMADO_*`.
-
-### `admin/pagos`
-
-La cola sigue siendo las `pago_declarado` PENDIENTE. Se añade el método a cada
-fila para que el admin sepa si al confirmar irá a la cuenta o quedará por
-ingresar.
-
-## Móvil
-
-Espejo de lo anterior:
-
-- `data/dto`: `FichaBebidaMiaDto.estadoPago` (String), `AsistenteFilaDto.estadoPago`
-  (quita `pagado`/`declarado`), nuevos `MovimientoFilaDto`, `CuentaDetalleDto`.
-- `CuentasRepository(Impl)`: `detalle` devuelve el DTO ampliado;
-  `marcarTransferido(cuentaId): ResultadoCuenta<CuentaDetalleDto>`.
-- `CuentaDetalleScreen`: saldo, estimación, lista de movimientos y, para admin,
-  el bloque "por ingresar" + botón + diálogo de confirmación.
-- `EventoDetalleScreen`: los cuatro estados del botón (los dos `CONFIRMADO_*`
-  comparten "Ya he pagado", el texto del diálogo cambia).
-- `ListadoAsistentesDialog`: la línea de estado con las cuatro etiquetas.
-- `AdminPagosScreen`: método por fila.
-
-Diagnósticos de Kotlin del IDE rotos: fiarse solo de Gradle.
+Los tres bloques en **modo lectura** (sin casillas de ropa ni alta de gastos — eso es web esta
+tanda). El botón `📄` de recibo abre la URL en el visor del sistema (intent `ACTION_VIEW`;
+`expect fun abrirUrl(url: String)` con `actual` Android usando `Intent`; iOS deja un TODO). La URL
+del recibo lleva `?token=` como *query param* (el visor externo no manda cabeceras) → el endpoint
+`GET .../recibo` acepta el JWT por `Authorization` **o** por `?token=`.
+`CuentaDetalleDto` con los campos nuevos; `AsistenteFilaDto` sin cambios.
 
 ## Tests
 
-### Backend (ampliar / crear ITs)
-
-- `MovimientoCuentaIT` (o ampliar `CuentaIT`):
-  - Detalle de San Miguel recién migrado → saldo `91.13`, un movimiento
-    `SALDO_INICIAL`, estimación `91.13` si nadie tiene cuota.
-  - Peñista con cuota `45` apuntado sin pagar → estimación `136.13`, saldo `91.13`.
-  - Admin confirma declaración método `TRANSFERENCIA` → ficha
-    `CONFIRMADO_EN_CUENTA`, saldo sube, aparece movimiento `CUOTA`.
-  - Admin confirma declaración método `BIZUM` → ficha
-    `CONFIRMADO_PENDIENTE_ENVIO`, saldo igual, `porIngresar` sube.
-  - `POST /transferencia-a-pena` → todas las `CONFIRMADO_PENDIENTE_ENVIO` de la
-    cuenta pasan a `CONFIRMADO_EN_CUENTA`, saldo sube, `porIngresar` a 0.
-  - No-admin: `GET /{id}` no trae `porIngresar`; `POST /transferencia-a-pena` → 403.
-  - Admin deshace un pago en cuenta → ficha `PENDIENTE_PAGO`, movimiento borrado,
-    saldo baja.
-- Ampliar `PagoDeclaradoIT`: al confirmar, la ficha queda en el estado correcto
-  según el método; al rechazar/anular vuelve a `PENDIENTE_PAGO`.
-- Ampliar `ConfirmacionPagoIT`: el atajo reparte por método.
-- Ajustar los ITs que hoy afirman `pagado` (booleano) para leer `estadoPago`.
+### Backend (ITs, ampliar `MovimientoCuentaIT` + `PagoDeclaradoIT` + `ConfirmacionPagoIT`)
+- Confirmar por **bizum** ahora sube el saldo y crea movimiento; `cobradoSinIngresar` sube.
+- `transferencia-a-pena`: baja `cobradoSinIngresar` a 0, **el saldo no cambia**.
+- `deshacerPago` borra el movimiento y baja el saldo.
+- `POST /movimientos` GASTO con recibo → aparece en `movimientos`, `tieneRecibo=true`, saldo baja;
+  `GET .../recibo` devuelve el fichero con su content-type; `DELETE` lo quita y sube el saldo.
+- `POST /movimientos` INGRESO categoría ROPA → saldo sube, aparece en `resumenGastos`? (no —
+  resumen solo gastos). Aparece como entrada.
+- `PUT .../ropa` con `camiseta:true` sin `precio_camiseta` → 409 `SIN_PRECIO_ROPA`; con precio →
+  ingreso `CAMISETA`, `penistas[].camisetaPagada=true`, saldo sube; `camiseta:false` lo revierte.
+- `CuentaDetalle.penistas` lista a los asistentes con cuota, no pagados primero.
+- No-admin: `POST/DELETE /movimientos` y `PUT /ropa` → 403; `GET .../recibo` sí (cualquier miembro).
 
 ### Web (Vitest)
-
-- `cuenta-detalle.spec`: pinta saldo y estimación; con `puedoGestionar` y
-  `porIngresar` muestra el botón; el modal "¿seguro?" llama a `marcarTransferido`
-  y refresca; sin `puedoGestionar` no hay botón ni "por ingresar".
-- `cuentas.service.spec`: `detalle` mapea el nuevo cuerpo; `marcarTransferido`
-  hace el `POST` correcto.
-- `evento-detalle.spec`: los cuatro estados del botón y el texto del modal info.
-- `modal-asistentes.spec`: etiqueta por estado; "deshacer" solo en `CONFIRMADO_*`.
+- `cuenta-detalle`: pinta las 3 tablas; casilla de ropa (admin) llama a `marcarRopa`; `+ Gasto`
+  envía `FormData` con los campos; `📄` pide el blob y abre; sin admin no hay casillas ni alta ni borrar.
+- `cuentas.service`: cada método pega al endpoint correcto (multipart en `crearMovimiento`).
 
 ### Móvil (MockEngine)
+- `CuentasRepositoryImplTest`: `detalle` deserializa `penistas`/`movimientos`/`resumenGastos`;
+  `marcarTransferido` POST. (Alta de gastos y ropa no van en móvil → sin test.)
 
-- `CuentasRepositoryImplTest`: `detalle` deserializa saldo/estimación/movimientos;
-  `marcarTransferido` hace `POST .../transferencia-a-pena`.
-- Ajustar `EventosRepositoryImplTest` a `estadoPago`.
-
-## Riesgos y decisiones
-
-- **Quitar `ficha_bebida.pagado`** toca varios ITs y DTOs. Se asume entorno de
-  desarrollo; la migración convierte el dato y los tests se ajustan en la misma
-  tarea.
-- **Doble fuente de estado** (ficha vs `pago_declarado`): se corta haciendo la
-  ficha autoritativa y `pago_declarado` un registro histórico. Todos los caminos
-  que cambian el estado pasan por `PagoDeclaradoService` o `AsistenciaService`,
-  que escriben la ficha.
-- **`marcarTransferido` global por cuenta**: coincide con lo pedido ("todos los
-  que están confirmado pendiente… pasarán a…"). No hay selección fila a fila.
-- **Nota del Excel "restar 630,71"**: se ignora; parece un apunte del tesorero
-  anterior. El saldo inicial acordado es 91,13 €.
-- **Merch y gastos**: fuera. Los gastos encajarán como movimientos `AJUSTE`/
-  negativos y una resta en la estimación, sin tocar este modelo.
+## Riesgos / decisiones
+- **Saldo = suma del libro**, sin caché. Peña pequeña, pocas filas. Si crece, materializar.
+- **Recibos con `?token=`**: el visor externo del móvil no manda `Authorization`. El endpoint acepta
+  ambos. El token va en claro en la URL que se abre — aceptable para este caso (lo abre el propio
+  dueño del móvil).
+- **Alta de gastos solo web**: si el usuario la quiere en móvil, es otra tanda.
+- **`ux_movimiento_ficha` → `(ficha, origen)`**: permite cuota + camiseta + sudadera por ficha.
+- La rev.1 dejó fichas `CONFIRMADO_EN_CUENTA` de la migración V28 sin movimiento `CUOTA` (mapeo del
+  viejo `pagado=true`). V29 no las reconstruye (entorno dev, poca cosa); si molesta, el admin
+  deshace y rehace el pago, o un `UPDATE` puntual.
