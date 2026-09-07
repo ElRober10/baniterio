@@ -24,5 +24,18 @@ interface EventosRepository {
     suspend fun listarOcultos(): ResultadoEvento<List<EventoResumen>>
     /** Listado de asistentes de un evento de San Miguel (pieza 4). Solo lectura. */
     suspend fun asistentes(eventoId: Long): ResultadoEvento<ListadoAsistentesDto>
+
+    /** Un administrador confirma el pago de una asistencia (pieza 5). Devuelve el listado recalculado. */
+    suspend fun confirmarPago(
+        eventoId: Long,
+        asistenciaId: Long,
+        metodo: String,
+    ): ResultadoEvento<ListadoAsistentesDto>
+
+    /** Deshace la confirmación de pago de una asistencia. */
+    suspend fun deshacerPago(
+        eventoId: Long,
+        asistenciaId: Long,
+    ): ResultadoEvento<ListadoAsistentesDto>
     suspend fun solicitarCrear(mensaje: String?): ResultadoEvento<Unit>
 }

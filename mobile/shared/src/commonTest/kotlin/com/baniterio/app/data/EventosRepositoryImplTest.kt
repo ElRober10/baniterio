@@ -138,6 +138,39 @@ class EventosRepositoryImplTest {
         assertEquals("/api/v1/eventos/5/recuperar", vistas[0].path)
     }
 
+    private val listadoVacio = """
+        {"asistentes":[],"totalCuotas":0.0,"totalPagado":0.0,"miCuota":null,
+         "puedoPagarPor":[],"puedoConfirmarPagos":true}
+    """.trimIndent()
+
+    @Test
+    fun confirmarPago_hace_put_con_el_metodo_en_el_cuerpo() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = listadoVacio)
+        val res = r.confirmarPago(3, 7, "BIZUM")
+        assertIs<ResultadoEvento.Exito<*>>(res)
+        assertEquals("PUT", vistas[0].metodo)
+        assertEquals("/api/v1/eventos/3/asistencias/7/pago", vistas[0].path)
+        assertTrue(vistas[0].cuerpo.contains("\"metodo\":\"BIZUM\""), vistas[0].cuerpo)
+    }
+
+    @Test
+    fun deshacerPago_hace_delete() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = listadoVacio)
+        val res = r.deshacerPago(3, 7)
+        assertIs<ResultadoEvento.Exito<*>>(res)
+        assertEquals("DELETE", vistas[0].metodo)
+        assertEquals("/api/v1/eventos/3/asistencias/7/pago", vistas[0].path)
+    }
+
+    @Test
+    fun confirmarPago_ficha_sin_cuota_devuelve_error_tipado() = runTest {
+        val (r, _) = repo(status = HttpStatusCode.Conflict,
+            cuerpoRespuesta = """{"codigo":"FICHA_SIN_CUOTA"}""")
+        val res = r.confirmarPago(3, 7, "EFECTIVO")
+        assertIs<ResultadoEvento.Error>(res)
+        assertEquals(CodigoErrorEvento.FICHA_SIN_CUOTA, res.codigo)
+    }
+
     @Test
     fun listarOcultos_hace_get() = runTest {
         val (r, vistas) = repo(cuerpoRespuesta = """{"eventos":[]}""")
