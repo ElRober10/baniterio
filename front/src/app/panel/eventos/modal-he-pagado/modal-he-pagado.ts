@@ -10,8 +10,8 @@ export interface PagoDeclarado {
 }
 
 const METODOS: { valor: MetodoPago; texto: string }[] = [
-  { valor: 'TRANSFERENCIA', texto: 'Transferencia a la cuenta de la peña' },
   { valor: 'BIZUM', texto: 'Bizum al administrador' },
+  { valor: 'TRANSFERENCIA', texto: 'Transferencia a la cuenta de la peña' },
   { valor: 'EFECTIVO', texto: 'Efectivo' },
 ];
 const RELACION: Record<string, string> = { PAREJA: 'pareja', HIJO: 'hijo/a', INVITADO: 'invitado/a' };
@@ -40,7 +40,7 @@ export class ModalHePagado implements OnInit {
   protected readonly personas = signal<PersonaPagable[]>([]);
 
   protected readonly importe = signal(0);
-  protected readonly metodo = signal<MetodoPago | null>(null);
+  protected readonly metodo = signal<MetodoPago>('BIZUM');
   protected readonly usuariosMarcados = signal<Set<number>>(new Set());
   protected readonly asistenciasMarcadas = signal<Set<number>>(new Set());
 

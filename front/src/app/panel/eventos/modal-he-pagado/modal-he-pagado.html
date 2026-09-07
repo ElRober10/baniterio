@@ -54,7 +54,7 @@
           </div>
 
           <div>
-            <label class="text-sm font-semibold" for="importe-pago">Importe pagado (€)</label>
+            <label class="text-center text-sm font-semibold" for="importe-pago">Importe pagado (€)</label>
             <input
               id="importe-pago"
               type="number"
@@ -62,7 +62,7 @@
               step="0.01"
               [value]="importe()"
               (input)="cambiarImporte($event)"
-              class="mt-2 w-full rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
+              class="mt-2 w-full rounded-xl border border-outline bg-transparent px-4 py-3 text-center text-3xl font-extrabold tabular-nums"
             />
           </div>
 

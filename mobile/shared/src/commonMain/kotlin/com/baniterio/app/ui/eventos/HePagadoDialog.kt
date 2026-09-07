@@ -43,8 +43,8 @@ data class PagoDeclarado(
 // Etiquetas cortas: caben en los tres segmentos de un móvil. Bizum siempre es al
 // administrador y la transferencia siempre a la cuenta de la peña.
 private val METODOS = listOf(
-    "TRANSFERENCIA" to "Transferencia",
     "BIZUM" to "Bizum",
+    "TRANSFERENCIA" to "Transferencia",
     "EFECTIVO" to "Efectivo",
 )
 
@@ -71,7 +71,7 @@ fun HePagadoDialog(
 ) {
     var datos by remember { mutableStateOf<ListadoAsistentesDto?>(null) }
     var importe by remember { mutableStateOf("") }
-    var metodo by remember { mutableStateOf<String?>(null) }
+    var metodo by remember { mutableStateOf<String?>("BIZUM") }
     val usuarioIds = remember { mutableStateListOf<Long>() }
     val asistenciaIds = remember { mutableStateListOf<Long>() }
 
@@ -151,6 +151,7 @@ fun HePagadoDialog(
                         label = { Text("Importe pagado (€)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
+                        textStyle = MaterialTheme.typography.headlineMedium,
                         modifier = Modifier.fillMaxWidth(),
                     )
 
