@@ -66,6 +66,43 @@ data class FichaBebidaMiaDto(
     val metodoPago: String? = null,
     val pagadoPor: String? = null,
     val pagadoAt: String? = null,
+    val miPagoDeclarado: MiPagoDeclaradoDto? = null,
+)
+
+/** Una persona a la que cubre un pago: su nombre y su cuota. */
+@Serializable
+data class CubiertoPagoDto(val nombre: String, val cuota: Double? = null)
+
+/** Mi declaración de pago pendiente (o rechazada) dentro de `miFicha`. `estado` = PENDIENTE | RECHAZADA. */
+@Serializable
+data class MiPagoDeclaradoDto(
+    val importe: Double,
+    val metodoPago: String,
+    val estado: String,
+    val createdAt: String,
+    val cubre: List<CubiertoPagoDto> = emptyList(),
+)
+
+/** Cuerpo de `POST /eventos/{id}/pagos-declarados`. */
+@Serializable
+data class DeclararPagoBody(
+    val importe: Double,
+    val metodo: String,
+    val cubreUsuarioIds: List<Long> = emptyList(),
+    val cubreAsistenciaIds: List<Long> = emptyList(),
+)
+
+/** Una fila de la cola "Confirmar pagos" del panel de administración. */
+@Serializable
+data class PagoDeclaradoPendienteDto(
+    val id: Long,
+    val eventoId: Long,
+    val eventoNombre: String,
+    val declaradoPor: String,
+    val importe: Double,
+    val metodoPago: String,
+    val createdAt: String,
+    val cubre: List<CubiertoPagoDto> = emptyList(),
 )
 
 /**
@@ -162,6 +199,7 @@ data class AsistenteFilaDto(
     val metodoPago: String? = null,
     val pagadoPor: String? = null,
     val pagadoAt: String? = null,
+    val declarado: Boolean = false,
 )
 
 /** Alguien a quien puedo incluir en mi pago. `relacion` = PAREJA | HIJO | INVITADO. */

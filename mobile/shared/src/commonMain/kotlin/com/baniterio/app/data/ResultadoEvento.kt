@@ -16,6 +16,7 @@ enum class CodigoErrorEvento {
     CUENTA_YA_EXISTE,
     CUENTA_NO_ENCONTRADA,
     FICHA_SIN_CUOTA,
+    PAGO_DECLARADO_YA_PENDIENTE,
     SIN_PERMISO,
     VALIDACION,
     SIN_CONEXION,
@@ -33,6 +34,7 @@ enum class CodigoErrorEvento {
             "CUENTA_YA_EXISTE" -> CUENTA_YA_EXISTE
             "CUENTA_NO_ENCONTRADA" -> CUENTA_NO_ENCONTRADA
             "FICHA_SIN_CUOTA" -> FICHA_SIN_CUOTA
+            "PAGO_DECLARADO_YA_PENDIENTE" -> PAGO_DECLARADO_YA_PENDIENTE
             "SIN_PERMISO" -> SIN_PERMISO
             "VALIDACION" -> VALIDACION
             else -> DESCONOCIDO
@@ -51,6 +53,7 @@ enum class CodigoErrorEvento {
             CUENTA_YA_EXISTE -> "Ya existe una cuenta con ese nombre. Elígela de la lista."
             CUENTA_NO_ENCONTRADA -> "Esa cuenta ya no existe."
             FICHA_SIN_CUOTA -> "Esta ficha todavía no tiene cuota que pagar."
+            PAGO_DECLARADO_YA_PENDIENTE -> "Ya tienes un pago declarado pendiente de confirmar."
             VALIDACION -> "Revisa los datos del formulario."
             SIN_CONEXION -> "No se pudo conectar con el servidor."
             DESCONOCIDO -> "Algo ha ido mal. Inténtalo de nuevo."

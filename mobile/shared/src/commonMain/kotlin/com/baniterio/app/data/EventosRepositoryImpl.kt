@@ -1,6 +1,8 @@
 package com.baniterio.app.data
 
 import com.baniterio.app.data.dto.ConfirmarPagoBody
+import com.baniterio.app.data.dto.DeclararPagoBody
+import com.baniterio.app.data.dto.PagoDeclaradoPendienteDto
 import com.baniterio.app.data.dto.ErrorResponse
 import com.baniterio.app.data.dto.EventoDetalle
 import com.baniterio.app.data.dto.EventoResumen
@@ -97,6 +99,36 @@ class EventosRepositoryImpl(
         asistenciaId: Long,
     ): ResultadoEvento<ListadoAsistentesDto> = peticion {
         http.delete("$API_BASE_URL/eventos/$eventoId/asistencias/$asistenciaId/pago") { auth() }.body()
+    }
+
+    override suspend fun declararPago(
+        eventoId: Long,
+        body: DeclararPagoBody,
+    ): ResultadoEvento<EventoDetalle> = peticion {
+        http.post("$API_BASE_URL/eventos/$eventoId/pagos-declarados") {
+            auth()
+            contentType(ContentType.Application.Json)
+            setBody(body)
+        }.body()
+    }
+
+    override suspend fun anularPagoDeclarado(eventoId: Long): ResultadoEvento<EventoDetalle> = peticion {
+        http.delete("$API_BASE_URL/eventos/$eventoId/pagos-declarados/mia") { auth() }.body()
+    }
+
+    override suspend fun pagosDeclaradosPendientes():
+        ResultadoEvento<List<PagoDeclaradoPendienteDto>> = peticion {
+        http.get("$API_BASE_URL/admin/pagos-declarados") { auth() }.body()
+    }
+
+    override suspend fun confirmarPagoDeclarado(id: Long): ResultadoEvento<Unit> = peticion {
+        http.post("$API_BASE_URL/admin/pagos-declarados/$id/confirmar") { auth() }
+        Unit
+    }
+
+    override suspend fun rechazarPagoDeclarado(id: Long): ResultadoEvento<Unit> = peticion {
+        http.post("$API_BASE_URL/admin/pagos-declarados/$id/rechazar") { auth() }
+        Unit
     }
 
     override suspend fun solicitarCrear(mensaje: String?): ResultadoEvento<Unit> = peticion {

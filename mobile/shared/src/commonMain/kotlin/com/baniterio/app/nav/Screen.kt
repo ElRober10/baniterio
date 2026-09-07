@@ -21,4 +21,5 @@ sealed class Screen {
     data object AdminSolicitudes : Screen()
     data object AdminPermisos : Screen()
     data object AdminBebidas : Screen()
+    data object AdminPagos : Screen()
 }
