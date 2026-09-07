@@ -8,8 +8,20 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { AsistenteFila, ListadoAsistentes } from '../eventos.types';
+import { AsistenteFila, ListadoAsistentes, MetodoPago } from '../eventos.types';
 import { EventosService } from '../eventos.service';
+
+const METODOS: { valor: MetodoPago; texto: string }[] = [
+  { valor: 'BIZUM', texto: 'Bizum' },
+  { valor: 'TRANSFERENCIA', texto: 'Transferencia' },
+  { valor: 'EFECTIVO', texto: 'Efectivo' },
+];
+
+const METODO_TEXTO: Record<MetodoPago, string> = {
+  BIZUM: 'Bizum',
+  TRANSFERENCIA: 'Transferencia',
+  EFECTIVO: 'Efectivo',
+};
 
 const MODALIDAD: Record<string, string> = {
   COMPLETA: 'peña completa',
@@ -50,6 +62,13 @@ export class ModalAsistentes implements OnInit {
   protected readonly datos = signal<ListadoAsistentes | null>(null);
   protected readonly columnas = signal(1);
 
+  protected readonly metodos = METODOS;
+  protected readonly metodoTexto = METODO_TEXTO;
+  protected readonly filaConfirmando = signal<AsistenteFila | null>(null);
+  protected readonly metodoElegido = signal<MetodoPago>('BIZUM');
+  protected readonly guardandoPago = signal(false);
+  protected readonly errorPago = signal('');
+
   private readonly lista = viewChild<ElementRef<HTMLElement>>('lista');
 
   ngOnInit(): void {
@@ -77,6 +96,48 @@ export class ModalAsistentes implements OnInit {
       }
     };
     requestAnimationFrame(paso);
+  }
+
+  protected abrirConfirmar(a: AsistenteFila): void {
+    this.metodoElegido.set('BIZUM');
+    this.errorPago.set('');
+    this.filaConfirmando.set(a);
+  }
+
+  protected cerrarConfirmar(): void {
+    this.filaConfirmando.set(null);
+  }
+
+  protected confirmarPago(): void {
+    const fila = this.filaConfirmando();
+    if (!fila || this.guardandoPago()) {
+      return;
+    }
+    this.guardandoPago.set(true);
+    this.eventosService
+      .confirmarPago(this.eventoId(), fila.asistenciaId, this.metodoElegido())
+      .subscribe({
+        next: (d) => {
+          this.datos.set(d);
+          this.guardandoPago.set(false);
+          this.filaConfirmando.set(null);
+          this.ajustarColumnas();
+        },
+        error: () => {
+          this.guardandoPago.set(false);
+          this.errorPago.set('No se pudo confirmar el pago.');
+        },
+      });
+  }
+
+  protected deshacerPago(a: AsistenteFila): void {
+    this.eventosService.deshacerPago(this.eventoId(), a.asistenciaId).subscribe({
+      next: (d) => {
+        this.datos.set(d);
+        this.ajustarColumnas();
+      },
+      error: () => this.errorPago.set('No se pudo deshacer el pago.'),
+    });
   }
 
   protected bebidaTexto(a: AsistenteFila): string {
