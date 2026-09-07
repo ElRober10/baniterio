@@ -1,5 +1,6 @@
 package com.baniterio.app.data
 
+import com.baniterio.app.data.dto.ConfirmarPagoBody
 import com.baniterio.app.data.dto.ErrorResponse
 import com.baniterio.app.data.dto.EventoDetalle
 import com.baniterio.app.data.dto.EventoResumen
@@ -77,6 +78,25 @@ class EventosRepositoryImpl(
 
     override suspend fun asistentes(eventoId: Long): ResultadoEvento<ListadoAsistentesDto> = peticion {
         http.get("$API_BASE_URL/eventos/$eventoId/asistentes") { auth() }.body()
+    }
+
+    override suspend fun confirmarPago(
+        eventoId: Long,
+        asistenciaId: Long,
+        metodo: String,
+    ): ResultadoEvento<ListadoAsistentesDto> = peticion {
+        http.put("$API_BASE_URL/eventos/$eventoId/asistencias/$asistenciaId/pago") {
+            auth()
+            contentType(ContentType.Application.Json)
+            setBody(ConfirmarPagoBody(metodo))
+        }.body()
+    }
+
+    override suspend fun deshacerPago(
+        eventoId: Long,
+        asistenciaId: Long,
+    ): ResultadoEvento<ListadoAsistentesDto> = peticion {
+        http.delete("$API_BASE_URL/eventos/$eventoId/asistencias/$asistenciaId/pago") { auth() }.body()
     }
 
     override suspend fun solicitarCrear(mensaje: String?): ResultadoEvento<Unit> = peticion {

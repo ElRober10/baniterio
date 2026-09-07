@@ -62,6 +62,10 @@ data class FichaBebidaMiaDto(
     val cuota: Double? = null,
     val cuotaPendiente: Boolean = false,
     val bebidaPendiente: Boolean = false,
+    val pagado: Boolean = false,
+    val metodoPago: String? = null,
+    val pagadoPor: String? = null,
+    val pagadoAt: String? = null,
 )
 
 /**
@@ -154,6 +158,10 @@ data class AsistenteFilaDto(
     val bebida: BebidaFilaDto? = null,
     val cuota: Double? = null,
     val pagado: Boolean = false,
+    val asistenciaId: Long = 0,
+    val metodoPago: String? = null,
+    val pagadoPor: String? = null,
+    val pagadoAt: String? = null,
 )
 
 /** Alguien a quien puedo incluir en mi pago. `relacion` = PAREJA | HIJO | INVITADO. */
@@ -174,6 +182,7 @@ data class ListadoAsistentesDto(
     val totalPagado: Double = 0.0,
     val puedoPagarPor: List<PersonaPagableDto> = emptyList(),
     val miCuota: Double? = null,
+    val puedoConfirmarPagos: Boolean = false,
 )
 
 @Serializable
@@ -185,6 +194,10 @@ data class AnadirAsistenteBody(
 
 @Serializable
 data class MandarNotificacionBody(val texto: String? = null)
+
+/** Cuerpo de `PUT /eventos/{id}/asistencias/{asistenciaId}/pago`. */
+@Serializable
+data class ConfirmarPagoBody(val metodo: String)
 
 /** Persona por quien es un pendiente: uno mismo, o pareja/hijo con cuenta por quien se responde. */
 @Serializable
