@@ -40,11 +40,13 @@ public class FichaBebidaService {
     private final UsuarioRepository usuarios;
     private final BebidaService bebidaService;
     private final VinculoFamiliarService vinculoFamiliar;
+    private final PagoDeclaradoService pagoDeclarado;
 
     public FichaBebidaService(AsistenciaEventoRepository asistencias, FichaBebidaRepository fichas,
                               BebidaRepository bebidas, EventoRepository eventos,
                               UsuarioRepository usuarios, BebidaService bebidaService,
-                              VinculoFamiliarService vinculoFamiliar) {
+                              VinculoFamiliarService vinculoFamiliar,
+                              PagoDeclaradoService pagoDeclarado) {
         this.asistencias = asistencias;
         this.fichas = fichas;
         this.bebidas = bebidas;
@@ -52,6 +54,7 @@ public class FichaBebidaService {
         this.usuarios = usuarios;
         this.bebidaService = bebidaService;
         this.vinculoFamiliar = vinculoFamiliar;
+        this.pagoDeclarado = pagoDeclarado;
     }
 
     /**
@@ -194,12 +197,13 @@ public class FichaBebidaService {
                 : List.of(e.getFecha());
         FichaBebidaDetalle.MiFicha mia = asistencias.findByEventoIdAndUsuarioId(e.getId(), usuarioId)
                 .flatMap(a -> fichas.findByAsistenciaId(a.getId()))
-                .map(FichaBebidaService::aMiFicha)
+                .map(f -> aMiFicha(f, pagoDeclarado.miPagoDeclarado(e.getId(), usuarioId)))
                 .orElse(null);
         return new FichaBebidaDetalle(true, dias, mia);
     }
 
-    private static FichaBebidaDetalle.MiFicha aMiFicha(FichaBebida f) {
+    private static FichaBebidaDetalle.MiFicha aMiFicha(FichaBebida f,
+            com.baniterio.api.evento.dto.MiPagoDeclarado miPagoDeclarado) {
         Bebida al = f.getAlcohol();
         Bebida re = f.getRefresco();
         boolean bebidaPendiente = (al != null && al.getEstado() != EstadoBebida.ACEPTADA)
@@ -215,6 +219,7 @@ public class FichaBebidaService {
                 f.isPagado() && f.getMetodoPago() != null ? f.getMetodoPago().name() : null,
                 f.isPagado() && f.getPagadoConfirmadoPor() != null
                         ? f.getPagadoConfirmadoPor().getNombre() : null,
-                f.isPagado() ? f.getPagadoAt() : null);
+                f.isPagado() ? f.getPagadoAt() : null,
+                miPagoDeclarado);
     }
 }

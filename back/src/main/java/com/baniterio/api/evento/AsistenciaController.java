@@ -4,6 +4,7 @@ import com.baniterio.api.auth.UsuarioPrincipal;
 import com.baniterio.api.evento.dto.AnadirAsistenteRequest;
 import com.baniterio.api.evento.dto.AsistenciaResumen;
 import com.baniterio.api.evento.dto.ConfirmarPagoRequest;
+import com.baniterio.api.evento.dto.DeclararPagoRequest;
 import com.baniterio.api.evento.dto.EventoDetalle;
 import com.baniterio.api.evento.dto.ListadoAsistentesResponse;
 import com.baniterio.api.evento.dto.MandarNotificacionRequest;
@@ -33,10 +34,13 @@ public class AsistenciaController {
 
     private final AsistenciaService asistenciaService;
     private final EventoService eventoService;
+    private final PagoDeclaradoService pagoDeclaradoService;
 
-    public AsistenciaController(AsistenciaService asistenciaService, EventoService eventoService) {
+    public AsistenciaController(AsistenciaService asistenciaService, EventoService eventoService,
+            PagoDeclaradoService pagoDeclaradoService) {
         this.asistenciaService = asistenciaService;
         this.eventoService = eventoService;
+        this.pagoDeclaradoService = pagoDeclaradoService;
     }
 
     @GetMapping("/pendientes-respuesta")
@@ -93,5 +97,19 @@ public class AsistenciaController {
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long id, @PathVariable Long asistenciaId) {
         return asistenciaService.deshacerPago(principal.id(), id, asistenciaId);
+    }
+
+    @PostMapping("/{id}/pagos-declarados")
+    public EventoDetalle declararPago(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long id, @Valid @RequestBody DeclararPagoRequest req) {
+        pagoDeclaradoService.declarar(principal.id(), id, req);
+        return eventoService.detalle(principal.id(), id);
+    }
+
+    @DeleteMapping("/{id}/pagos-declarados/mia")
+    public EventoDetalle anularPagoDeclarado(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long id) {
+        pagoDeclaradoService.anularMia(principal.id(), id);
+        return eventoService.detalle(principal.id(), id);
     }
 }

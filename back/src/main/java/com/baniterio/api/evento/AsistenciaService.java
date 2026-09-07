@@ -73,13 +73,15 @@ public class AsistenciaService {
     private final VinculoFamiliarService vinculoFamiliar;
     private final FichaBebidaRepository fichas;
     private final VinculoParejaRepository vinculosPareja;
+    private final PagoDeclaradoService pagoDeclarado;
 
     public AsistenciaService(AsistenciaEventoRepository asistencias,
                              NotificacionEventoRepository notificaciones, EventoRepository eventos,
                              UsuarioRepository usuarios, PenaRepository penas, ServicioPermisos permisos,
                              ApplicationEventPublisher publisher, ResolutorAudiencia resolutor,
                              FichaBebidaService fichaBebida, VinculoFamiliarService vinculoFamiliar,
-                             FichaBebidaRepository fichas, VinculoParejaRepository vinculosPareja) {
+                             FichaBebidaRepository fichas, VinculoParejaRepository vinculosPareja,
+                             PagoDeclaradoService pagoDeclarado) {
         this.asistencias = asistencias;
         this.notificaciones = notificaciones;
         this.eventos = eventos;
@@ -92,6 +94,7 @@ public class AsistenciaService {
         this.vinculoFamiliar = vinculoFamiliar;
         this.fichas = fichas;
         this.vinculosPareja = vinculosPareja;
+        this.pagoDeclarado = pagoDeclarado;
     }
 
     /** Un administrador de verdad, o quien organiza (creó) el evento. */
@@ -255,11 +258,14 @@ public class AsistenciaService {
         if (f.getCuota() == null) {
             throw new FichaSinCuotaException();
         }
+        Usuario admin = usuarios.findById(usuarioId).orElseThrow();
         f.setPagado(true);
         f.setMetodoPago(metodo);
-        f.setPagadoConfirmadoPor(usuarios.findById(usuarioId).orElseThrow());
+        f.setPagadoConfirmadoPor(admin);
         f.setPagadoAt(Instant.now());
         fichas.save(f);
+        // Si esa asistencia estaba cubierta por una declaración pendiente, se cierra.
+        pagoDeclarado.confirmarPorAtajo(eventoId, asistenciaId, admin);
         return listadoAsistentes(usuarioId, eventoId);
     }
 
@@ -335,12 +341,14 @@ public class AsistenciaService {
         List<AsistenciaEvento> filas = asistencias.findByEventoIdAndEstadoIn(
                 eventoId, List.of(EstadoAsistencia.APUNTADO, EstadoAsistencia.EN_DUDA));
 
+        java.util.Set<Long> declaradas = pagoDeclarado.asistenciasConDeclaracionPendiente(eventoId);
+
         Comparator<AsistenciaEvento> orden = Comparator
                 .comparingInt((AsistenciaEvento a) -> a.getEstado() == EstadoAsistencia.APUNTADO ? 0 : 1)
                 .thenComparing(a -> nombreDe(a).toLowerCase());
 
         List<AsistenteFila> asistentes = filas.stream().sorted(orden)
-                .map(a -> aFila(a, fichaPorAsistencia.get(a.getId())))
+                .map(a -> aFila(a, fichaPorAsistencia.get(a.getId()), declaradas.contains(a.getId())))
                 .toList();
 
         BigDecimal totalCuotas = asistentes.stream()
@@ -365,7 +373,7 @@ public class AsistenciaService {
         return a.getUsuario() != null ? a.getUsuario().getNombre() : a.getNombre();
     }
 
-    private static AsistenteFila aFila(AsistenciaEvento a, FichaBebida f) {
+    private static AsistenteFila aFila(AsistenciaEvento a, FichaBebida f, boolean declarado) {
         BebidaFila bebida = f == null ? null : new BebidaFila(
                 f.getAlcohol() != null ? f.getAlcohol().getNombre() : null,
                 f.getRefresco().getNombre(),
@@ -377,7 +385,8 @@ public class AsistenciaService {
                 pagado && f.getMetodoPago() != null ? f.getMetodoPago().name() : null,
                 pagado && f.getPagadoConfirmadoPor() != null
                         ? f.getPagadoConfirmadoPor().getNombre() : null,
-                pagado ? f.getPagadoAt() : null);
+                pagado ? f.getPagadoAt() : null,
+                declarado && !pagado);
     }
 
     private List<PersonaPagable> puedoPagarPor(Long usuarioId, Long eventoId,
