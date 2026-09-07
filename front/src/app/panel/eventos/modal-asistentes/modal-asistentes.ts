@@ -9,6 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { AsistenteFila, ListadoAsistentes, MetodoPago } from '../eventos.types';
+import { ESTADO_PAGO_TEXTO, EstadoPagoCuota } from '../../cuentas/cuentas.types';
 import { EventosService } from '../eventos.service';
 
 const METODOS: { valor: MetodoPago; texto: string }[] = [
@@ -64,6 +65,16 @@ export class ModalAsistentes implements OnInit {
 
   protected readonly metodos = METODOS;
   protected readonly metodoTexto = METODO_TEXTO;
+
+  /** Texto corto del estado de pago para la fila. */
+  protected estadoPagoTexto(e: EstadoPagoCuota | null): string {
+    return e ? ESTADO_PAGO_TEXTO[e] : 'Pendiente de pago';
+  }
+
+  /** El pago ya está confirmado por un admin (en la cuenta o pendiente de ingresar). */
+  protected confirmado(a: AsistenteFila): boolean {
+    return a.estadoPago === 'CONFIRMADO_EN_CUENTA' || a.estadoPago === 'CONFIRMADO_PENDIENTE_ENVIO';
+  }
   protected readonly filaConfirmando = signal<AsistenteFila | null>(null);
   protected readonly metodoElegido = signal<MetodoPago>('BIZUM');
   protected readonly guardandoPago = signal(false);

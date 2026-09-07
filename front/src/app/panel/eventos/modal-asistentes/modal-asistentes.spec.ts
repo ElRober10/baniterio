@@ -28,7 +28,7 @@ describe('ModalAsistentes', () => {
     esManual: false,
     bebida: { alcohol: 'Barceló', refresco: 'Coca-Cola', alternativa: 'NADA', modalidad: 'COMPLETA' },
     cuota: 45,
-    pagado: false,
+    estadoPago: 'PENDIENTE_PAGO',
     asistenciaId: 11,
     metodoPago: null,
     pagadoPor: null,
@@ -102,7 +102,7 @@ describe('ModalAsistentes', () => {
       asistentes: [
         {
           ...filaAna,
-          pagado: true,
+          estadoPago: 'CONFIRMADO_PENDIENTE_ENVIO',
           metodoPago: 'BIZUM',
           pagadoPor: 'Jefe',
           pagadoAt: '2026-09-07T10:00:00Z',
@@ -116,7 +116,7 @@ describe('ModalAsistentes', () => {
     });
     fixture.detectChanges();
     const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
-    expect(texto).toContain('pagado');
+    expect(texto).toContain('Confirmado, pendiente de ingresar en la cuenta');
     expect(texto).toContain('Bizum');
     expect(boton('Confirmar el pago')).toBeFalsy();
   });
@@ -126,7 +126,7 @@ describe('ModalAsistentes', () => {
       asistentes: [
         {
           ...filaAna,
-          pagado: true,
+          estadoPago: 'CONFIRMADO_PENDIENTE_ENVIO',
           metodoPago: 'EFECTIVO',
           pagadoPor: 'Jefe',
           pagadoAt: '2026-09-07T10:00:00Z',

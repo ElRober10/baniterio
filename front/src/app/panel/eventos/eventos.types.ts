@@ -4,6 +4,10 @@
  * `*Request` = lo que enviamos.
  */
 
+import { EstadoPagoCuota } from '../cuentas/cuentas.types';
+
+export type { EstadoPagoCuota };
+
 /** La cuenta a la que pertenece un evento (ver sección Cuentas). */
 export interface CuentaRef {
   id: number;
@@ -71,11 +75,11 @@ export interface FichaBebidaMia {
   cuota: number | null;
   cuotaPendiente: boolean;
   bebidaPendiente: boolean;
-  pagado: boolean;
+  estadoPago: EstadoPagoCuota | null;
   metodoPago: MetodoPago | null;
   pagadoPor: string | null;
   pagadoAt: string | null;
-  /** Mi declaración de pago si está PENDIENTE o RECHAZADA (si está confirmada lo dice `pagado`). */
+  /** Mi declaración de pago si está PENDIENTE o RECHAZADA (si está confirmada lo dice `estadoPago`). */
   miPagoDeclarado: MiPagoDeclarado | null;
 }
 
@@ -240,13 +244,11 @@ export interface AsistenteFila {
   esManual: boolean;
   bebida: BebidaFila | null;
   cuota: number | null;
-  pagado: boolean;
+  estadoPago: EstadoPagoCuota | null;
   asistenciaId: number;
   metodoPago: MetodoPago | null;
   pagadoPor: string | null;
   pagadoAt: string | null;
-  /** Hay una declaración de pago PENDIENTE que cubre a este asistente (y aún no está pagado). */
-  declarado: boolean;
 }
 
 /** Una fila de la cola "Confirmar pagos" del panel de administración. */

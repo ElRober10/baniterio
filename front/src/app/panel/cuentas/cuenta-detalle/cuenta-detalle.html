@@ -15,14 +15,78 @@
           @if (c.descripcion) {
             <p class="mt-2 text-sm leading-relaxed text-muted">{{ c.descripcion }}</p>
           }
+          <p class="mt-4 font-display text-3xl font-extrabold text-gold">{{ c.saldo }} €</p>
+          <p class="text-xs text-muted">Estimado cuando todos paguen: {{ c.estimacion }} €</p>
         </article>
 
-        <p
-          class="mt-4 rounded-xl border border-brand-bright/30 bg-brand/15 px-4 py-3 text-sm text-gold-soft"
-        >
-          Los movimientos de la cuenta (ingresos, gastos y balance) todavía están en construcción.
-        </p>
+        @if (aviso(); as a) {
+          <p class="mt-3 rounded-xl border border-brand-bright/30 bg-brand/15 px-4 py-3 text-sm text-gold-soft">
+            {{ a }}
+          </p>
+        }
+
+        @if (c.puedoGestionar && c.porIngresar && c.porIngresar > 0) {
+          <div class="mt-4 rounded-2xl border border-gold/30 bg-gold/10 p-5">
+            <p class="text-sm">
+              Tienes <strong>{{ c.porIngresar }} €</strong> cobrados por bizum o efectivo sin ingresar
+              en la cuenta de la peña.
+            </p>
+            <button
+              type="button"
+              (click)="modalTransferir.set(true)"
+              class="mt-3 rounded-xl bg-gold px-4 py-2 text-sm font-semibold text-brand-dark transition hover:brightness-110"
+            >
+              He transferido el dinero a la peña
+            </button>
+          </div>
+        }
+
+        <h2 class="mt-6 font-display text-lg font-bold">Movimientos</h2>
+        <ul class="mt-2 divide-y divide-outline/40 rounded-2xl border border-outline">
+          @for (m of c.movimientos; track $index) {
+            <li class="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+              <span class="min-w-0">
+                <span class="block truncate">{{ m.concepto }}</span>
+                <span class="text-xs text-muted">{{ m.fecha | date: 'd MMM y' }}</span>
+              </span>
+              <span class="shrink-0 text-right">
+                <span class="block" [class.text-red-300]="m.importe < 0">{{ m.importe }} €</span>
+                <span class="text-xs text-muted">{{ m.saldoTras }} €</span>
+              </span>
+            </li>
+          } @empty {
+            <li class="px-4 py-3 text-sm text-muted">Todavía no hay movimientos.</li>
+          }
+        </ul>
       }
     }
+  }
+
+  @if (modalTransferir()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div class="w-full max-w-sm rounded-2xl bg-surface p-6">
+        <h3 class="font-display text-lg font-bold">¿Seguro que has hecho la transferencia?</h3>
+        <p class="mt-2 text-sm text-muted">
+          Todo lo cobrado por bizum o efectivo pasará a constar como ingresado en la cuenta de la peña.
+        </p>
+        <div class="mt-5 flex justify-center gap-2">
+          <button
+            type="button"
+            [disabled]="enviando()"
+            (click)="confirmarTransferencia()"
+            class="rounded-xl bg-gold px-4 py-2 text-sm font-semibold text-brand-dark disabled:opacity-50"
+          >
+            Sí
+          </button>
+          <button
+            type="button"
+            (click)="modalTransferir.set(false)"
+            class="rounded-xl border border-outline px-4 py-2 text-sm"
+          >
+            No
+          </button>
+        </div>
+      </div>
+    </div>
   }
 </section>
