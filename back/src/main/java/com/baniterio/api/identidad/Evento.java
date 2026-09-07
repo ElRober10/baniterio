@@ -84,6 +84,13 @@ public class Evento {
     @Column(name = "cuota_embarazada", precision = 7, scale = 2)
     private BigDecimal cuotaEmbarazada;
 
+    /** Precio de la camiseta / sudadera de la peña para este evento (San Miguel); {@code null} si no se venden o no se ha puesto (V29). */
+    @Column(name = "precio_camiseta", precision = 7, scale = 2)
+    private BigDecimal precioCamiseta;
+
+    @Column(name = "precio_sudadera", precision = 7, scale = 2)
+    private BigDecimal precioSudadera;
+
     /** "Borrar" un evento lo oculta en vez de borrarlo de verdad; recuperable (V25). */
     @Column(nullable = false)
     private boolean oculto;

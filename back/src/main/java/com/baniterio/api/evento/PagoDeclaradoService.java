@@ -247,9 +247,9 @@ public class PagoDeclaradoService {
             f.setPagadoConfirmadoPor(admin);
             f.setPagadoAt(ahora);
             fichas.save(f);
-            if (destino == EstadoPagoCuota.CONFIRMADO_EN_CUENTA) {
-                movimientoCuenta.registrarCuota(f, admin);
-            }
+            // El dinero cuenta en el saldo en cuanto el admin confirma, sea el método
+            // que sea. CONFIRMADO_PENDIENTE_ENVIO solo alimenta el aviso "sin ingresar".
+            movimientoCuenta.registrarCuota(f, admin);
         }
     }
 

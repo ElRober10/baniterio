@@ -271,9 +271,8 @@ public class AsistenciaService {
         f.setPagadoConfirmadoPor(admin);
         f.setPagadoAt(Instant.now());
         fichas.save(f);
-        if (destino == EstadoPagoCuota.CONFIRMADO_EN_CUENTA) {
-            movimientoCuenta.registrarCuota(f, admin);
-        }
+        // El dinero cuenta en el saldo al confirmar, sea el método que sea.
+        movimientoCuenta.registrarCuota(f, admin);
         // Si esa asistencia estaba cubierta por una declaración pendiente, se cierra.
         pagoDeclarado.confirmarPorAtajo(eventoId, asistenciaId, admin);
         return listadoAsistentes(usuarioId, eventoId);

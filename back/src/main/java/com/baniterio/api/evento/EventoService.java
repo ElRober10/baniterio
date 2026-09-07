@@ -193,6 +193,8 @@ public class EventoService {
                 .cuotaCubatas1Dia(cuotas.cubatas1Dia())
                 .cuotaCervezas1Dia(cuotas.cervezas1Dia())
                 .cuotaEmbarazada(cuotas.embarazada())
+                .precioCamiseta(admin ? req.precioCamiseta() : null)
+                .precioSudadera(admin ? req.precioSudadera() : null)
                 .creadoPor(usuario)
                 .build());
 
@@ -230,6 +232,8 @@ public class EventoService {
             e.setCuotaCubatas1Dia(cuotas.cubatas1Dia());
             e.setCuotaCervezas1Dia(cuotas.cervezas1Dia());
             e.setCuotaEmbarazada(cuotas.embarazada());
+            e.setPrecioCamiseta(req.precioCamiseta());
+            e.setPrecioSudadera(req.precioSudadera());
         }
         eventos.save(e);
         // Si cambió alguna cuota de un evento con ficha (San Miguel), se recalculan
@@ -335,6 +339,7 @@ public class EventoService {
                 e.getFecha(), e.getFechaFin(), esPasado(e), aCuentaRef(e),
                 e.getCuotaCubatas(), e.getCuotaCervezas(), e.getCuotaCubatas1Dia(),
                 e.getCuotaCervezas1Dia(), e.getCuotaEmbarazada(),
+                e.getPrecioCamiseta(), e.getPrecioSudadera(),
                 creadoPor, gestiona, gestiona, e.isOculto(),
                 asistencias.detalleDe(usuarioId, e));
     }

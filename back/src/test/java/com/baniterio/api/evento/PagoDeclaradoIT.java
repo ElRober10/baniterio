@@ -323,11 +323,12 @@ class PagoDeclaradoIT extends IntegrationTest {
 
         assertThat(fichas.findByAsistenciaId(asisId)).get()
                 .satisfies(f -> assertThat(f.getEstadoPago()).isEqualTo(EstadoPagoCuota.CONFIRMADO_EN_CUENTA));
-        assertThat(movimientos.findByFichaAsistenciaId(asisId)).isPresent();
+        assertThat(movimientos.findByFichaAsistenciaIdAndOrigen(asisId,
+                com.baniterio.api.identidad.OrigenMovimiento.CUOTA)).isPresent();
     }
 
     @Test
-    void confirmar_por_bizum_deja_la_ficha_pendiente_de_envio_sin_movimiento() {
+    void confirmar_por_bizum_deja_la_ficha_pendiente_de_envio_pero_ya_crea_el_movimiento() {
         Sesion admin = crearMiembro(RolMembresia.ADMIN);
         Sesion penista = crearMiembro(RolMembresia.MIEMBRO);
         Evento e = sanMiguel();
@@ -342,6 +343,7 @@ class PagoDeclaradoIT extends IntegrationTest {
         assertThat(fichas.findByAsistenciaId(asisId)).get()
                 .satisfies(f -> assertThat(f.getEstadoPago())
                         .isEqualTo(EstadoPagoCuota.CONFIRMADO_PENDIENTE_ENVIO));
-        assertThat(movimientos.findByFichaAsistenciaId(asisId)).isEmpty();
+        assertThat(movimientos.findByFichaAsistenciaIdAndOrigen(asisId,
+                com.baniterio.api.identidad.OrigenMovimiento.CUOTA)).isPresent();
     }
 }

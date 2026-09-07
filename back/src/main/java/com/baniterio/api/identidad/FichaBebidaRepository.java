@@ -30,9 +30,19 @@ public interface FichaBebidaRepository extends JpaRepository<FichaBebida, Long> 
           and f.cuota is not null
           and f.asistencia.estado in (com.baniterio.api.identidad.EstadoAsistencia.APUNTADO,
                                       com.baniterio.api.identidad.EstadoAsistencia.EN_DUDA)
-          and f.estadoPago <> com.baniterio.api.identidad.EstadoPagoCuota.CONFIRMADO_EN_CUENTA
+          and f.estadoPago in (com.baniterio.api.identidad.EstadoPagoCuota.PENDIENTE_PAGO,
+                               com.baniterio.api.identidad.EstadoPagoCuota.DECLARADO)
         """)
     BigDecimal sumaCuotasPorEntrar(@Param("cuentaId") Long cuentaId);
+
+    @Query("""
+        select f from FichaBebida f
+        where f.asistencia.evento.cuenta.id = :cuentaId
+          and f.cuota is not null
+          and f.asistencia.estado in (com.baniterio.api.identidad.EstadoAsistencia.APUNTADO,
+                                      com.baniterio.api.identidad.EstadoAsistencia.EN_DUDA)
+        """)
+    List<FichaBebida> findConCuotaDeCuenta(@Param("cuentaId") Long cuentaId);
 
     @Query("""
         select coalesce(sum(f.cuota), 0) from FichaBebida f

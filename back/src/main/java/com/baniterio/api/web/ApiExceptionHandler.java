@@ -241,6 +241,26 @@ public class ApiExceptionHandler {
         return error(HttpStatus.CONFLICT, "CUENTA_YA_EXISTE");
     }
 
+    @ExceptionHandler(com.baniterio.api.cuenta.MovimientoNoEncontradoException.class)
+    ResponseEntity<Map<String, Object>> movimientoNoEncontrado() {
+        return error(HttpStatus.NOT_FOUND, "MOVIMIENTO_NO_ENCONTRADO");
+    }
+
+    @ExceptionHandler(com.baniterio.api.cuenta.MovimientoNoManualException.class)
+    ResponseEntity<Map<String, Object>> movimientoNoManual() {
+        return error(HttpStatus.CONFLICT, "MOVIMIENTO_NO_MANUAL");
+    }
+
+    @ExceptionHandler(com.baniterio.api.evento.SinPrecioRopaException.class)
+    ResponseEntity<Map<String, Object>> sinPrecioRopa() {
+        return error(HttpStatus.CONFLICT, "SIN_PRECIO_ROPA");
+    }
+
+    @ExceptionHandler(com.baniterio.api.cuenta.ReciboNoValidoException.class)
+    ResponseEntity<Map<String, Object>> reciboNoValido() {
+        return error(HttpStatus.BAD_REQUEST, "RECIBO_NO_VALIDO");
+    }
+
     @ExceptionHandler(com.baniterio.api.evento.SinCreditoEventoException.class)
     ResponseEntity<Map<String, Object>> sinCreditoEvento() {
         return error(HttpStatus.CONFLICT, "SIN_CREDITO_EVENTO");

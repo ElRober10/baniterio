@@ -25,7 +25,9 @@ public record GuardarEventoRequest(
         Long cuentaId,
         Boolean cuentaNueva,
         /** Única cuota que fija un administrador; las otras 4 se derivan (ver {@link com.baniterio.api.evento.CalculadoraCuota#derivar}). */
-        @PositiveOrZero @Digits(integer = 5, fraction = 2) BigDecimal cuotaCubatas) {
+        @PositiveOrZero @Digits(integer = 5, fraction = 2) BigDecimal cuotaCubatas,
+        @PositiveOrZero @Digits(integer = 5, fraction = 2) BigDecimal precioCamiseta,
+        @PositiveOrZero @Digits(integer = 5, fraction = 2) BigDecimal precioSudadera) {
 
     /** {@code true} si el request pide crear una cuenta nueva (campo opcional; ausente = no). */
     public boolean quiereCuentaNueva() {

@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -13,6 +14,9 @@ import com.baniterio.api.auth.ServicioPermisos;
 import com.baniterio.api.cuenta.dto.CuentaDetalle;
 import com.baniterio.api.cuenta.dto.CuentaResumen;
 import com.baniterio.api.cuenta.dto.MovimientoFila;
+import com.baniterio.api.cuenta.dto.PenistaCuota;
+import com.baniterio.api.cuenta.dto.ResumenGasto;
+import com.baniterio.api.identidad.CategoriaMovimiento;
 import com.baniterio.api.identidad.Cuenta;
 import com.baniterio.api.identidad.CuentaRepository;
 import com.baniterio.api.identidad.EstadoPagoCuota;
@@ -22,6 +26,7 @@ import com.baniterio.api.identidad.FichaBebida;
 import com.baniterio.api.identidad.FichaBebidaRepository;
 import com.baniterio.api.identidad.MovimientoCuenta;
 import com.baniterio.api.identidad.MovimientoCuentaRepository;
+import com.baniterio.api.identidad.OrigenMovimiento;
 import com.baniterio.api.identidad.PenaRepository;
 import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
@@ -111,22 +116,70 @@ public class CuentaService {
 
         BigDecimal saldo = BigDecimal.ZERO;
         List<MovimientoFila> filas = new ArrayList<>();
+        Map<String, BigDecimal> gastoPorCategoria = new LinkedHashMap<>();
         for (MovimientoCuenta m : movimientos.findByCuentaIdOrderByFechaAscIdAsc(cuentaId)) {
             saldo = saldo.add(m.getImporte());
-            filas.add(new MovimientoFila(m.getConcepto(), m.getImporte(), m.getFecha(), saldo));
+            filas.add(new MovimientoFila(m.getId(), m.getConcepto(),
+                    m.getCategoria() != null ? m.getCategoria().legible() : null,
+                    m.getImporte(), m.getFecha(), saldo, m.getReciboArchivo(),
+                    m.getOrigen().esManual(),
+                    m.getAdelantadoPor() != null ? m.getAdelantadoPor().getNombre() : null));
+            if (m.getOrigen() == OrigenMovimiento.GASTO && m.getCategoria() != null) {
+                gastoPorCategoria.merge(m.getCategoria().legible(), m.getImporte().abs(), BigDecimal::add);
+            }
         }
+
+        List<FichaBebida> conCuota = fichas.findConCuotaDeCuenta(cuentaId);
+        List<PenistaCuota> penistas = conCuota.stream()
+                .map(CuentaService::aPenista)
+                .sorted(Comparator
+                        .comparing((PenistaCuota p) -> "PENDIENTE_PAGO".equals(p.estadoPago()) ? 0 : 1)
+                        .thenComparing(p -> p.nombre().toLowerCase()))
+                .toList();
+        BigDecimal totalCuotas = conCuota.stream()
+                .map(FichaBebida::getCuota).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalCobrado = conCuota.stream()
+                .filter(f -> f.getEstadoPago() != null && f.getEstadoPago().confirmado())
+                .map(FichaBebida::getCuota).reduce(BigDecimal.ZERO, BigDecimal::add);
+
         BigDecimal estimacion = saldo.add(fichas.sumaCuotasPorEntrar(cuentaId));
-        BigDecimal porIngresar = admin ? fichas.sumaPorIngresar(cuentaId) : null;
+        BigDecimal cobradoSinIngresar = admin ? fichas.sumaPorIngresar(cuentaId) : null;
+
+        BigDecimal precioCamiseta = null;
+        BigDecimal precioSudadera = null;
+        for (Evento e : eventos.findByCuentaId(cuentaId)) {
+            if (e.getPrecioCamiseta() != null) {
+                precioCamiseta = e.getPrecioCamiseta();
+            }
+            if (e.getPrecioSudadera() != null) {
+                precioSudadera = e.getPrecioSudadera();
+            }
+        }
+
+        List<ResumenGasto> resumen = gastoPorCategoria.entrySet().stream()
+                .map(en -> new ResumenGasto(en.getKey(), en.getValue()))
+                .toList();
 
         return new CuentaDetalle(c.getId(), c.getNombre(), c.getDescripcion(),
-                saldo, estimacion, filas, admin, porIngresar);
+                saldo, estimacion, cobradoSinIngresar, admin,
+                precioCamiseta, precioSudadera, penistas, totalCuotas, totalCobrado, filas, resumen);
+    }
+
+    private static PenistaCuota aPenista(FichaBebida f) {
+        var a = f.getAsistencia();
+        String nombre = a.getUsuario() != null ? a.getUsuario().getNombre() : a.getNombre();
+        boolean confirmado = f.getEstadoPago() != null && f.getEstadoPago().confirmado();
+        return new PenistaCuota(a.getId(), nombre, f.getCuota(),
+                f.getEstadoPago() == null ? null : f.getEstadoPago().name(),
+                confirmado && f.getMetodoPago() != null ? f.getMetodoPago().name() : null,
+                f.isCamisetaPagada(), f.isSudaderaPagada());
     }
 
     /**
-     * El admin marca que ha pasado a la cuenta de la peña todo lo que había
-     * cobrado por bizum/efectivo: las fichas {@code CONFIRMADO_PENDIENTE_ENVIO}
-     * de esa cuenta pasan a {@code CONFIRMADO_EN_CUENTA} y cada una añade su
-     * movimiento al libro. 403 {@code SIN_PERMISO} si no es admin.
+     * "He transferido el dinero a la peña": el admin ha pasado al banco lo cobrado
+     * por bizum/efectivo. Solo apaga el aviso (las fichas {@code CONFIRMADO_PENDIENTE_ENVIO}
+     * pasan a {@code CONFIRMADO_EN_CUENTA}); el saldo NO cambia, ese dinero ya
+     * contaba desde que se confirmó. 403 {@code SIN_PERMISO} si no es admin.
      */
     @Transactional
     public CuentaDetalle marcarTransferido(Long adminId, Long cuentaId) {
@@ -134,12 +187,95 @@ public class CuentaService {
             throw new SinPermisoException();
         }
         cuentas.findById(cuentaId).orElseThrow(CuentaNoEncontradaException::new);
-        Usuario admin = usuarios.findById(adminId).orElseThrow();
         for (FichaBebida f : fichas.findByEstadoYCuenta(EstadoPagoCuota.CONFIRMADO_PENDIENTE_ENVIO, cuentaId)) {
             f.setEstadoPago(EstadoPagoCuota.CONFIRMADO_EN_CUENTA);
             fichas.save(f);
-            movimientoCuenta.registrarCuota(f, admin);
         }
         return detalle(adminId, cuentaId);
+    }
+
+    /** Alta de un gasto o ingreso manual. 403 si no es admin. */
+    @Transactional
+    public CuentaDetalle crearMovimiento(Long adminId, Long cuentaId, OrigenMovimiento tipo,
+            String concepto, BigDecimal importe, LocalDate fecha, CategoriaMovimiento categoria,
+            Long adelantadoPorId, String reciboArchivo) {
+        if (!permisos.esAdministrador(adminId)) {
+            throw new SinPermisoException();
+        }
+        Cuenta c = cuentas.findById(cuentaId).orElseThrow(CuentaNoEncontradaException::new);
+        Usuario admin = usuarios.findById(adminId).orElseThrow();
+        Usuario adelantadoPor = adelantadoPorId != null
+                ? usuarios.findById(adelantadoPorId).orElse(null) : null;
+        movimientoCuenta.crearManual(c, tipo, concepto, importe, fecha, categoria,
+                adelantadoPor, admin, reciboArchivo);
+        return detalle(adminId, cuentaId);
+    }
+
+    /**
+     * El admin marca (o desmarca) que un peñista ha pagado la camiseta / la
+     * sudadera. Marcar mete un ingreso en el libro (exige {@code evento.precio_*}
+     * → 409 {@code SIN_PRECIO_ROPA}); desmarcar lo quita. Cada campo {@code null}
+     * = "no tocar".
+     */
+    @Transactional
+    public CuentaDetalle marcarRopa(Long adminId, Long cuentaId, Long asistenciaId,
+            Boolean camiseta, Boolean sudadera) {
+        if (!permisos.esAdministrador(adminId)) {
+            throw new SinPermisoException();
+        }
+        FichaBebida f = fichas.findByAsistenciaId(asistenciaId)
+                .orElseThrow(MovimientoNoEncontradoException::new);
+        Evento e = f.getAsistencia().getEvento();
+        Usuario admin = usuarios.findById(adminId).orElseThrow();
+        aplicarRopa(f, admin, OrigenMovimiento.CAMISETA, camiseta, e.getPrecioCamiseta(),
+                f.isCamisetaPagada(), f::setCamisetaPagada);
+        aplicarRopa(f, admin, OrigenMovimiento.SUDADERA, sudadera, e.getPrecioSudadera(),
+                f.isSudaderaPagada(), f::setSudaderaPagada);
+        fichas.save(f);
+        return detalle(adminId, cuentaId);
+    }
+
+    private void aplicarRopa(FichaBebida f, Usuario admin, OrigenMovimiento tipo, Boolean pedido,
+            BigDecimal precio, boolean actual, java.util.function.Consumer<Boolean> set) {
+        if (pedido == null || pedido == actual) {
+            return;
+        }
+        if (pedido) {
+            if (precio == null) {
+                throw new com.baniterio.api.evento.SinPrecioRopaException();
+            }
+            movimientoCuenta.registrarRopa(f, tipo, precio, admin);
+        } else {
+            movimientoCuenta.revertirRopa(f, tipo);
+        }
+        set.accept(pedido);
+    }
+
+    @Transactional
+    public CuentaDetalle borrarMovimiento(Long adminId, Long movId) {
+        if (!permisos.esAdministrador(adminId)) {
+            throw new SinPermisoException();
+        }
+        MovimientoCuenta m = movimientos.findById(movId).orElseThrow(MovimientoNoEncontradoException::new);
+        if (!m.getOrigen().esManual()) {
+            throw new MovimientoNoManualException();
+        }
+        Long cuentaId = m.getCuenta().getId();
+        movimientoCuenta.borrarManual(m);
+        return detalle(adminId, cuentaId);
+    }
+
+    @Transactional(readOnly = true)
+    public MovimientoCuenta movimiento(Long movId) {
+        return movimientos.findById(movId).orElseThrow(MovimientoNoEncontradoException::new);
+    }
+
+    @Transactional
+    public void guardarRecibo(Long adminId, Long movId, String reciboArchivo) {
+        if (!permisos.esAdministrador(adminId)) {
+            throw new SinPermisoException();
+        }
+        MovimientoCuenta m = movimientos.findById(movId).orElseThrow(MovimientoNoEncontradoException::new);
+        movimientoCuenta.ponerRecibo(m, reciboArchivo);
     }
 }

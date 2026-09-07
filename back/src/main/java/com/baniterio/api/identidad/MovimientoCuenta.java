@@ -59,6 +59,17 @@ public class MovimientoCuenta {
     @Column(nullable = false, length = 16)
     private OrigenMovimiento origen;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 24)
+    private CategoriaMovimiento categoria;
+
+    @Column(name = "recibo_archivo", length = 80)
+    private String reciboArchivo;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "adelantado_por")
+    private Usuario adelantadoPor;
+
     @Column(name = "ficha_asistencia_id")
     private Long fichaAsistenciaId;
 
