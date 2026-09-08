@@ -102,7 +102,7 @@
               <tr>
                 <th class="px-3 py-2 text-left">Peñista / concepto</th>
                 <th class="px-3 py-2 text-right">Cuota</th>
-                <th class="px-3 py-2 text-left">Estado</th>
+                <th class="px-3 py-2 text-left text-[0.65rem]">Estado</th>
                 <th class="px-3 py-2 text-center">Camiseta</th>
                 <th class="px-3 py-2 text-center">Sudadera</th>
                 <th class="px-3 py-2 text-right">Gasto</th>
@@ -137,12 +137,14 @@
               @for (p of c.penistas; track p.asistenciaId) {
                 <tr>
                   <td class="px-3 py-2">{{ p.nombre }}</td>
-                  <td class="px-3 py-2 text-right">{{ p.cuota }} €</td>
+                  <td class="whitespace-nowrap px-3 py-2 text-right">{{ p.cuota }} €</td>
                   <td class="px-3 py-2">
-                    {{ estadoTexto[p.estadoPago ?? 'PENDIENTE_PAGO'] }}
-                    @if (confirmado(p) && p.metodoPago) {
-                      <span class="text-xs text-muted">· {{ p.metodoPago }}</span>
-                    }
+                    <span class="block max-w-36 whitespace-normal text-xs leading-tight">
+                      {{ estadoTexto[p.estadoPago ?? 'PENDIENTE_PAGO'] }}
+                      @if (confirmado(p) && p.metodoPago) {
+                        <span class="text-muted">· {{ p.metodoPago }}</span>
+                      }
+                    </span>
                   </td>
                   <td class="px-3 py-2 text-center">
                     @if (c.puedoGestionar) {
@@ -207,16 +209,19 @@
               @for (m of gastos(); track m.id) {
                 <tr>
                   <td class="px-3 py-2">
-                    <span class="text-muted">{{ m.fecha | date: 'd MMM y' }}</span> · {{ m.concepto }}
-                    @if (m.categoria) { <span class="text-xs text-muted">· {{ m.categoria }}</span> }
-                    @if (m.adelantadoPor) { <span class="text-xs text-muted">· adelantó {{ m.adelantadoPor }}</span> }
+                    <span class="block max-w-60 whitespace-normal leading-tight">
+                      <span class="block text-xs text-muted">{{ m.fecha | date: 'd MMM y' }}</span>
+                      {{ m.concepto }}
+                      @if (m.categoria) { <span class="text-xs text-muted">· {{ m.categoria }}</span> }
+                      @if (m.adelantadoPor) { <span class="text-xs text-muted">· adelantó {{ m.adelantadoPor }}</span> }
+                    </span>
                   </td>
                   <td class="px-3 py-2"></td>
                   <td class="px-3 py-2"></td>
                   <td class="px-3 py-2"></td>
                   <td class="px-3 py-2"></td>
-                  <td class="px-3 py-2 text-right text-red-300">{{ m.importe < 0 ? ((-m.importe) + ' €') : '' }}</td>
-                  <td class="px-3 py-2 text-right text-emerald-300">{{ m.importe > 0 ? (m.importe + ' €') : '' }}</td>
+                  <td class="whitespace-nowrap px-3 py-2 text-right text-red-300">{{ m.importe < 0 ? ((-m.importe) + ' €') : '' }}</td>
+                  <td class="whitespace-nowrap px-3 py-2 text-right text-emerald-300">{{ m.importe > 0 ? (m.importe + ' €') : '' }}</td>
                   <td class="px-3 py-2 text-center">
                     @if (m.reciboArchivo) {
                       <a [href]="urlRecibo(m.reciboArchivo)" target="_blank" rel="noopener"

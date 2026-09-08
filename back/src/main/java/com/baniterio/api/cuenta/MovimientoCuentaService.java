@@ -101,7 +101,7 @@ public class MovimientoCuentaService {
         String quien = a.getUsuario() != null ? a.getUsuario().getNombre() : a.getNombre();
         movimientos.save(MovimientoCuenta.builder()
                 .cuenta(a.getEvento().getCuenta())
-                .concepto(prefijoConcepto + quien + " — " + a.getEvento().getNombre())
+                .concepto(prefijoConcepto + quien)
                 .importe(importe)
                 .fecha(LocalDate.now())
                 .origen(origen)
