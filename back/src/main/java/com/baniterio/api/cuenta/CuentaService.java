@@ -123,7 +123,7 @@ public class CuentaService {
         Map<Long, BigDecimal> cuotaImporte = new HashMap<>();
         Map<Long, BigDecimal> cuotaSaldoTras = new HashMap<>();
         Map<Long, Long> cuotaMovId = new HashMap<>();
-        for (MovimientoCuenta m : movimientos.findByCuentaIdOrderByFechaAscIdAsc(cuentaId)) {
+        for (MovimientoCuenta m : movimientos.findByCuentaIdAndAnioOrderByFechaAscIdAsc(cuentaId, c.getAnioActual())) {
             saldo = saldo.add(m.getImporte());
             if (m.getOrigen() == OrigenMovimiento.SALDO_INICIAL) {
                 saldoInicial = saldoInicial.add(m.getImporte());
@@ -175,9 +175,37 @@ public class CuentaService {
                 .map(en -> new ResumenGasto(en.getKey(), en.getValue()))
                 .toList();
 
-        return new CuentaDetalle(c.getId(), c.getNombre(), c.getDescripcion(),
+        return new CuentaDetalle(c.getId(), c.getNombre(), c.getDescripcion(), c.getAnioActual(),
                 saldo, saldoInicial, estimacion, cobradoSinIngresar, admin,
                 precioCamiseta, precioSudadera, penistas, totalCuotas, totalCobrado, filas, resumen);
+    }
+
+    /**
+     * "Cerrar el año": el admin da por cerrado el año en curso. El saldo que
+     * quede se apunta como saldo de partida del año siguiente ("Saldo del año
+     * N"), y la cuenta pasa a ese año. 403 {@code SIN_PERMISO} si no es admin.
+     */
+    @Transactional
+    public CuentaDetalle cerrarAnio(Long adminId, Long cuentaId) {
+        if (!permisos.esAdministrador(adminId)) {
+            throw new SinPermisoException();
+        }
+        Cuenta c = cuentas.findById(cuentaId).orElseThrow(CuentaNoEncontradaException::new);
+        int anioCerrado = c.getAnioActual();
+        int anioNuevo = anioCerrado + 1;
+        BigDecimal saldoFinal = movimientos.sumImporteAnio(cuentaId, anioCerrado);
+
+        movimientos.save(MovimientoCuenta.builder()
+                .cuenta(c)
+                .anio(anioNuevo)
+                .concepto("Saldo del año " + anioCerrado)
+                .importe(saldoFinal)
+                .fecha(LocalDate.of(anioNuevo, 1, 1))
+                .origen(OrigenMovimiento.SALDO_INICIAL)
+                .build());
+        c.setAnioActual(anioNuevo);
+        cuentas.save(c);
+        return detalle(adminId, cuentaId);
     }
 
     private static String nombreDe(FichaBebida f) {

@@ -34,6 +34,7 @@ describe('CuentasService', () => {
     id: 3,
     nombre: 'San Miguel',
     descripcion: null,
+    anio: 2026,
     saldo: 91.13,
     saldoInicial: 91.13,
     estimacion: 91.13,
@@ -58,6 +59,13 @@ describe('CuentasService', () => {
   it('marcarTransferido() hace POST a /cuentas/:id/transferencia-a-pena', () => {
     service.marcarTransferido(3).subscribe();
     const req = httpMock.expectOne(`${base}/cuentas/3/transferencia-a-pena`);
+    expect(req.request.method).toBe('POST');
+    req.flush(detalleVacio);
+  });
+
+  it('cerrarAnio() hace POST a /cuentas/:id/cerrar-anio', () => {
+    service.cerrarAnio(3).subscribe();
+    const req = httpMock.expectOne(`${base}/cuentas/3/cerrar-anio`);
     expect(req.request.method).toBe('POST');
     req.flush(detalleVacio);
   });

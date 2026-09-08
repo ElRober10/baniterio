@@ -55,6 +55,11 @@ public class MovimientoCuenta {
     @Column(nullable = false)
     private LocalDate fecha;
 
+    /** Año contable al que pertenece este movimiento (= {@code cuenta.anioActual} cuando se creó). */
+    @Column(nullable = false)
+    @Builder.Default
+    private int anio = 2026;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private OrigenMovimiento origen;

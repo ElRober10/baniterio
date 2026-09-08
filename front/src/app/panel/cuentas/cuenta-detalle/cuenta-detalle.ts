@@ -53,6 +53,10 @@ export class CuentaDetalleComponent implements OnInit {
   protected readonly modalTransferir = signal(false);
   protected readonly enviandoTransfer = signal(false);
 
+  // Modal "Cerrar el año".
+  protected readonly modalCerrarAnio = signal(false);
+  protected readonly cerrandoAnio = signal(false);
+
   // Formulario "+ Gasto / Ingreso".
   protected readonly formAbierto = signal(false);
   protected readonly guardandoMov = signal(false);
@@ -108,6 +112,18 @@ export class CuentaDetalleComponent implements OnInit {
       complete: () => {
         this.enviandoTransfer.set(false);
         this.modalTransferir.set(false);
+      },
+    });
+  }
+
+  protected cerrarAnio(): void {
+    this.cerrandoAnio.set(true);
+    this.cuentasService.cerrarAnio(this.id).subscribe({
+      next: (c) => this.trasCambio(c, `Año cerrado. Ahora estás en ${c.anio}.`),
+      error: () => this.aviso.set('No se ha podido cerrar el año.'),
+      complete: () => {
+        this.cerrandoAnio.set(false);
+        this.modalCerrarAnio.set(false);
       },
     });
   }

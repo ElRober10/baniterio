@@ -27,6 +27,11 @@ export class CuentasService {
     return this.http.post<CuentaDetalle>(`${this.base}/cuentas/${id}/transferencia-a-pena`, {});
   }
 
+  /** El admin cierra el año en curso: el saldo pasa al año siguiente. */
+  cerrarAnio(id: number): Observable<CuentaDetalle> {
+    return this.http.post<CuentaDetalle>(`${this.base}/cuentas/${id}/cerrar-anio`, {});
+  }
+
   /** Alta de un gasto o ingreso manual. `datos` es un FormData (puede llevar el recibo). */
   crearMovimiento(id: number, datos: FormData): Observable<CuentaDetalle> {
     return this.http.post<CuentaDetalle>(`${this.base}/cuentas/${id}/movimientos`, datos);

@@ -10,7 +10,7 @@ import java.util.List;
  * {@code null} si {@code !puedoGestionar}.
  */
 public record CuentaDetalle(
-        Long id, String nombre, String descripcion,
+        Long id, String nombre, String descripcion, int anio,
         BigDecimal saldo, BigDecimal saldoInicial, BigDecimal estimacion, BigDecimal cobradoSinIngresar,
         boolean puedoGestionar,
         BigDecimal precioCamiseta, BigDecimal precioSudadera,
