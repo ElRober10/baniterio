@@ -63,6 +63,9 @@ export class CuentaDetalleComponent implements OnInit {
     () => this.cuenta()?.penistas.filter((p) => this.confirmado(p)).length ?? 0,
   );
 
+  /** Solo gastos/ingresos manuales: es lo que va en el bloque de abajo de la hoja. */
+  protected readonly gastos = computed(() => this.cuenta()?.movimientos.filter((m) => m.manual) ?? []);
+
   ngOnInit(): void {
     this.cargar();
   }
@@ -76,6 +79,12 @@ export class CuentaDetalleComponent implements OnInit {
       },
       error: () => this.estado.set('error'),
     });
+  }
+
+  /** Número de columnas de la hoja (para los colspan de las filas de sección). */
+  protected columnas(): number {
+    const c = this.cuenta();
+    return 7 + (c?.precioCamiseta != null ? 1 : 0) + (c?.precioSudadera != null ? 1 : 0);
   }
 
   protected confirmado(p: PenistaCuota): boolean {

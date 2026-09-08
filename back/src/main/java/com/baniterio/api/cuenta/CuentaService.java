@@ -115,10 +115,14 @@ public class CuentaService {
         boolean admin = permisos.esAdministrador(usuarioId);
 
         BigDecimal saldo = BigDecimal.ZERO;
+        BigDecimal saldoInicial = BigDecimal.ZERO;
         List<MovimientoFila> filas = new ArrayList<>();
         Map<String, BigDecimal> gastoPorCategoria = new LinkedHashMap<>();
         for (MovimientoCuenta m : movimientos.findByCuentaIdOrderByFechaAscIdAsc(cuentaId)) {
             saldo = saldo.add(m.getImporte());
+            if (m.getOrigen() == OrigenMovimiento.SALDO_INICIAL) {
+                saldoInicial = saldoInicial.add(m.getImporte());
+            }
             filas.add(new MovimientoFila(m.getId(), m.getConcepto(),
                     m.getCategoria() != null ? m.getCategoria().legible() : null,
                     m.getImporte(), m.getFecha(), saldo, m.getReciboArchivo(),
@@ -161,7 +165,7 @@ public class CuentaService {
                 .toList();
 
         return new CuentaDetalle(c.getId(), c.getNombre(), c.getDescripcion(),
-                saldo, estimacion, cobradoSinIngresar, admin,
+                saldo, saldoInicial, estimacion, cobradoSinIngresar, admin,
                 precioCamiseta, precioSudadera, penistas, totalCuotas, totalCobrado, filas, resumen);
     }
 
