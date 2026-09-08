@@ -84,13 +84,13 @@ public class CuentaController {
             @PathVariable Long id, @PathVariable Long asistenciaId,
             @org.springframework.web.bind.annotation.RequestBody MarcarRopaRequest req) {
         return cuentaService.marcarRopa(principal.id(), id, asistenciaId,
-                req.camisetaCantidad(), req.camisetaTalla(),
-                req.sudaderaCantidad(), req.sudaderaTalla());
+                req.camisetaCantidad(), req.camisetaTalla(), req.camisetaConfirmada(),
+                req.sudaderaCantidad(), req.sudaderaTalla(), req.sudaderaConfirmada());
     }
 
     /** Body de {@code PUT .../ropa}: cada campo {@code null} = "no tocar". */
-    public record MarcarRopaRequest(Integer camisetaCantidad, String camisetaTalla,
-            Integer sudaderaCantidad, String sudaderaTalla) {
+    public record MarcarRopaRequest(Integer camisetaCantidad, String camisetaTalla, Boolean camisetaConfirmada,
+            Integer sudaderaCantidad, String sudaderaTalla, Boolean sudaderaConfirmada) {
     }
 
     @PostMapping(path = "/movimientos/{movId}/recibo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

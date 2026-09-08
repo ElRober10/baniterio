@@ -45,6 +45,21 @@ public class MovimientoCuentaService {
         revertirDeFicha(ficha, OrigenMovimiento.CUOTA);
     }
 
+    // ---- Ropa (al confirmar el admin el ingreso de una prenda) ----
+
+    /** (Re)apunta el ingreso de una prenda: quita lo anterior y guarda el importe actual. */
+    @Transactional
+    public void registrarRopa(FichaBebida ficha, OrigenMovimiento tipo, BigDecimal importe, Usuario admin) {
+        revertirDeFicha(ficha, tipo);
+        String prefijo = tipo == OrigenMovimiento.CAMISETA ? "Camiseta de " : "Sudadera de ";
+        registrarDeFicha(ficha, tipo, importe, prefijo, admin);
+    }
+
+    @Transactional
+    public void revertirRopa(FichaBebida ficha, OrigenMovimiento tipo) {
+        revertirDeFicha(ficha, tipo);
+    }
+
     // ---- Gastos / ingresos manuales ----
 
     @Transactional

@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -260,19 +259,18 @@ class MovimientoCuentaIT extends IntegrationTest {
     }
 
     @Test
-    void guardar_ropa_apunta_cantidad_y_talla_sin_tocar_el_saldo() {
+    void ropa_cantidad_y_talla_no_tocan_el_saldo_hasta_que_el_admin_confirma() {
         Sesion admin = crearMiembro(RolMembresia.ADMIN);
         Sesion penista = crearMiembro(RolMembresia.MIEMBRO);
         Evento e = sanMiguel();
         Long asisId = apuntarConFicha(penista, e.getId());
+        String uri = "/api/v1/cuentas/" + cuentaSanMiguelId() + "/asistencias/" + asisId + "/ropa";
 
         Map<String, Object> body = new HashMap<>();
         body.put("camisetaCantidad", 2);
         body.put("camisetaTalla", "M chico");
-        http.put().uri("/api/v1/cuentas/" + cuentaSanMiguelId() + "/asistencias/" + asisId + "/ropa")
-                .header(AUTHORIZATION, "Bearer " + admin.token())
-                .body(body)
-                .exchange().expectStatus().isOk();
+        http.put().uri(uri).header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(body).exchange().expectStatus().isOk();
 
         http.get().uri("/api/v1/cuentas/" + cuentaSanMiguelId())
                 .header(AUTHORIZATION, "Bearer " + admin.token())
@@ -280,8 +278,31 @@ class MovimientoCuentaIT extends IntegrationTest {
                 .expectBody()
                 .jsonPath("$.saldo").isEqualTo(91.13)
                 .jsonPath("$.penistas[0].camisetaCantidad").isEqualTo(2)
-                .jsonPath("$.penistas[0].camisetaTalla").isEqualTo("M chico")
-                .jsonPath("$.penistas[0].sudaderaCantidad").isEqualTo(0);
+                .jsonPath("$.penistas[0].camisetaConfirmada").isEqualTo(false);
+
+        // Confirmar sin precio en el evento: 409.
+        http.put().uri(uri).header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("camisetaConfirmada", true))
+                .exchange().expectStatus().isEqualTo(409)
+                .expectBody().jsonPath("$.codigo").isEqualTo("SIN_PRECIO_ROPA");
+
+        eventos.findById(e.getId()).ifPresent(ev -> {
+            ev.setPrecioCamiseta(new BigDecimal("10.00"));
+            eventos.save(ev);
+        });
+
+        http.put().uri(uri).header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("camisetaConfirmada", true))
+                .exchange().expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.saldo").isEqualTo(111.13)
+                .jsonPath("$.penistas[0].camisetaConfirmada").isEqualTo(true);
+
+        // Desmarcar: se quita del saldo.
+        http.put().uri(uri).header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("camisetaConfirmada", false))
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.saldo").isEqualTo(91.13);
     }
 
     @Test

@@ -63,9 +63,12 @@ export class CuentaDetalleComponent implements OnInit {
     () => this.cuenta()?.penistas.filter((p) => this.confirmado(p)).length ?? 0,
   );
 
-  /** Solo gastos/ingresos manuales: las cuotas cobradas van en la fila del peñista. */
+  /** Gastos/ingresos manuales + ropa confirmada; la cuota cobrada va en la fila del peñista. */
   protected readonly gastos = computed(
-    () => this.cuenta()?.movimientos.filter((m) => m.manual) ?? [],
+    () =>
+      this.cuenta()?.movimientos.filter(
+        (m) => m.manual || m.origen === 'CAMISETA' || m.origen === 'SUDADERA',
+      ) ?? [],
   );
 
   ngOnInit(): void {
@@ -83,8 +86,8 @@ export class CuentaDetalleComponent implements OnInit {
     });
   }
 
-  /** Columnas de la hoja: concepto, cuota, estado, camiseta, sudadera, gasto, ingreso, recibo, saldo. */
-  protected readonly COLUMNAS = 9;
+  /** Columnas de la hoja: concepto, estado, camiseta, sudadera, gasto, ingreso, recibo, saldo. */
+  protected readonly COLUMNAS = 8;
 
   protected confirmado(p: PenistaCuota): boolean {
     return p.estadoPago === 'CONFIRMADO_EN_CUENTA' || p.estadoPago === 'CONFIRMADO_PENDIENTE_ENVIO';
@@ -147,13 +150,20 @@ export class CuentaDetalleComponent implements OnInit {
     cambio: {
       camisetaCantidad?: number;
       camisetaTalla?: string;
+      camisetaConfirmada?: boolean;
       sudaderaCantidad?: number;
       sudaderaTalla?: string;
+      sudaderaConfirmada?: boolean;
     },
   ): void {
     this.cuentasService.marcarRopa(this.id, p.asistenciaId, cambio).subscribe({
       next: (c) => this.cuenta.set(c),
-      error: () => this.aviso.set('No se ha podido cambiar.'),
+      error: (err) =>
+        this.aviso.set(
+          err?.error?.codigo === 'SIN_PRECIO_ROPA'
+            ? 'Pon antes el precio de la camiseta / sudadera en el evento.'
+            : 'No se ha podido cambiar.',
+        ),
     });
   }
 

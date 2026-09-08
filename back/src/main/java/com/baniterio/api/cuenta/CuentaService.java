@@ -187,11 +187,12 @@ public class CuentaService {
 
     private static PenistaCuota aPenista(FichaBebida f, BigDecimal ingreso, BigDecimal saldoTras) {
         boolean confirmado = f.getEstadoPago() != null && f.getEstadoPago().confirmado();
-        return new PenistaCuota(f.getAsistencia().getId(), nombreDe(f), f.getCuota(),
+        int anio = f.getAsistencia().getEvento().getFecha().getYear();
+        return new PenistaCuota(f.getAsistencia().getId(), nombreDe(f), anio, f.getCuota(),
                 f.getEstadoPago() == null ? null : f.getEstadoPago().name(),
                 confirmado && f.getMetodoPago() != null ? f.getMetodoPago().name() : null,
-                f.getCamisetaCantidad(), f.getCamisetaTalla(),
-                f.getSudaderaCantidad(), f.getSudaderaTalla(),
+                f.getCamisetaCantidad(), f.getCamisetaTalla(), f.isCamisetaConfirmada(),
+                f.getSudaderaCantidad(), f.getSudaderaTalla(), f.isSudaderaConfirmada(),
                 ingreso, saldoTras);
     }
 
@@ -232,19 +233,24 @@ public class CuentaService {
     }
 
     /**
-     * El admin apunta cuántas camisetas / sudaderas pide un peñista y de qué
-     * talla. Cada campo {@code null} = "no tocar". De momento son solo datos: el
-     * importe de la ropa se sumará a la cuota cuando se haga la sección de ropa.
+     * El admin apunta cuánta camiseta / sudadera pide un peñista, de qué talla y
+     * si ya ha confirmado que el dinero ha entrado. Cada campo {@code null} = "no
+     * tocar". Al confirmar una prenda con cantidad, {@code precio (del evento) ×
+     * cantidad} entra en el libro y suma al saldo (409 {@code SIN_PRECIO_ROPA} si
+     * el evento no tiene precio); al desmarcar o poner cantidad 0, se quita.
      */
     @Transactional
     public CuentaDetalle marcarRopa(Long adminId, Long cuentaId, Long asistenciaId,
-            Integer camisetaCantidad, String camisetaTalla,
-            Integer sudaderaCantidad, String sudaderaTalla) {
+            Integer camisetaCantidad, String camisetaTalla, Boolean camisetaConfirmada,
+            Integer sudaderaCantidad, String sudaderaTalla, Boolean sudaderaConfirmada) {
         if (!permisos.esAdministrador(adminId)) {
             throw new SinPermisoException();
         }
         FichaBebida f = fichas.findByAsistenciaId(asistenciaId)
                 .orElseThrow(MovimientoNoEncontradoException::new);
+        Usuario admin = usuarios.findById(adminId).orElseThrow();
+        Evento e = f.getAsistencia().getEvento();
+
         if (camisetaCantidad != null) {
             f.setCamisetaCantidad(Math.max(0, camisetaCantidad));
         }
@@ -257,8 +263,30 @@ public class CuentaService {
         if (sudaderaTalla != null) {
             f.setSudaderaTalla(sudaderaTalla.isBlank() ? null : sudaderaTalla.trim());
         }
+
+        sincronizarRopa(f, OrigenMovimiento.CAMISETA, camisetaConfirmada, f.getCamisetaCantidad(),
+                e.getPrecioCamiseta(), f.isCamisetaConfirmada(), f::setCamisetaConfirmada, admin);
+        sincronizarRopa(f, OrigenMovimiento.SUDADERA, sudaderaConfirmada, f.getSudaderaCantidad(),
+                e.getPrecioSudadera(), f.isSudaderaConfirmada(), f::setSudaderaConfirmada, admin);
+
         fichas.save(f);
         return detalle(adminId, cuentaId);
+    }
+
+    private void sincronizarRopa(FichaBebida f, OrigenMovimiento tipo, Boolean pedido, int cantidad,
+            BigDecimal precio, boolean actual, java.util.function.Consumer<Boolean> setConfirmada,
+            Usuario admin) {
+        boolean quiere = pedido != null ? pedido : actual;
+        if (quiere && cantidad > 0) {
+            if (precio == null) {
+                throw new com.baniterio.api.evento.SinPrecioRopaException();
+            }
+            movimientoCuenta.registrarRopa(f, tipo, precio.multiply(BigDecimal.valueOf(cantidad)), admin);
+            setConfirmada.accept(true);
+        } else {
+            movimientoCuenta.revertirRopa(f, tipo);
+            setConfirmada.accept(false);
+        }
     }
 
     @Transactional
