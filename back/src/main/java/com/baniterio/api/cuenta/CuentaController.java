@@ -56,6 +56,12 @@ public class CuentaController {
         return cuentaService.marcarTransferido(principal.id(), id);
     }
 
+    @PostMapping("/{id}/cerrar-anio")
+    public CuentaDetalle cerrarAnio(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long id) {
+        return cuentaService.cerrarAnio(principal.id(), id);
+    }
+
     @PostMapping(path = "/{id}/movimientos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public CuentaDetalle crearMovimiento(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long id,

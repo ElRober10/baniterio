@@ -89,6 +89,8 @@ export interface CuentaDetalle {
   id: number;
   nombre: string;
   descripcion: string | null;
+  /** Año contable que muestra la hoja. */
+  anio: number;
   saldo: number;
   saldoInicial: number;
   estimacion: number;

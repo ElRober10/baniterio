@@ -64,7 +64,12 @@ class MovimientoCuentaIT extends IntegrationTest {
     @AfterEach
     void limpiar() {
         movimientos.deleteAll(movimientos.findAll().stream()
-                .filter(m -> m.getOrigen() != OrigenMovimiento.SALDO_INICIAL).toList());
+                .filter(m -> m.getOrigen() != OrigenMovimiento.SALDO_INICIAL || m.getAnio() != 2026)
+                .toList());
+        cuentas.findById(cuentaSanMiguelId()).filter(cta -> cta.getAnioActual() != 2026).ifPresent(cta -> {
+            cta.setAnioActual(2026);
+            cuentas.save(cta);
+        });
         pagos.deleteAllInBatch();
         fichas.deleteAllInBatch();
         asistencias.deleteAllInBatch();
@@ -303,6 +308,35 @@ class MovimientoCuentaIT extends IntegrationTest {
                 .body(Map.of("camisetaConfirmada", false))
                 .exchange().expectStatus().isOk()
                 .expectBody().jsonPath("$.saldo").isEqualTo(91.13);
+    }
+
+    @Test
+    void cerrar_el_anio_arrastra_el_saldo_al_siguiente() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Sesion penista = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sanMiguel();
+        apuntarConFicha(penista, e.getId());
+        declarar(penista, e.getId(), "TRANSFERENCIA", 16.0);
+        confirmarUltimaDeclaracion(admin);
+        // Año 2026: 91,13 + cuota 16 = 107,13.
+
+        http.post().uri("/api/v1/cuentas/" + cuentaSanMiguelId() + "/cerrar-anio")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .exchange().expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.anio").isEqualTo(2027)
+                .jsonPath("$.saldo").isEqualTo(107.13)
+                .jsonPath("$.movimientos.length()").isEqualTo(1)
+                .jsonPath("$.movimientos[0].concepto").isEqualTo("Saldo del año 2026");
+    }
+
+    @Test
+    void no_admin_no_puede_cerrar_el_anio_403() {
+        String token = crearMiembro(RolMembresia.MIEMBRO).token();
+        http.post().uri("/api/v1/cuentas/" + cuentaSanMiguelId() + "/cerrar-anio")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .exchange().expectStatus().isForbidden()
+                .expectBody().jsonPath("$.codigo").isEqualTo("SIN_PERMISO");
     }
 
     @Test

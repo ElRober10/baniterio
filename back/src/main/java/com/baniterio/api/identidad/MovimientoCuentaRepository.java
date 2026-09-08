@@ -12,10 +12,16 @@ public interface MovimientoCuentaRepository extends JpaRepository<MovimientoCuen
 
     List<MovimientoCuenta> findByCuentaIdOrderByFechaAscIdAsc(Long cuentaId);
 
+    List<MovimientoCuenta> findByCuentaIdAndAnioOrderByFechaAscIdAsc(Long cuentaId, int anio);
+
     Optional<MovimientoCuenta> findByFichaAsistenciaIdAndOrigen(Long fichaAsistenciaId, OrigenMovimiento origen);
 
     boolean existsByFichaAsistenciaIdAndOrigen(Long fichaAsistenciaId, OrigenMovimiento origen);
 
     @Query("select coalesce(sum(m.importe), 0) from MovimientoCuenta m where m.cuenta.id = :cuentaId")
     BigDecimal sumImporte(@Param("cuentaId") Long cuentaId);
+
+    @Query("select coalesce(sum(m.importe), 0) from MovimientoCuenta m "
+            + "where m.cuenta.id = :cuentaId and m.anio = :anio")
+    BigDecimal sumImporteAnio(@Param("cuentaId") Long cuentaId, @Param("anio") int anio);
 }

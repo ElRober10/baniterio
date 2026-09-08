@@ -69,6 +69,7 @@ public class MovimientoCuentaService {
         BigDecimal signo = tipo == OrigenMovimiento.GASTO ? importe.abs().negate() : importe.abs();
         return movimientos.save(MovimientoCuenta.builder()
                 .cuenta(cuenta)
+                .anio(cuenta.getAnioActual())
                 .concepto(concepto.trim())
                 .importe(signo)
                 .fecha(fecha != null ? fecha : LocalDate.now())
@@ -113,9 +114,11 @@ public class MovimientoCuentaService {
             return;
         }
         AsistenciaEvento a = ficha.getAsistencia();
+        Cuenta cuenta = a.getEvento().getCuenta();
         String quien = a.getUsuario() != null ? a.getUsuario().getNombre() : a.getNombre();
         movimientos.save(MovimientoCuenta.builder()
-                .cuenta(a.getEvento().getCuenta())
+                .cuenta(cuenta)
+                .anio(cuenta.getAnioActual())
                 .concepto(prefijoConcepto + quien)
                 .importe(importe)
                 .fecha(LocalDate.now())

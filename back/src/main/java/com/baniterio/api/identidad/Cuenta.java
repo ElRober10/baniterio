@@ -54,6 +54,11 @@ public class Cuenta {
     @Column(name = "lleva_ficha_bebida", nullable = false)
     private boolean llevaFichaBebida;
 
+    /** Año contable en curso: la hoja muestra este año y los movimientos nuevos se apuntan a él. Ver V34. */
+    @Column(name = "anio_actual", nullable = false)
+    @Builder.Default
+    private int anioActual = 2026;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
