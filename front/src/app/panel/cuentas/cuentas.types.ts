@@ -80,6 +80,7 @@ export interface CuentaDetalle {
   nombre: string;
   descripcion: string | null;
   saldo: number;
+  saldoInicial: number;
   estimacion: number;
   cobradoSinIngresar: number | null;
   puedoGestionar: boolean;

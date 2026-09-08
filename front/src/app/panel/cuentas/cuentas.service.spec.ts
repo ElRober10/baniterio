@@ -35,6 +35,7 @@ describe('CuentasService', () => {
     nombre: 'San Miguel',
     descripcion: null,
     saldo: 91.13,
+    saldoInicial: 91.13,
     estimacion: 91.13,
     cobradoSinIngresar: null,
     puedoGestionar: false,

@@ -1,4 +1,4 @@
-<section class="mx-auto w-full max-w-5xl">
+<section class="mx-auto w-full max-w-6xl">
   <div class="mb-4"><app-volver destino="/panel/cuentas" /></div>
 
   @switch (estado()) {
@@ -14,7 +14,7 @@
         <article class="carta-relieve rounded-2xl p-6">
           <h1 class="font-display text-2xl font-extrabold">{{ c.nombre }}</h1>
           <p class="mt-3 font-display text-3xl font-extrabold text-gold">{{ c.saldo }} €</p>
-          <p class="text-xs text-muted">Si pagan todos: {{ c.estimacion }} €</p>
+          <p class="text-xs text-muted">Si pagan todos (estimación): {{ c.estimacion }} €</p>
           @if (c.puedoGestionar && c.cobradoSinIngresar && c.cobradoSinIngresar > 0) {
             <div class="mt-4 rounded-xl border border-gold/30 bg-gold/10 p-4 text-sm">
               Tienes <strong>{{ c.cobradoSinIngresar }} €</strong> cobrados por bizum o efectivo sin
@@ -36,76 +36,14 @@
           </p>
         }
 
-        <!-- Peñistas -->
-        <div class="mt-6 flex items-baseline justify-between">
-          <h2 class="font-display text-lg font-bold">Peñistas</h2>
-          <span class="text-xs text-muted">{{ pagados() }} de {{ c.penistas.length }} han pagado</span>
-        </div>
-        <div class="mt-2 overflow-x-auto rounded-2xl border border-outline">
-          <table class="w-full text-sm">
-            <thead class="text-xs text-muted">
-              <tr>
-                <th class="px-3 py-2 text-left">Peñista</th>
-                <th class="px-3 py-2 text-right">Cuota</th>
-                <th class="px-3 py-2 text-left">Estado</th>
-                @if (c.precioCamiseta != null) { <th class="px-3 py-2">Camiseta</th> }
-                @if (c.precioSudadera != null) { <th class="px-3 py-2">Sudadera</th> }
-              </tr>
-            </thead>
-            <tbody>
-              @for (p of c.penistas; track p.asistenciaId) {
-                <tr class="border-t border-outline/40">
-                  <td class="px-3 py-2">{{ p.nombre }}</td>
-                  <td class="px-3 py-2 text-right">{{ p.cuota }} €</td>
-                  <td class="px-3 py-2">
-                    {{ estadoTexto[p.estadoPago ?? 'PENDIENTE_PAGO'] }}
-                    @if (confirmado(p) && p.metodoPago) { · {{ p.metodoPago }} }
-                  </td>
-                  @if (c.precioCamiseta != null) {
-                    <td class="px-3 py-2 text-center">
-                      @if (c.puedoGestionar) {
-                        <input type="checkbox" [checked]="p.camisetaPagada"
-                          (change)="toggleRopa(p, 'camiseta', $any($event.target).checked)" />
-                      } @else {
-                        {{ p.camisetaPagada ? '✓' : '·' }}
-                      }
-                    </td>
-                  }
-                  @if (c.precioSudadera != null) {
-                    <td class="px-3 py-2 text-center">
-                      @if (c.puedoGestionar) {
-                        <input type="checkbox" [checked]="p.sudaderaPagada"
-                          (change)="toggleRopa(p, 'sudadera', $any($event.target).checked)" />
-                      } @else {
-                        {{ p.sudaderaPagada ? '✓' : '·' }}
-                      }
-                    </td>
-                  }
-                </tr>
-              } @empty {
-                <tr><td class="px-3 py-3 text-muted" colspan="5">Nadie apuntado con cuota todavía.</td></tr>
-              }
-            </tbody>
-            <tfoot class="border-t border-outline text-xs">
-              <tr>
-                <td class="px-3 py-2 font-semibold">Total en cuotas</td>
-                <td class="px-3 py-2 text-right font-semibold">{{ c.totalCuotas }} €</td>
-                <td class="px-3 py-2" colspan="3">cobrado: {{ c.totalCobrado }} €</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-
-        <!-- Movimientos -->
-        <div class="mt-6 flex items-baseline justify-between">
-          <h2 class="font-display text-lg font-bold">Movimientos</h2>
-          @if (c.puedoGestionar) {
+        @if (c.puedoGestionar) {
+          <div class="mt-6 flex justify-end">
             <button type="button" (click)="formAbierto.set(!formAbierto())"
               class="rounded-lg border border-outline px-3 py-1 text-xs font-medium hover:border-gold hover:text-gold">
               + Gasto / Ingreso
             </button>
-          }
-        </div>
+          </div>
+        }
 
         @if (formAbierto()) {
           <form (ngSubmit)="guardarMovimiento()" class="mt-2 grid gap-2 rounded-2xl border border-outline p-4 text-sm sm:grid-cols-2">
@@ -155,47 +93,149 @@
           </form>
         }
 
-        <div class="mt-2 overflow-x-auto rounded-2xl border border-outline">
-          <table class="w-full text-sm">
-            <thead class="text-xs text-muted">
+        <!-- La hoja: una sola tabla, peñistas arriba y gastos abajo, con el saldo corriendo por la derecha -->
+        <div class="mt-3 overflow-x-auto rounded-2xl border border-outline">
+          <table class="w-full whitespace-nowrap text-sm">
+            <thead class="bg-surface/60 text-xs uppercase tracking-wide text-muted">
               <tr>
-                <th class="px-3 py-2 text-left">Fecha</th>
-                <th class="px-3 py-2 text-left">Concepto</th>
-                <th class="px-3 py-2 text-right">Entra</th>
-                <th class="px-3 py-2 text-right">Sale</th>
+                <th class="px-3 py-2 text-left">Peñista / concepto</th>
+                <th class="px-3 py-2 text-right">Cuota</th>
+                <th class="px-3 py-2 text-left">Estado</th>
+                @if (c.precioCamiseta != null) { <th class="px-3 py-2 text-center">Camiseta</th> }
+                @if (c.precioSudadera != null) { <th class="px-3 py-2 text-center">Sudadera</th> }
+                <th class="px-3 py-2 text-right">Gasto</th>
+                <th class="px-3 py-2 text-right">Ingreso</th>
+                <th class="px-3 py-2 text-center">Recibo</th>
                 <th class="px-3 py-2 text-right">Saldo</th>
-                <th class="px-3 py-2"></th>
               </tr>
             </thead>
+
+            <!-- Bloque 1: saldo de partida -->
             <tbody>
-              @for (m of c.movimientos; track m.id) {
+              <tr class="border-t border-outline/40 text-muted">
+                <td class="px-3 py-2">Saldo del año anterior</td>
+                <td class="px-3 py-2 text-right">{{ c.saldoInicial }} €</td>
+                <td class="px-3 py-2"></td>
+                @if (c.precioCamiseta != null) { <td></td> }
+                @if (c.precioSudadera != null) { <td></td> }
+                <td class="px-3 py-2"></td>
+                <td class="px-3 py-2"></td>
+                <td class="px-3 py-2"></td>
+                <td class="px-3 py-2 text-right font-medium text-gold">{{ c.saldoInicial }} €</td>
+              </tr>
+            </tbody>
+
+            <!-- Bloque 2: peñistas -->
+            <tbody>
+              <tr class="border-t border-outline bg-surface/40 text-xs uppercase tracking-wide text-muted">
+                <td class="px-3 py-1.5" [attr.colspan]="columnas()">
+                  Peñistas · {{ pagados() }} de {{ c.penistas.length }} han pagado
+                </td>
+              </tr>
+              @for (p of c.penistas; track p.asistenciaId) {
                 <tr class="border-t border-outline/40">
-                  <td class="px-3 py-2 text-muted">{{ m.fecha | date: 'd MMM y' }}</td>
+                  <td class="px-3 py-2">{{ p.nombre }}</td>
+                  <td class="px-3 py-2 text-right">{{ p.cuota }} €</td>
                   <td class="px-3 py-2">
-                    {{ m.concepto }}
+                    {{ estadoTexto[p.estadoPago ?? 'PENDIENTE_PAGO'] }}
+                    @if (confirmado(p) && p.metodoPago) {
+                      <span class="text-xs text-muted">· {{ p.metodoPago }}</span>
+                    }
+                  </td>
+                  @if (c.precioCamiseta != null) {
+                    <td class="px-3 py-2 text-center">
+                      @if (c.puedoGestionar) {
+                        <input type="checkbox" [checked]="p.camisetaPagada"
+                          (change)="toggleRopa(p, 'camiseta', $any($event.target).checked)" />
+                      } @else {
+                        {{ p.camisetaPagada ? '✓' : '·' }}
+                      }
+                    </td>
+                  }
+                  @if (c.precioSudadera != null) {
+                    <td class="px-3 py-2 text-center">
+                      @if (c.puedoGestionar) {
+                        <input type="checkbox" [checked]="p.sudaderaPagada"
+                          (change)="toggleRopa(p, 'sudadera', $any($event.target).checked)" />
+                      } @else {
+                        {{ p.sudaderaPagada ? '✓' : '·' }}
+                      }
+                    </td>
+                  }
+                  <td class="px-3 py-2"></td>
+                  <td class="px-3 py-2"></td>
+                  <td class="px-3 py-2"></td>
+                  <td class="px-3 py-2"></td>
+                </tr>
+              } @empty {
+                <tr class="border-t border-outline/40">
+                  <td class="px-3 py-3 text-muted" [attr.colspan]="columnas()">Nadie apuntado con cuota todavía.</td>
+                </tr>
+              }
+              <tr class="border-t border-outline text-xs font-semibold">
+                <td class="px-3 py-2">Total en cuotas</td>
+                <td class="px-3 py-2 text-right">{{ c.totalCuotas }} €</td>
+                <td class="px-3 py-2 font-normal text-muted">cobrado: {{ c.totalCobrado }} €</td>
+                @if (c.precioCamiseta != null) { <td></td> }
+                @if (c.precioSudadera != null) { <td></td> }
+                <td class="px-3 py-2"></td>
+                <td class="px-3 py-2"></td>
+                <td class="px-3 py-2"></td>
+                <td class="px-3 py-2"></td>
+              </tr>
+            </tbody>
+
+            <!-- Bloque 3: gastos e ingresos -->
+            <tbody>
+              <tr class="border-t border-outline bg-surface/40 text-xs uppercase tracking-wide text-muted">
+                <td class="px-3 py-1.5" [attr.colspan]="columnas()">Gastos e ingresos</td>
+              </tr>
+              @for (m of gastos(); track m.id) {
+                <tr class="border-t border-outline/40">
+                  <td class="px-3 py-2">
+                    <span class="text-muted">{{ m.fecha | date: 'd MMM y' }}</span> · {{ m.concepto }}
                     @if (m.categoria) { <span class="text-xs text-muted">· {{ m.categoria }}</span> }
                     @if (m.adelantadoPor) { <span class="text-xs text-muted">· adelantó {{ m.adelantadoPor }}</span> }
                   </td>
-                  <td class="px-3 py-2 text-right">{{ m.importe > 0 ? (m.importe + ' €') : '' }}</td>
+                  <td class="px-3 py-2"></td>
+                  <td class="px-3 py-2"></td>
+                  @if (c.precioCamiseta != null) { <td></td> }
+                  @if (c.precioSudadera != null) { <td></td> }
                   <td class="px-3 py-2 text-right text-red-300">{{ m.importe < 0 ? ((-m.importe) + ' €') : '' }}</td>
-                  <td class="px-3 py-2 text-right font-medium">{{ m.saldoTras }} €</td>
-                  <td class="px-3 py-2 text-right whitespace-nowrap">
+                  <td class="px-3 py-2 text-right text-emerald-300">{{ m.importe > 0 ? (m.importe + ' €') : '' }}</td>
+                  <td class="px-3 py-2 text-center">
                     @if (m.reciboArchivo) {
                       <a [href]="urlRecibo(m.reciboArchivo)" target="_blank" rel="noopener"
                         class="text-gold" title="Ver recibo">📄</a>
                     }
-                    @if (c.puedoGestionar && m.manual) {
-                      <button type="button" (click)="borrarMovimiento(m.id)"
-                        class="ml-2 text-xs text-muted underline hover:text-red-300">borrar</button>
-                    }
                   </td>
+                  <td class="px-3 py-2 text-right font-medium">{{ m.saldoTras }} €</td>
+                </tr>
+                @if (c.puedoGestionar) {
+                  <tr>
+                    <td class="px-3 pb-2 pt-0 text-xs" [attr.colspan]="columnas()">
+                      <button type="button" (click)="borrarMovimiento(m.id)"
+                        class="text-muted underline hover:text-red-300">borrar</button>
+                    </td>
+                  </tr>
+                }
+              } @empty {
+                <tr class="border-t border-outline/40">
+                  <td class="px-3 py-3 text-muted" [attr.colspan]="columnas()">Ningún gasto ni ingreso todavía.</td>
                 </tr>
               }
             </tbody>
+
+            <tfoot class="border-t-2 border-outline font-semibold">
+              <tr>
+                <td class="px-3 py-2" [attr.colspan]="columnas() - 1">Saldo actual</td>
+                <td class="px-3 py-2 text-right text-gold">{{ c.saldo }} €</td>
+              </tr>
+            </tfoot>
           </table>
         </div>
 
-        <!-- Resumen de gastos -->
+        <!-- Resumen de gastos por categoría (como en el Excel) -->
         @if (c.resumenGastos.length) {
           <h2 class="mt-6 font-display text-lg font-bold">Resumen de gastos</h2>
           <ul class="mt-2 divide-y divide-outline/40 rounded-2xl border border-outline text-sm">

@@ -11,7 +11,7 @@ import java.util.List;
  */
 public record CuentaDetalle(
         Long id, String nombre, String descripcion,
-        BigDecimal saldo, BigDecimal estimacion, BigDecimal cobradoSinIngresar,
+        BigDecimal saldo, BigDecimal saldoInicial, BigDecimal estimacion, BigDecimal cobradoSinIngresar,
         boolean puedoGestionar,
         BigDecimal precioCamiseta, BigDecimal precioSudadera,
         List<PenistaCuota> penistas,
