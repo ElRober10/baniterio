@@ -111,8 +111,26 @@ public class CuentaService {
 
     @Transactional(readOnly = true)
     public CuentaDetalle detalle(Long usuarioId, Long cuentaId) {
+        return detalle(usuarioId, cuentaId, null);
+    }
+
+    /**
+     * La hoja de la cuenta para un año. {@code anioPedido} {@code null} = el año en
+     * curso ({@code cuenta.anioActual}); cualquier año pasado se puede consultar
+     * (solo lectura). Los campos de "año vivo" (estimación, aviso de cobrado sin
+     * ingresar) van a cero/null si el año pedido no es el actual.
+     */
+    @Transactional(readOnly = true)
+    public CuentaDetalle detalle(Long usuarioId, Long cuentaId, Integer anioPedido) {
         Cuenta c = cuentas.findById(cuentaId).orElseThrow(CuentaNoEncontradaException::new);
         boolean admin = permisos.esAdministrador(usuarioId);
+        int anio = anioPedido != null ? anioPedido : c.getAnioActual();
+        boolean esActual = anio == c.getAnioActual();
+
+        List<Integer> anios = new ArrayList<>(movimientos.aniosConMovimientos(cuentaId));
+        if (!anios.contains(c.getAnioActual())) {
+            anios.add(0, c.getAnioActual());
+        }
 
         BigDecimal saldo = BigDecimal.ZERO;
         BigDecimal saldoInicial = BigDecimal.ZERO;
@@ -123,7 +141,7 @@ public class CuentaService {
         Map<Long, BigDecimal> cuotaImporte = new HashMap<>();
         Map<Long, BigDecimal> cuotaSaldoTras = new HashMap<>();
         Map<Long, Long> cuotaMovId = new HashMap<>();
-        for (MovimientoCuenta m : movimientos.findByCuentaIdAndAnioOrderByFechaAscIdAsc(cuentaId, c.getAnioActual())) {
+        for (MovimientoCuenta m : movimientos.findByCuentaIdAndAnioOrderByFechaAscIdAsc(cuentaId, anio)) {
             saldo = saldo.add(m.getImporte());
             if (m.getOrigen() == OrigenMovimiento.SALDO_INICIAL) {
                 saldoInicial = saldoInicial.add(m.getImporte());
@@ -144,6 +162,12 @@ public class CuentaService {
         }
 
         List<FichaBebida> conCuota = fichas.findConCuotaDeCuenta(cuentaId);
+        if (!esActual) {
+            // En un año pasado, solo los peñistas cuya cuota entró ese año.
+            conCuota = conCuota.stream()
+                    .filter(f -> cuotaImporte.containsKey(f.getAsistenciaId()))
+                    .toList();
+        }
         List<PenistaCuota> penistas = conCuota.stream()
                 .sorted(Comparator
                         .comparing((FichaBebida f) -> cuotaMovId.getOrDefault(f.getAsistenciaId(), Long.MAX_VALUE))
@@ -157,8 +181,8 @@ public class CuentaService {
                 .filter(f -> f.getEstadoPago() != null && f.getEstadoPago().confirmado())
                 .map(FichaBebida::getCuota).reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal estimacion = saldo.add(fichas.sumaCuotasPorEntrar(cuentaId));
-        BigDecimal cobradoSinIngresar = admin ? fichas.sumaPorIngresar(cuentaId) : null;
+        BigDecimal estimacion = esActual ? saldo.add(fichas.sumaCuotasPorEntrar(cuentaId)) : saldo;
+        BigDecimal cobradoSinIngresar = (admin && esActual) ? fichas.sumaPorIngresar(cuentaId) : null;
 
         BigDecimal precioCamiseta = null;
         BigDecimal precioSudadera = null;
@@ -175,7 +199,8 @@ public class CuentaService {
                 .map(en -> new ResumenGasto(en.getKey(), en.getValue()))
                 .toList();
 
-        return new CuentaDetalle(c.getId(), c.getNombre(), c.getDescripcion(), c.getAnioActual(),
+        return new CuentaDetalle(c.getId(), c.getNombre(), c.getDescripcion(),
+                anio, anios, esActual,
                 saldo, saldoInicial, estimacion, cobradoSinIngresar, admin,
                 precioCamiseta, precioSudadera, penistas, totalCuotas, totalCobrado, filas, resumen);
     }

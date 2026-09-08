@@ -13,20 +13,38 @@
         <!-- Cabecera -->
         <article class="carta-relieve rounded-2xl p-6">
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-3">
-              <h1 class="font-display text-2xl font-extrabold">{{ c.nombre }}</h1>
-              <span class="rounded-full bg-brand px-3 py-1 text-sm font-bold text-white">{{ c.anio }}</span>
-            </div>
-            @if (c.puedoGestionar) {
+            <h1 class="font-display text-2xl font-extrabold">{{ c.nombre }}</h1>
+            @if (c.puedoGestionar && c.esAnioActual) {
               <button type="button" (click)="modalCerrarAnio.set(true)"
                 class="rounded-lg border border-outline px-3 py-1 text-xs font-medium hover:border-gold hover:text-gold">
                 Cerrar el año {{ c.anio }}
               </button>
             }
           </div>
+
+          <!-- Botones de año: el que se está viendo, encendido -->
+          <div class="mt-3 flex flex-wrap gap-1.5">
+            @for (a of aniosVisibles(); track a) {
+              <button type="button" (click)="verAnio(a)"
+                [class]="a === c.anio
+                  ? 'rounded-full bg-brand px-3 py-1 text-sm font-bold text-white'
+                  : 'rounded-full border border-outline px-3 py-1 text-sm text-muted hover:border-gold hover:text-gold'">
+                {{ a }}
+              </button>
+            }
+            @if (hayAniosViejos() && !mostrarAniosViejos()) {
+              <button type="button" (click)="mostrarAniosViejos.set(true)"
+                class="rounded-full border border-outline px-3 py-1 text-sm text-muted hover:border-gold hover:text-gold">
+                Años anteriores
+              </button>
+            }
+          </div>
+
           <p class="mt-3 font-display text-3xl font-extrabold text-gold">{{ c.saldo }} €</p>
           <p class="text-xs text-muted">
-            Saldo del año {{ c.anio }} · si pagan todos (estimación): {{ c.estimacion }} €
+            Saldo del año {{ c.anio }}@if (c.esAnioActual) {
+              · si pagan todos (estimación): {{ c.estimacion }} €
+            }
           </p>
           @if (c.puedoGestionar && c.cobradoSinIngresar && c.cobradoSinIngresar > 0) {
             <div class="mt-4 rounded-xl border border-gold/30 bg-gold/10 p-4 text-sm">
@@ -49,7 +67,7 @@
           </p>
         }
 
-        @if (c.puedoGestionar) {
+        @if (c.puedoGestionar && c.esAnioActual) {
           <div class="mt-6 flex justify-end">
             <button type="button" (click)="formAbierto.set(!formAbierto())"
               class="rounded-lg border border-outline px-3 py-1 text-xs font-medium hover:border-gold hover:text-gold">
@@ -160,7 +178,7 @@
                     </span>
                   </td>
                   <td class="px-3 py-2 text-center">
-                    @if (c.puedoGestionar) {
+                    @if (c.puedoGestionar && c.esAnioActual) {
                       <span class="flex flex-col items-center gap-1">
                         <span class="flex items-center gap-1">
                           <input type="number" min="0" [value]="p.camisetaCantidad"
@@ -185,7 +203,7 @@
                     }
                   </td>
                   <td class="px-3 py-2 text-center">
-                    @if (c.puedoGestionar) {
+                    @if (c.puedoGestionar && c.esAnioActual) {
                       <span class="flex flex-col items-center gap-1">
                         <span class="flex items-center gap-1">
                           <input type="number" min="0" [value]="p.sudaderaCantidad"
@@ -263,7 +281,7 @@
                       <a [href]="urlRecibo(m.reciboArchivo)" target="_blank" rel="noopener"
                         class="text-gold" title="Ver recibo">📄</a>
                     }
-                    @if (c.puedoGestionar && m.manual) {
+                    @if (c.puedoGestionar && c.esAnioActual && m.manual) {
                       <button type="button" (click)="borrarMovimiento(m.id)"
                         class="ml-2 text-xs text-muted underline hover:text-red-300">borrar</button>
                     }

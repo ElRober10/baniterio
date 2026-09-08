@@ -18,8 +18,10 @@ export class CuentasService {
     return this.http.get<CuentaResumen[]>(`${this.base}/cuentas`);
   }
 
-  detalle(id: number): Observable<CuentaDetalle> {
-    return this.http.get<CuentaDetalle>(`${this.base}/cuentas/${id}`);
+  /** La hoja de la cuenta. Sin `anio` = año en curso; con `anio` = ese año pasado. */
+  detalle(id: number, anio?: number): Observable<CuentaDetalle> {
+    const url = `${this.base}/cuentas/${id}`;
+    return this.http.get<CuentaDetalle>(anio != null ? `${url}?anio=${anio}` : url);
   }
 
   /** El admin marca que ha ingresado en el banco lo cobrado por bizum/efectivo. */

@@ -24,4 +24,8 @@ public interface MovimientoCuentaRepository extends JpaRepository<MovimientoCuen
     @Query("select coalesce(sum(m.importe), 0) from MovimientoCuenta m "
             + "where m.cuenta.id = :cuentaId and m.anio = :anio")
     BigDecimal sumImporteAnio(@Param("cuentaId") Long cuentaId, @Param("anio") int anio);
+
+    @Query("select distinct m.anio from MovimientoCuenta m "
+            + "where m.cuenta.id = :cuentaId order by m.anio desc")
+    List<Integer> aniosConMovimientos(@Param("cuentaId") Long cuentaId);
 }

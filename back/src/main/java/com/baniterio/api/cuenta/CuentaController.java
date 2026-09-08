@@ -46,8 +46,9 @@ public class CuentaController {
     }
 
     @GetMapping("/{id}")
-    public CuentaDetalle detalle(@AuthenticationPrincipal UsuarioPrincipal principal, @PathVariable Long id) {
-        return cuentaService.detalle(principal.id(), id);
+    public CuentaDetalle detalle(@AuthenticationPrincipal UsuarioPrincipal principal, @PathVariable Long id,
+            @RequestParam(required = false) Integer anio) {
+        return cuentaService.detalle(principal.id(), id, anio);
     }
 
     @PostMapping("/{id}/transferencia-a-pena")
