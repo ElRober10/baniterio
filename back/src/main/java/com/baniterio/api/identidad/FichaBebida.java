@@ -95,13 +95,19 @@ public class FichaBebida {
     @Column(name = "pagado_at")
     private Instant pagadoAt;
 
-    @Column(name = "camiseta_pagada", nullable = false)
+    @Column(name = "camiseta_cantidad", nullable = false)
     @Builder.Default
-    private boolean camisetaPagada = false;
+    private int camisetaCantidad = 0;
 
-    @Column(name = "sudadera_pagada", nullable = false)
+    @Column(name = "camiseta_talla", length = 24)
+    private String camisetaTalla;
+
+    @Column(name = "sudadera_cantidad", nullable = false)
     @Builder.Default
-    private boolean sudaderaPagada = false;
+    private int sudaderaCantidad = 0;
+
+    @Column(name = "sudadera_talla", length = 24)
+    private String sudaderaTalla;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

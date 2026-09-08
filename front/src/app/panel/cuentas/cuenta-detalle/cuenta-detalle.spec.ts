@@ -22,7 +22,7 @@ function detalle(over: Partial<CuentaDetalle> = {}): CuentaDetalle {
     totalCuotas: 0,
     totalCobrado: 0,
     movimientos: [
-      { id: 1, concepto: 'Saldo del año anterior', categoria: null, importe: 91.13, fecha: '2026-01-01', saldoTras: 91.13, reciboArchivo: null, manual: false, adelantadoPor: null },
+      { id: 1, concepto: 'Saldo del año anterior', categoria: null, importe: 91.13, fecha: '2026-01-01', saldoTras: 91.13, reciboArchivo: null, manual: false, origen: 'SALDO_INICIAL', adelantadoPor: null },
     ],
     resumenGastos: [],
     ...over,
@@ -66,7 +66,7 @@ describe('CuentaDetalleComponent', () => {
         puedoGestionar: false,
         precioCamiseta: 10,
         penistas: [
-          { asistenciaId: 11, nombre: 'Ana', cuota: 16, estadoPago: 'PENDIENTE_PAGO', metodoPago: null, camisetaPagada: false, sudaderaPagada: false },
+          { asistenciaId: 11, nombre: 'Ana', cuota: 16, estadoPago: 'PENDIENTE_PAGO', metodoPago: null, camisetaCantidad: 0, camisetaTalla: null, sudaderaCantidad: 0, sudaderaTalla: null },
         ],
       }),
     );
@@ -75,27 +75,26 @@ describe('CuentaDetalleComponent', () => {
     expect(fixture.nativeElement.querySelector('input[type=checkbox]')).toBeFalsy();
   });
 
-  it('marca la camiseta llamando a marcarRopa', () => {
+  it('guarda la cantidad de camiseta llamando a marcarRopa', () => {
     const fixture = TestBed.createComponent(CuentaDetalleComponent);
     fixture.detectChanges();
     httpMock.expectOne(`${base}/cuentas/3`).flush(
       detalle({
         puedoGestionar: true,
-        precioCamiseta: 10,
         penistas: [
-          { asistenciaId: 11, nombre: 'Ana', cuota: 16, estadoPago: 'PENDIENTE_PAGO', metodoPago: null, camisetaPagada: false, sudaderaPagada: false },
+          { asistenciaId: 11, nombre: 'Ana', cuota: 16, estadoPago: 'PENDIENTE_PAGO', metodoPago: null, camisetaCantidad: 0, camisetaTalla: null, sudaderaCantidad: 0, sudaderaTalla: null },
         ],
       }),
     );
     fixture.detectChanges();
 
-    const cb = fixture.nativeElement.querySelector('input[type=checkbox]') as HTMLInputElement;
-    cb.checked = true;
-    cb.dispatchEvent(new Event('change'));
+    const num = fixture.nativeElement.querySelector('input[type=number]') as HTMLInputElement;
+    num.value = '2';
+    num.dispatchEvent(new Event('change'));
 
     const req = httpMock.expectOne(`${base}/cuentas/3/asistencias/11/ropa`);
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body).toEqual({ camiseta: true });
+    expect(req.request.body).toEqual({ camisetaCantidad: 2 });
     req.flush(detalle());
   });
 });

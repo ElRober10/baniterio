@@ -45,19 +45,6 @@ public class MovimientoCuentaService {
         revertirDeFicha(ficha, OrigenMovimiento.CUOTA);
     }
 
-    // ---- Ropa (automático al marcar la casilla) ----
-
-    @Transactional
-    public void registrarRopa(FichaBebida ficha, OrigenMovimiento tipo, BigDecimal precio, Usuario admin) {
-        String prefijo = tipo == OrigenMovimiento.CAMISETA ? "Camiseta de " : "Sudadera de ";
-        registrarDeFicha(ficha, tipo, precio, prefijo, admin);
-    }
-
-    @Transactional
-    public void revertirRopa(FichaBebida ficha, OrigenMovimiento tipo) {
-        revertirDeFicha(ficha, tipo);
-    }
-
     // ---- Gastos / ingresos manuales ----
 
     @Transactional
