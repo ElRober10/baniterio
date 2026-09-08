@@ -80,10 +80,10 @@ describe('CuentasService', () => {
   });
 
   it('marcarRopa() hace PUT a /cuentas/:id/asistencias/:asisId/ropa', () => {
-    service.marcarRopa(3, 11, { camiseta: true }).subscribe();
+    service.marcarRopa(3, 11, { camisetaCantidad: 2, camisetaTalla: 'M chico' }).subscribe();
     const req = httpMock.expectOne(`${base}/cuentas/3/asistencias/11/ropa`);
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body).toEqual({ camiseta: true });
+    expect(req.request.body).toEqual({ camisetaCantidad: 2, camisetaTalla: 'M chico' });
     req.flush(detalleVacio);
   });
 });

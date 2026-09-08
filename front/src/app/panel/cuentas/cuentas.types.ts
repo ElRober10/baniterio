@@ -55,6 +55,8 @@ export interface MovimientoFila {
   saldoTras: number;
   reciboArchivo: string | null;
   manual: boolean;
+  /** SALDO_INICIAL | CUOTA | GASTO | INGRESO | … */
+  origen: string;
   adelantadoPor: string | null;
 }
 
@@ -65,8 +67,10 @@ export interface PenistaCuota {
   cuota: number;
   estadoPago: EstadoPagoCuota | null;
   metodoPago: string | null;
-  camisetaPagada: boolean;
-  sudaderaPagada: boolean;
+  camisetaCantidad: number;
+  camisetaTalla: string | null;
+  sudaderaCantidad: number;
+  sudaderaTalla: string | null;
 }
 
 export interface ResumenGasto {

@@ -63,8 +63,10 @@ export class CuentaDetalleComponent implements OnInit {
     () => this.cuenta()?.penistas.filter((p) => this.confirmado(p)).length ?? 0,
   );
 
-  /** Solo gastos/ingresos manuales: es lo que va en el bloque de abajo de la hoja. */
-  protected readonly gastos = computed(() => this.cuenta()?.movimientos.filter((m) => m.manual) ?? []);
+  /** Todo el libro menos el saldo de partida: cuotas cobradas, gastos e ingresos. */
+  protected readonly gastos = computed(
+    () => this.cuenta()?.movimientos.filter((m) => m.origen !== 'SALDO_INICIAL') ?? [],
+  );
 
   ngOnInit(): void {
     this.cargar();
@@ -81,11 +83,8 @@ export class CuentaDetalleComponent implements OnInit {
     });
   }
 
-  /** Número de columnas de la hoja (para los colspan de las filas de sección). */
-  protected columnas(): number {
-    const c = this.cuenta();
-    return 7 + (c?.precioCamiseta != null ? 1 : 0) + (c?.precioSudadera != null ? 1 : 0);
-  }
+  /** Columnas de la hoja: concepto, cuota, estado, camiseta, sudadera, gasto, ingreso, recibo, saldo. */
+  protected readonly COLUMNAS = 9;
 
   protected confirmado(p: PenistaCuota): boolean {
     return p.estadoPago === 'CONFIRMADO_EN_CUENTA' || p.estadoPago === 'CONFIRMADO_PENDIENTE_ENVIO';
@@ -143,15 +142,18 @@ export class CuentaDetalleComponent implements OnInit {
     });
   }
 
-  protected toggleRopa(p: PenistaCuota, prenda: 'camiseta' | 'sudadera', valor: boolean): void {
-    this.cuentasService.marcarRopa(this.id, p.asistenciaId, { [prenda]: valor }).subscribe({
+  protected guardarRopa(
+    p: PenistaCuota,
+    cambio: {
+      camisetaCantidad?: number;
+      camisetaTalla?: string;
+      sudaderaCantidad?: number;
+      sudaderaTalla?: string;
+    },
+  ): void {
+    this.cuentasService.marcarRopa(this.id, p.asistenciaId, cambio).subscribe({
       next: (c) => this.cuenta.set(c),
-      error: (err) =>
-        this.aviso.set(
-          err?.error?.codigo === 'SIN_PRECIO_ROPA'
-            ? 'Pon antes el precio de la ropa en el evento.'
-            : 'No se ha podido cambiar.',
-        ),
+      error: () => this.aviso.set('No se ha podido cambiar.'),
     });
   }
 

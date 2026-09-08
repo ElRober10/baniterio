@@ -103,8 +103,8 @@
                 <th class="px-3 py-2 text-left">Peñista / concepto</th>
                 <th class="px-3 py-2 text-right">Cuota</th>
                 <th class="px-3 py-2 text-left">Estado</th>
-                @if (c.precioCamiseta != null) { <th class="px-3 py-2 text-center">Camiseta</th> }
-                @if (c.precioSudadera != null) { <th class="px-3 py-2 text-center">Sudadera</th> }
+                <th class="px-3 py-2 text-center">Camiseta</th>
+                <th class="px-3 py-2 text-center">Sudadera</th>
                 <th class="px-3 py-2 text-right">Gasto</th>
                 <th class="px-3 py-2 text-right">Ingreso</th>
                 <th class="px-3 py-2 text-center">Recibo</th>
@@ -114,12 +114,12 @@
 
             <!-- Bloque 1: saldo de partida -->
             <tbody>
-              <tr class="border-t border-outline/40 text-muted">
+              <tr class="text-muted">
                 <td class="px-3 py-2">Saldo del año anterior</td>
                 <td class="px-3 py-2 text-right">{{ c.saldoInicial }} €</td>
                 <td class="px-3 py-2"></td>
-                @if (c.precioCamiseta != null) { <td></td> }
-                @if (c.precioSudadera != null) { <td></td> }
+                <td class="px-3 py-2"></td>
+                <td class="px-3 py-2"></td>
                 <td class="px-3 py-2"></td>
                 <td class="px-3 py-2"></td>
                 <td class="px-3 py-2"></td>
@@ -129,13 +129,13 @@
 
             <!-- Bloque 2: peñistas -->
             <tbody>
-              <tr class="border-t border-outline bg-surface/40 text-xs uppercase tracking-wide text-muted">
-                <td class="px-3 py-1.5" [attr.colspan]="columnas()">
+              <tr class="bg-surface/40 text-xs uppercase tracking-wide text-muted">
+                <td class="px-3 py-1.5" [attr.colspan]="COLUMNAS">
                   Peñistas · {{ pagados() }} de {{ c.penistas.length }} han pagado
                 </td>
               </tr>
               @for (p of c.penistas; track p.asistenciaId) {
-                <tr class="border-t border-outline/40">
+                <tr>
                   <td class="px-3 py-2">{{ p.nombre }}</td>
                   <td class="px-3 py-2 text-right">{{ p.cuota }} €</td>
                   <td class="px-3 py-2">
@@ -144,42 +144,54 @@
                       <span class="text-xs text-muted">· {{ p.metodoPago }}</span>
                     }
                   </td>
-                  @if (c.precioCamiseta != null) {
-                    <td class="px-3 py-2 text-center">
-                      @if (c.puedoGestionar) {
-                        <input type="checkbox" [checked]="p.camisetaPagada"
-                          (change)="toggleRopa(p, 'camiseta', $any($event.target).checked)" />
-                      } @else {
-                        {{ p.camisetaPagada ? '✓' : '·' }}
-                      }
-                    </td>
-                  }
-                  @if (c.precioSudadera != null) {
-                    <td class="px-3 py-2 text-center">
-                      @if (c.puedoGestionar) {
-                        <input type="checkbox" [checked]="p.sudaderaPagada"
-                          (change)="toggleRopa(p, 'sudadera', $any($event.target).checked)" />
-                      } @else {
-                        {{ p.sudaderaPagada ? '✓' : '·' }}
-                      }
-                    </td>
-                  }
+                  <td class="px-3 py-2 text-center">
+                    @if (c.puedoGestionar) {
+                      <span class="flex items-center justify-center gap-1">
+                        <input type="number" min="0" [value]="p.camisetaCantidad"
+                          (change)="guardarRopa(p, { camisetaCantidad: +$any($event.target).value })"
+                          class="w-12 rounded border border-outline bg-surface px-1 py-0.5 text-right" />
+                        <input type="text" [value]="p.camisetaTalla ?? ''" placeholder="talla"
+                          (change)="guardarRopa(p, { camisetaTalla: $any($event.target).value })"
+                          class="w-20 rounded border border-outline bg-surface px-1 py-0.5" />
+                      </span>
+                    } @else if (p.camisetaCantidad > 0) {
+                      {{ p.camisetaCantidad }}@if (p.camisetaTalla) { · {{ p.camisetaTalla }} }
+                    } @else {
+                      ·
+                    }
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    @if (c.puedoGestionar) {
+                      <span class="flex items-center justify-center gap-1">
+                        <input type="number" min="0" [value]="p.sudaderaCantidad"
+                          (change)="guardarRopa(p, { sudaderaCantidad: +$any($event.target).value })"
+                          class="w-12 rounded border border-outline bg-surface px-1 py-0.5 text-right" />
+                        <input type="text" [value]="p.sudaderaTalla ?? ''" placeholder="talla"
+                          (change)="guardarRopa(p, { sudaderaTalla: $any($event.target).value })"
+                          class="w-20 rounded border border-outline bg-surface px-1 py-0.5" />
+                      </span>
+                    } @else if (p.sudaderaCantidad > 0) {
+                      {{ p.sudaderaCantidad }}@if (p.sudaderaTalla) { · {{ p.sudaderaTalla }} }
+                    } @else {
+                      ·
+                    }
+                  </td>
                   <td class="px-3 py-2"></td>
                   <td class="px-3 py-2"></td>
                   <td class="px-3 py-2"></td>
                   <td class="px-3 py-2"></td>
                 </tr>
               } @empty {
-                <tr class="border-t border-outline/40">
-                  <td class="px-3 py-3 text-muted" [attr.colspan]="columnas()">Nadie apuntado con cuota todavía.</td>
+                <tr>
+                  <td class="px-3 py-3 text-muted" [attr.colspan]="COLUMNAS">Nadie apuntado con cuota todavía.</td>
                 </tr>
               }
-              <tr class="border-t border-outline text-xs font-semibold">
+              <tr class="text-xs font-semibold">
                 <td class="px-3 py-2">Total en cuotas</td>
                 <td class="px-3 py-2 text-right">{{ c.totalCuotas }} €</td>
                 <td class="px-3 py-2 font-normal text-muted">cobrado: {{ c.totalCobrado }} €</td>
-                @if (c.precioCamiseta != null) { <td></td> }
-                @if (c.precioSudadera != null) { <td></td> }
+                <td class="px-3 py-2"></td>
+                <td class="px-3 py-2"></td>
                 <td class="px-3 py-2"></td>
                 <td class="px-3 py-2"></td>
                 <td class="px-3 py-2"></td>
@@ -187,13 +199,13 @@
               </tr>
             </tbody>
 
-            <!-- Bloque 3: gastos e ingresos -->
+            <!-- Bloque 3: cuotas cobradas, gastos e ingresos -->
             <tbody>
-              <tr class="border-t border-outline bg-surface/40 text-xs uppercase tracking-wide text-muted">
-                <td class="px-3 py-1.5" [attr.colspan]="columnas()">Gastos e ingresos</td>
+              <tr class="bg-surface/40 text-xs uppercase tracking-wide text-muted">
+                <td class="px-3 py-1.5" [attr.colspan]="COLUMNAS">Ingresos y gastos</td>
               </tr>
               @for (m of gastos(); track m.id) {
-                <tr class="border-t border-outline/40">
+                <tr>
                   <td class="px-3 py-2">
                     <span class="text-muted">{{ m.fecha | date: 'd MMM y' }}</span> · {{ m.concepto }}
                     @if (m.categoria) { <span class="text-xs text-muted">· {{ m.categoria }}</span> }
@@ -201,8 +213,8 @@
                   </td>
                   <td class="px-3 py-2"></td>
                   <td class="px-3 py-2"></td>
-                  @if (c.precioCamiseta != null) { <td></td> }
-                  @if (c.precioSudadera != null) { <td></td> }
+                  <td class="px-3 py-2"></td>
+                  <td class="px-3 py-2"></td>
                   <td class="px-3 py-2 text-right text-red-300">{{ m.importe < 0 ? ((-m.importe) + ' €') : '' }}</td>
                   <td class="px-3 py-2 text-right text-emerald-300">{{ m.importe > 0 ? (m.importe + ' €') : '' }}</td>
                   <td class="px-3 py-2 text-center">
@@ -210,27 +222,23 @@
                       <a [href]="urlRecibo(m.reciboArchivo)" target="_blank" rel="noopener"
                         class="text-gold" title="Ver recibo">📄</a>
                     }
+                    @if (c.puedoGestionar && m.manual) {
+                      <button type="button" (click)="borrarMovimiento(m.id)"
+                        class="ml-2 text-xs text-muted underline hover:text-red-300">borrar</button>
+                    }
                   </td>
                   <td class="px-3 py-2 text-right font-medium">{{ m.saldoTras }} €</td>
                 </tr>
-                @if (c.puedoGestionar) {
-                  <tr>
-                    <td class="px-3 pb-2 pt-0 text-xs" [attr.colspan]="columnas()">
-                      <button type="button" (click)="borrarMovimiento(m.id)"
-                        class="text-muted underline hover:text-red-300">borrar</button>
-                    </td>
-                  </tr>
-                }
               } @empty {
-                <tr class="border-t border-outline/40">
-                  <td class="px-3 py-3 text-muted" [attr.colspan]="columnas()">Ningún gasto ni ingreso todavía.</td>
+                <tr>
+                  <td class="px-3 py-3 text-muted" [attr.colspan]="COLUMNAS">Ningún movimiento todavía.</td>
                 </tr>
               }
             </tbody>
 
             <tfoot class="border-t-2 border-outline font-semibold">
               <tr>
-                <td class="px-3 py-2" [attr.colspan]="columnas() - 1">Saldo actual</td>
+                <td class="px-3 py-2" [attr.colspan]="COLUMNAS - 1">Saldo actual</td>
                 <td class="px-3 py-2 text-right text-gold">{{ c.saldo }} €</td>
               </tr>
             </tfoot>

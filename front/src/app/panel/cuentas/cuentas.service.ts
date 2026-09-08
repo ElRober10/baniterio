@@ -36,11 +36,16 @@ export class CuentasService {
     return this.http.delete<CuentaDetalle>(`${this.base}/cuentas/movimientos/${movId}`);
   }
 
-  /** Marca/desmarca la camiseta o la sudadera de un peñista (admin). */
+  /** Apunta cuánta camiseta/sudadera pide un peñista y de qué talla (admin). */
   marcarRopa(
     cuentaId: number,
     asistenciaId: number,
-    cambio: { camiseta?: boolean; sudadera?: boolean },
+    cambio: {
+      camisetaCantidad?: number;
+      camisetaTalla?: string;
+      sudaderaCantidad?: number;
+      sudaderaTalla?: string;
+    },
   ): Observable<CuentaDetalle> {
     return this.http.put<CuentaDetalle>(
       `${this.base}/cuentas/${cuentaId}/asistencias/${asistenciaId}/ropa`,

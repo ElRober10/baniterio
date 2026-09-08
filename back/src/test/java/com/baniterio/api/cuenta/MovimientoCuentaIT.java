@@ -260,34 +260,28 @@ class MovimientoCuentaIT extends IntegrationTest {
     }
 
     @Test
-    void marcar_camiseta_sin_precio_es_409_y_con_precio_suma_al_saldo() {
+    void guardar_ropa_apunta_cantidad_y_talla_sin_tocar_el_saldo() {
         Sesion admin = crearMiembro(RolMembresia.ADMIN);
         Sesion penista = crearMiembro(RolMembresia.MIEMBRO);
         Evento e = sanMiguel();
         Long asisId = apuntarConFicha(penista, e.getId());
 
+        Map<String, Object> body = new HashMap<>();
+        body.put("camisetaCantidad", 2);
+        body.put("camisetaTalla", "M chico");
         http.put().uri("/api/v1/cuentas/" + cuentaSanMiguelId() + "/asistencias/" + asisId + "/ropa")
                 .header(AUTHORIZATION, "Bearer " + admin.token())
-                .body(Map.of("camiseta", true))
-                .exchange().expectStatus().isEqualTo(409)
-                .expectBody().jsonPath("$.codigo").isEqualTo("SIN_PRECIO_ROPA");
-
-        eventos.findById(e.getId()).ifPresent(ev -> {
-            ev.setPrecioCamiseta(new BigDecimal("12.00"));
-            eventos.save(ev);
-        });
-
-        http.put().uri("/api/v1/cuentas/" + cuentaSanMiguelId() + "/asistencias/" + asisId + "/ropa")
-                .header(AUTHORIZATION, "Bearer " + admin.token())
-                .body(Map.of("camiseta", true))
+                .body(body)
                 .exchange().expectStatus().isOk();
 
         http.get().uri("/api/v1/cuentas/" + cuentaSanMiguelId())
                 .header(AUTHORIZATION, "Bearer " + admin.token())
                 .exchange().expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.saldo").isEqualTo(103.13)
-                .jsonPath("$.penistas[0].camisetaPagada").isEqualTo(true);
+                .jsonPath("$.saldo").isEqualTo(91.13)
+                .jsonPath("$.penistas[0].camisetaCantidad").isEqualTo(2)
+                .jsonPath("$.penistas[0].camisetaTalla").isEqualTo("M chico")
+                .jsonPath("$.penistas[0].sudaderaCantidad").isEqualTo(0);
     }
 
     @Test
