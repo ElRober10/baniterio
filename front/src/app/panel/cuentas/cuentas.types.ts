@@ -71,6 +71,9 @@ export interface PenistaCuota {
   camisetaTalla: string | null;
   sudaderaCantidad: number;
   sudaderaTalla: string | null;
+  /** Importe que entró y saldo tras él; `null` mientras la cuota no esté cobrada. */
+  ingreso: number | null;
+  saldoTras: number | null;
 }
 
 export interface ResumenGasto {

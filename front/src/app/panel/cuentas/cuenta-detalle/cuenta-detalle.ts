@@ -63,9 +63,9 @@ export class CuentaDetalleComponent implements OnInit {
     () => this.cuenta()?.penistas.filter((p) => this.confirmado(p)).length ?? 0,
   );
 
-  /** Todo el libro menos el saldo de partida: cuotas cobradas, gastos e ingresos. */
+  /** Solo gastos/ingresos manuales: las cuotas cobradas van en la fila del peñista. */
   protected readonly gastos = computed(
-    () => this.cuenta()?.movimientos.filter((m) => m.origen !== 'SALDO_INICIAL') ?? [],
+    () => this.cuenta()?.movimientos.filter((m) => m.manual) ?? [],
   );
 
   ngOnInit(): void {

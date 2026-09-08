@@ -66,7 +66,7 @@ describe('CuentaDetalleComponent', () => {
         puedoGestionar: false,
         precioCamiseta: 10,
         penistas: [
-          { asistenciaId: 11, nombre: 'Ana', cuota: 16, estadoPago: 'PENDIENTE_PAGO', metodoPago: null, camisetaCantidad: 0, camisetaTalla: null, sudaderaCantidad: 0, sudaderaTalla: null },
+          { asistenciaId: 11, nombre: 'Ana', cuota: 16, estadoPago: 'PENDIENTE_PAGO', metodoPago: null, camisetaCantidad: 0, camisetaTalla: null, sudaderaCantidad: 0, sudaderaTalla: null, ingreso: null, saldoTras: null },
         ],
       }),
     );
@@ -82,7 +82,7 @@ describe('CuentaDetalleComponent', () => {
       detalle({
         puedoGestionar: true,
         penistas: [
-          { asistenciaId: 11, nombre: 'Ana', cuota: 16, estadoPago: 'PENDIENTE_PAGO', metodoPago: null, camisetaCantidad: 0, camisetaTalla: null, sudaderaCantidad: 0, sudaderaTalla: null },
+          { asistenciaId: 11, nombre: 'Ana', cuota: 16, estadoPago: 'PENDIENTE_PAGO', metodoPago: null, camisetaCantidad: 0, camisetaTalla: null, sudaderaCantidad: 0, sudaderaTalla: null, ingreso: null, saldoTras: null },
         ],
       }),
     );

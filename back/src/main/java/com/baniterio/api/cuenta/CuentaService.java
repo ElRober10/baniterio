@@ -118,10 +118,20 @@ public class CuentaService {
         BigDecimal saldoInicial = BigDecimal.ZERO;
         List<MovimientoFila> filas = new ArrayList<>();
         Map<String, BigDecimal> gastoPorCategoria = new LinkedHashMap<>();
+        // La cuota de un peñista, una vez cobrada, se muestra en su propia fila
+        // (no como movimiento aparte): guardamos su importe y el saldo tras ella.
+        Map<Long, BigDecimal> cuotaImporte = new HashMap<>();
+        Map<Long, BigDecimal> cuotaSaldoTras = new HashMap<>();
+        Map<Long, Long> cuotaMovId = new HashMap<>();
         for (MovimientoCuenta m : movimientos.findByCuentaIdOrderByFechaAscIdAsc(cuentaId)) {
             saldo = saldo.add(m.getImporte());
             if (m.getOrigen() == OrigenMovimiento.SALDO_INICIAL) {
                 saldoInicial = saldoInicial.add(m.getImporte());
+            }
+            if (m.getOrigen() == OrigenMovimiento.CUOTA && m.getFichaAsistenciaId() != null) {
+                cuotaImporte.put(m.getFichaAsistenciaId(), m.getImporte());
+                cuotaSaldoTras.put(m.getFichaAsistenciaId(), saldo);
+                cuotaMovId.put(m.getFichaAsistenciaId(), m.getId());
             }
             filas.add(new MovimientoFila(m.getId(), m.getConcepto(),
                     m.getCategoria() != null ? m.getCategoria().legible() : null,
@@ -135,10 +145,11 @@ public class CuentaService {
 
         List<FichaBebida> conCuota = fichas.findConCuotaDeCuenta(cuentaId);
         List<PenistaCuota> penistas = conCuota.stream()
-                .map(CuentaService::aPenista)
                 .sorted(Comparator
-                        .comparing((PenistaCuota p) -> "PENDIENTE_PAGO".equals(p.estadoPago()) ? 0 : 1)
-                        .thenComparing(p -> p.nombre().toLowerCase()))
+                        .comparing((FichaBebida f) -> cuotaMovId.getOrDefault(f.getAsistenciaId(), Long.MAX_VALUE))
+                        .thenComparing(CuentaService::nombreDe, String.CASE_INSENSITIVE_ORDER))
+                .map(f -> aPenista(f, cuotaImporte.get(f.getAsistenciaId()),
+                        cuotaSaldoTras.get(f.getAsistenciaId())))
                 .toList();
         BigDecimal totalCuotas = conCuota.stream()
                 .map(FichaBebida::getCuota).reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -169,15 +180,19 @@ public class CuentaService {
                 precioCamiseta, precioSudadera, penistas, totalCuotas, totalCobrado, filas, resumen);
     }
 
-    private static PenistaCuota aPenista(FichaBebida f) {
+    private static String nombreDe(FichaBebida f) {
         var a = f.getAsistencia();
-        String nombre = a.getUsuario() != null ? a.getUsuario().getNombre() : a.getNombre();
+        return a.getUsuario() != null ? a.getUsuario().getNombre() : a.getNombre();
+    }
+
+    private static PenistaCuota aPenista(FichaBebida f, BigDecimal ingreso, BigDecimal saldoTras) {
         boolean confirmado = f.getEstadoPago() != null && f.getEstadoPago().confirmado();
-        return new PenistaCuota(a.getId(), nombre, f.getCuota(),
+        return new PenistaCuota(f.getAsistencia().getId(), nombreDe(f), f.getCuota(),
                 f.getEstadoPago() == null ? null : f.getEstadoPago().name(),
                 confirmado && f.getMetodoPago() != null ? f.getMetodoPago().name() : null,
                 f.getCamisetaCantidad(), f.getCamisetaTalla(),
-                f.getSudaderaCantidad(), f.getSudaderaTalla());
+                f.getSudaderaCantidad(), f.getSudaderaTalla(),
+                ingreso, saldoTras);
     }
 
     /**
