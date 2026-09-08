@@ -325,9 +325,23 @@ class MovimientoCuentaIT extends IntegrationTest {
                 .exchange().expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.anio").isEqualTo(2027)
+                .jsonPath("$.esAnioActual").isEqualTo(true)
+                .jsonPath("$.anios.length()").isEqualTo(2)
+                .jsonPath("$.anios[0]").isEqualTo(2027)
+                .jsonPath("$.anios[1]").isEqualTo(2026)
                 .jsonPath("$.saldo").isEqualTo(107.13)
                 .jsonPath("$.movimientos.length()").isEqualTo(1)
                 .jsonPath("$.movimientos[0].concepto").isEqualTo("Saldo del año 2026");
+
+        // Cualquier usuario puede consultar el año cerrado.
+        String miembro = crearMiembro(RolMembresia.MIEMBRO).token();
+        http.get().uri("/api/v1/cuentas/" + cuentaSanMiguelId() + "?anio=2026")
+                .header(AUTHORIZATION, "Bearer " + miembro)
+                .exchange().expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.anio").isEqualTo(2026)
+                .jsonPath("$.esAnioActual").isEqualTo(false)
+                .jsonPath("$.saldo").isEqualTo(107.13);
     }
 
     @Test

@@ -91,6 +91,10 @@ export interface CuentaDetalle {
   descripcion: string | null;
   /** Año contable que muestra la hoja. */
   anio: number;
+  /** Todos los años con datos, de más nuevo a más viejo. */
+  anios: number[];
+  /** `true` si `anio` es el año en curso (el único que se puede cerrar / editar). */
+  esAnioActual: boolean;
   saldo: number;
   saldoInicial: number;
   estimacion: number;

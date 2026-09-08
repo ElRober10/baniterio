@@ -57,6 +57,16 @@ export class CuentaDetalleComponent implements OnInit {
   protected readonly modalCerrarAnio = signal(false);
   protected readonly cerrandoAnio = signal(false);
 
+  // Selector de año.
+  private readonly anioSel = signal<number | null>(null);
+  protected readonly mostrarAniosViejos = signal(false);
+  /** Botones de año: los 5 más nuevos, o todos si se han desplegado. */
+  protected readonly aniosVisibles = computed(() => {
+    const anios = this.cuenta()?.anios ?? [];
+    return this.mostrarAniosViejos() ? anios : anios.slice(0, 5);
+  });
+  protected readonly hayAniosViejos = computed(() => (this.cuenta()?.anios.length ?? 0) > 5);
+
   // Formulario "+ Gasto / Ingreso".
   protected readonly formAbierto = signal(false);
   protected readonly guardandoMov = signal(false);
@@ -81,13 +91,22 @@ export class CuentaDetalleComponent implements OnInit {
 
   protected cargar(): void {
     this.estado.set('cargando');
-    this.cuentasService.detalle(this.id).subscribe({
+    this.cuentasService.detalle(this.id, this.anioSel() ?? undefined).subscribe({
       next: (c) => {
         this.cuenta.set(c);
         this.estado.set('listo');
       },
       error: () => this.estado.set('error'),
     });
+  }
+
+  protected verAnio(anio: number): void {
+    if (anio === this.cuenta()?.anio) {
+      return;
+    }
+    this.anioSel.set(anio);
+    this.aviso.set(null);
+    this.cargar();
   }
 
   /** Columnas de la hoja: concepto, estado, camiseta, sudadera, gasto, ingreso, recibo, saldo. */
@@ -119,7 +138,11 @@ export class CuentaDetalleComponent implements OnInit {
   protected cerrarAnio(): void {
     this.cerrandoAnio.set(true);
     this.cuentasService.cerrarAnio(this.id).subscribe({
-      next: (c) => this.trasCambio(c, `Año cerrado. Ahora estás en ${c.anio}.`),
+      next: (c) => {
+        this.anioSel.set(null);
+        this.mostrarAniosViejos.set(false);
+        this.trasCambio(c, `Año cerrado. Ahora estás en ${c.anio}.`);
+      },
       error: () => this.aviso.set('No se ha podido cerrar el año.'),
       complete: () => {
         this.cerrandoAnio.set(false);

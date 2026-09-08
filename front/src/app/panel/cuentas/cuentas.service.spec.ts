@@ -35,6 +35,8 @@ describe('CuentasService', () => {
     nombre: 'San Miguel',
     descripcion: null,
     anio: 2026,
+    anios: [2026],
+    esAnioActual: true,
     saldo: 91.13,
     saldoInicial: 91.13,
     estimacion: 91.13,
@@ -52,6 +54,13 @@ describe('CuentasService', () => {
   it('detalle() hace GET a /cuentas/:id', () => {
     service.detalle(3).subscribe();
     const req = httpMock.expectOne(`${base}/cuentas/3`);
+    expect(req.request.method).toBe('GET');
+    req.flush(detalleVacio);
+  });
+
+  it('detalle(id, anio) añade ?anio=', () => {
+    service.detalle(3, 2025).subscribe();
+    const req = httpMock.expectOne(`${base}/cuentas/3?anio=2025`);
     expect(req.request.method).toBe('GET');
     req.flush(detalleVacio);
   });

@@ -12,6 +12,8 @@ function detalle(over: Partial<CuentaDetalle> = {}): CuentaDetalle {
     nombre: 'San Miguel',
     descripcion: null,
     anio: 2026,
+    anios: [2026],
+    esAnioActual: true,
     saldo: 91.13,
     saldoInicial: 91.13,
     estimacion: 107.13,
