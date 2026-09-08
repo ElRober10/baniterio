@@ -95,7 +95,9 @@
 
         <!-- La hoja: una sola tabla, peñistas arriba y gastos abajo, con el saldo corriendo por la derecha -->
         <div class="mt-3 overflow-x-auto rounded-2xl border border-outline">
-          <table class="w-full whitespace-nowrap text-sm">
+          <table
+            class="w-full border-collapse whitespace-nowrap text-sm [&_td]:border [&_td]:border-outline/40 [&_th]:border [&_th]:border-outline/40"
+          >
             <thead class="bg-surface/60 text-xs uppercase tracking-wide text-muted">
               <tr>
                 <th class="px-3 py-2 text-left">Peñista / concepto</th>
