@@ -101,7 +101,6 @@
             <thead class="bg-surface/60 text-xs uppercase tracking-wide text-muted">
               <tr>
                 <th class="px-3 py-2 text-left">Peñista / concepto</th>
-                <th class="px-3 py-2 text-right">Cuota</th>
                 <th class="px-3 py-2 text-left text-[0.65rem]">Estado</th>
                 <th class="px-3 py-2 text-center">Camiseta</th>
                 <th class="px-3 py-2 text-center">Sudadera</th>
@@ -116,7 +115,6 @@
             <tbody>
               <tr class="text-muted">
                 <td class="px-3 py-2">Saldo del año anterior</td>
-                <td class="px-3 py-2 text-right">{{ c.saldoInicial }} €</td>
                 <td class="px-3 py-2"></td>
                 <td class="px-3 py-2"></td>
                 <td class="px-3 py-2"></td>
@@ -136,8 +134,10 @@
               </tr>
               @for (p of c.penistas; track p.asistenciaId) {
                 <tr>
-                  <td class="px-3 py-2">{{ p.nombre }}</td>
-                  <td class="whitespace-nowrap px-3 py-2 text-right">{{ p.cuota }} €</td>
+                  <td class="px-3 py-2">
+                    {{ p.nombre }}
+                    <span class="text-xs text-muted">· cuota {{ p.cuota }} € · {{ p.anio }}</span>
+                  </td>
                   <td class="px-3 py-2">
                     <span class="block max-w-36 whitespace-normal text-xs leading-tight">
                       {{ estadoTexto[p.estadoPago ?? 'PENDIENTE_PAGO'] }}
@@ -148,32 +148,50 @@
                   </td>
                   <td class="px-3 py-2 text-center">
                     @if (c.puedoGestionar) {
-                      <span class="flex items-center justify-center gap-1">
-                        <input type="number" min="0" [value]="p.camisetaCantidad"
-                          (change)="guardarRopa(p, { camisetaCantidad: +$any($event.target).value })"
-                          class="w-12 rounded border border-outline bg-surface px-1 py-0.5 text-right" />
-                        <input type="text" [value]="p.camisetaTalla ?? ''" placeholder="talla"
-                          (change)="guardarRopa(p, { camisetaTalla: $any($event.target).value })"
-                          class="w-20 rounded border border-outline bg-surface px-1 py-0.5" />
+                      <span class="flex flex-col items-center gap-1">
+                        <span class="flex items-center gap-1">
+                          <input type="number" min="0" [value]="p.camisetaCantidad"
+                            (change)="guardarRopa(p, { camisetaCantidad: +$any($event.target).value })"
+                            class="w-12 rounded border border-outline bg-surface px-1 py-0.5 text-right" />
+                          <input type="text" [value]="p.camisetaTalla ?? ''" placeholder="talla"
+                            (change)="guardarRopa(p, { camisetaTalla: $any($event.target).value })"
+                            class="w-20 rounded border border-outline bg-surface px-1 py-0.5" />
+                        </span>
+                        @if (p.camisetaCantidad > 0) {
+                          <label class="flex items-center gap-1 text-xs text-muted">
+                            <input type="checkbox" [checked]="p.camisetaConfirmada"
+                              (change)="guardarRopa(p, { camisetaConfirmada: $any($event.target).checked })" />
+                            € confirmado
+                          </label>
+                        }
                       </span>
                     } @else if (p.camisetaCantidad > 0) {
-                      {{ p.camisetaCantidad }}@if (p.camisetaTalla) { · {{ p.camisetaTalla }} }
+                      {{ p.camisetaCantidad }}@if (p.camisetaTalla) { · {{ p.camisetaTalla }} }@if (p.camisetaConfirmada) { ✓ }
                     } @else {
                       ·
                     }
                   </td>
                   <td class="px-3 py-2 text-center">
                     @if (c.puedoGestionar) {
-                      <span class="flex items-center justify-center gap-1">
-                        <input type="number" min="0" [value]="p.sudaderaCantidad"
-                          (change)="guardarRopa(p, { sudaderaCantidad: +$any($event.target).value })"
-                          class="w-12 rounded border border-outline bg-surface px-1 py-0.5 text-right" />
-                        <input type="text" [value]="p.sudaderaTalla ?? ''" placeholder="talla"
-                          (change)="guardarRopa(p, { sudaderaTalla: $any($event.target).value })"
-                          class="w-20 rounded border border-outline bg-surface px-1 py-0.5" />
+                      <span class="flex flex-col items-center gap-1">
+                        <span class="flex items-center gap-1">
+                          <input type="number" min="0" [value]="p.sudaderaCantidad"
+                            (change)="guardarRopa(p, { sudaderaCantidad: +$any($event.target).value })"
+                            class="w-12 rounded border border-outline bg-surface px-1 py-0.5 text-right" />
+                          <input type="text" [value]="p.sudaderaTalla ?? ''" placeholder="talla"
+                            (change)="guardarRopa(p, { sudaderaTalla: $any($event.target).value })"
+                            class="w-20 rounded border border-outline bg-surface px-1 py-0.5" />
+                        </span>
+                        @if (p.sudaderaCantidad > 0) {
+                          <label class="flex items-center gap-1 text-xs text-muted">
+                            <input type="checkbox" [checked]="p.sudaderaConfirmada"
+                              (change)="guardarRopa(p, { sudaderaConfirmada: $any($event.target).checked })" />
+                            € confirmado
+                          </label>
+                        }
                       </span>
                     } @else if (p.sudaderaCantidad > 0) {
-                      {{ p.sudaderaCantidad }}@if (p.sudaderaTalla) { · {{ p.sudaderaTalla }} }
+                      {{ p.sudaderaCantidad }}@if (p.sudaderaTalla) { · {{ p.sudaderaTalla }} }@if (p.sudaderaConfirmada) { ✓ }
                     } @else {
                       ·
                     }
@@ -193,9 +211,11 @@
                 </tr>
               }
               <tr class="text-xs font-semibold">
-                <td class="px-3 py-2">Total en cuotas</td>
-                <td class="px-3 py-2 text-right">{{ c.totalCuotas }} €</td>
-                <td class="px-3 py-2 font-normal text-muted">cobrado: {{ c.totalCobrado }} €</td>
+                <td class="px-3 py-2">
+                  Total en cuotas: {{ c.totalCuotas }} €
+                  <span class="font-normal text-muted">· cobrado {{ c.totalCobrado }} €</span>
+                </td>
+                <td class="px-3 py-2"></td>
                 <td class="px-3 py-2"></td>
                 <td class="px-3 py-2"></td>
                 <td class="px-3 py-2"></td>
@@ -205,7 +225,7 @@
               </tr>
             </tbody>
 
-            <!-- Bloque 3: cuotas cobradas, gastos e ingresos -->
+            <!-- Bloque 3: ropa confirmada, gastos e ingresos -->
             <tbody>
               <tr class="bg-surface/40 text-xs uppercase tracking-wide text-muted">
                 <td class="px-3 py-1.5" [attr.colspan]="COLUMNAS">Ingresos y gastos</td>
@@ -220,7 +240,6 @@
                       @if (m.adelantadoPor) { <span class="text-xs text-muted">· adelantó {{ m.adelantadoPor }}</span> }
                     </span>
                   </td>
-                  <td class="px-3 py-2"></td>
                   <td class="px-3 py-2"></td>
                   <td class="px-3 py-2"></td>
                   <td class="px-3 py-2"></td>
@@ -240,7 +259,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td class="px-3 py-3 text-muted" [attr.colspan]="COLUMNAS">Ningún gasto ni ingreso manual todavía.</td>
+                  <td class="px-3 py-3 text-muted" [attr.colspan]="COLUMNAS">Ningún gasto ni ingreso todavía.</td>
                 </tr>
               }
             </tbody>

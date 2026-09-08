@@ -43,8 +43,10 @@ export class CuentasService {
     cambio: {
       camisetaCantidad?: number;
       camisetaTalla?: string;
+      camisetaConfirmada?: boolean;
       sudaderaCantidad?: number;
       sudaderaTalla?: string;
+      sudaderaConfirmada?: boolean;
     },
   ): Observable<CuentaDetalle> {
     return this.http.put<CuentaDetalle>(

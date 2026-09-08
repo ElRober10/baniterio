@@ -109,6 +109,14 @@ public class FichaBebida {
     @Column(name = "sudadera_talla", length = 24)
     private String sudaderaTalla;
 
+    @Column(name = "camiseta_confirmada", nullable = false)
+    @Builder.Default
+    private boolean camisetaConfirmada = false;
+
+    @Column(name = "sudadera_confirmada", nullable = false)
+    @Builder.Default
+    private boolean sudaderaConfirmada = false;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

@@ -8,7 +8,8 @@ import java.math.BigDecimal;
  * lo está, son el importe que entró y el saldo de la cuenta justo después.
  */
 public record PenistaCuota(
-        Long asistenciaId, String nombre, BigDecimal cuota, String estadoPago, String metodoPago,
-        int camisetaCantidad, String camisetaTalla, int sudaderaCantidad, String sudaderaTalla,
+        Long asistenciaId, String nombre, int anio, BigDecimal cuota, String estadoPago, String metodoPago,
+        int camisetaCantidad, String camisetaTalla, boolean camisetaConfirmada,
+        int sudaderaCantidad, String sudaderaTalla, boolean sudaderaConfirmada,
         BigDecimal ingreso, BigDecimal saldoTras) {
 }

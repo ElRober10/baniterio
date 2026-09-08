@@ -64,13 +64,16 @@ export interface MovimientoFila {
 export interface PenistaCuota {
   asistenciaId: number;
   nombre: string;
+  anio: number;
   cuota: number;
   estadoPago: EstadoPagoCuota | null;
   metodoPago: string | null;
   camisetaCantidad: number;
   camisetaTalla: string | null;
+  camisetaConfirmada: boolean;
   sudaderaCantidad: number;
   sudaderaTalla: string | null;
+  sudaderaConfirmada: boolean;
   /** Importe que entró y saldo tras él; `null` mientras la cuota no esté cobrada. */
   ingreso: number | null;
   saldoTras: number | null;
