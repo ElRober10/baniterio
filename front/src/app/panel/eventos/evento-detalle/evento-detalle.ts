@@ -193,6 +193,11 @@ export class EventoDetalleComponent implements OnInit {
     this.editandoFicha.set(false);
   }
 
+  /** Placeholder: "Lista de la compra" e "Inventario de la fiesta" llegan más adelante. */
+  protected proximamente(que: string): void {
+    this.aviso.set(`«${que}» todavía no está disponible.`);
+  }
+
   protected guardarFicha(body: FichaBebidaBody): void {
     this.eventosService.guardarFichaBebida(this.id, body).subscribe({
       next: () => {
