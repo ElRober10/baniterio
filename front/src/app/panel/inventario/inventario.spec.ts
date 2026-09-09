@@ -1,90 +1,34 @@
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { environment } from '../../../environments/environment';
+import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { Inventario } from './inventario';
-import { InventarioResponse } from './inventario.types';
 
-const RESPUESTA = (puedoEditar: boolean): InventarioResponse => ({
-  puedoEditar,
-  categorias: [
-    {
-      categoria: 'CERVEZA',
-      etiqueta: 'Cerveza',
-      tamanos: ['lata', 'botellín', 'tercio'],
-      articulos: [
-        { id: 1, nombre: 'Mahou Clásica', tamano: 'lata', cantidad: 192 },
-        { id: 2, nombre: 'Mixta', tamano: 'lata', cantidad: 3 },
-      ],
-    },
-    { categoria: 'COMIDA', etiqueta: 'Comida', tamanos: ['unidad', 'kg'], articulos: [] },
-  ],
-});
-
-describe('Inventario', () => {
-  let fixture: ComponentFixture<Inventario>;
-  let httpMock: HttpTestingController;
-  const base = environment.apiBaseUrl;
-
+describe('Inventario (portada)', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Inventario],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideRouter([])],
     }).compileComponents();
-    fixture = TestBed.createComponent(Inventario);
-    httpMock = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => httpMock.verify());
-
-  function cargar(puedoEditar: boolean): void {
+  it('pinta un botón por categoría, cada uno a su ruta', () => {
+    const fixture = TestBed.createComponent(Inventario);
     fixture.detectChanges();
-    httpMock.expectOne(`${base}/inventario`).flush(RESPUESTA(puedoEditar));
-    fixture.detectChanges();
-  }
+    const el = fixture.nativeElement as HTMLElement;
 
-  it('pinta las categorías y sus artículos', () => {
-    cargar(false);
-    const txt = (fixture.nativeElement as HTMLElement).textContent ?? '';
-    expect(txt).toContain('Cerveza');
-    expect(txt).toContain('Mahou Clásica');
-    expect(txt).toContain('192');
-    expect(txt).toContain('Nada apuntado todavía.');
-  });
-
-  it('sin permiso no enseña el botón Editar', () => {
-    cargar(false);
-    const botones = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button'));
-    expect(botones.some((b) => b.textContent?.includes('Editar'))).toBe(false);
-  });
-
-  it('con permiso, editar + guardar manda un PUT por fila cambiada', () => {
-    cargar(true);
-
-    const editar = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
-    ).find((b) => b.textContent?.includes('Editar'))!;
-    editar.dispatchEvent(new Event('click'));
-    fixture.detectChanges();
-
-    const cantidad = (fixture.nativeElement as HTMLElement).querySelector(
-      'input[type="number"]',
-    ) as HTMLInputElement;
-    cantidad.value = '5';
-    cantidad.dispatchEvent(new Event('input'));
-    fixture.detectChanges();
-
-    const guardar = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
-    ).find((b) => b.textContent?.includes('Guardar'))!;
-    guardar.dispatchEvent(new Event('click'));
-
-    const put = httpMock.expectOne(`${base}/inventario/1`);
-    expect(put.request.method).toBe('PUT');
-    expect(put.request.body.cantidad).toBe(5);
-    put.flush({ id: 1, nombre: 'Mahou Clásica', tamano: 'lata', cantidad: 5 });
-
-    // tras guardar, recarga
-    httpMock.expectOne(`${base}/inventario`).flush(RESPUESTA(true));
+    const enlaces = Array.from(el.querySelectorAll('a[href^="/panel/inventario/"]'));
+    expect(enlaces.map((a) => (a.textContent ?? '').trim())).toEqual([
+      'Alcohol',
+      'Cerveza',
+      'Refrescos',
+      'Limpieza',
+      'Comida',
+    ]);
+    expect(enlaces.map((a) => a.getAttribute('href'))).toEqual([
+      '/panel/inventario/alcohol',
+      '/panel/inventario/cerveza',
+      '/panel/inventario/refrescos',
+      '/panel/inventario/limpieza',
+      '/panel/inventario/comida',
+    ]);
   });
 });

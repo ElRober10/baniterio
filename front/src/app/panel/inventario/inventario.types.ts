@@ -31,3 +31,19 @@ export interface CambioArticulo {
   tamano: string;
   cantidad: number;
 }
+
+/** Una categoría para la rejilla de botones y para resolver el slug de la URL. */
+export interface OpcionCategoria {
+  clave: CategoriaClave;
+  etiqueta: string;
+  slug: string;
+}
+
+/** Las cinco categorías, en el orden en que se pintan los botones. */
+export const CATEGORIAS: OpcionCategoria[] = [
+  { clave: 'ALCOHOL', etiqueta: 'Alcohol', slug: 'alcohol' },
+  { clave: 'CERVEZA', etiqueta: 'Cerveza', slug: 'cerveza' },
+  { clave: 'REFRESCOS', etiqueta: 'Refrescos', slug: 'refrescos' },
+  { clave: 'LIMPIEZA', etiqueta: 'Limpieza', slug: 'limpieza' },
+  { clave: 'COMIDA', etiqueta: 'Comida', slug: 'comida' },
+];
