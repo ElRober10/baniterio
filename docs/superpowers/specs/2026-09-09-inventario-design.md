@@ -65,7 +65,7 @@ Fijas en código (constante en el servicio o en el propio enum de categoría):
 | Categoría  | Tamaños permitidos                     |
 |------------|----------------------------------------|
 | ALCOHOL    | `70 cl`, `1 L`, `1,5 L`                |
-| CERVEZA    | `lata`, `botellín`, `tercio`, `barril` |
+| CERVEZA    | `lata`, `botellín`, `tercio`           |
 | REFRESCOS  | `botella`, `lata`, `garrafa`, `brick`  |
 | LIMPIEZA   | `unidad`, `rollo`, `paquete`, `litro`  |
 | COMIDA     | `unidad`, `paquete`, `kg`, `lata`      |
@@ -219,7 +219,7 @@ artículos.
 | Mahou Clásica       | lata     | 192      |
 | Mahou 0,0 Tostada   | lata     | 14       |
 | Mixta               | lata     | 3        |
-| Coronita            | botellín | 3        |
+| Coronita            | lata     | 3        |
 
 ### LIMPIEZA
 
