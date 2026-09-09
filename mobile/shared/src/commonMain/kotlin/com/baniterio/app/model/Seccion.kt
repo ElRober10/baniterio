@@ -13,7 +13,7 @@ fun seccionesPanel(tieneAdmin: Boolean): List<Seccion> = buildList {
     add(Seccion("Miembros", "Las tarjetas de los socios de la peña.", destino = Screen.Miembros))
     add(Seccion("Eventos", "Calendario y organización de las quedadas y fiestas de la peña.", destino = Screen.Eventos))
     add(Seccion("Cuentas", "El dinero de cada evento que se repite: ingresos, gastos y balance.", destino = Screen.Cuentas))
-    add(Seccion("Inventario", "Material y enseres que tiene la peña."))
+    add(Seccion("Inventario", "Material y enseres que tiene la peña.", destino = Screen.Inventario))
     add(Seccion("Ropa", "Pedidos y tallas del vestuario de la peña."))
     if (tieneAdmin) {
         add(Seccion("Administración", "Solicitudes de acceso y permisos de la peña.", destino = Screen.AdminIndex))
