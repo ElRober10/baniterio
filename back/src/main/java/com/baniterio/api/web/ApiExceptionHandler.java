@@ -266,6 +266,21 @@ public class ApiExceptionHandler {
         return error(HttpStatus.CONFLICT, "SIN_CREDITO_EVENTO");
     }
 
+    @ExceptionHandler(com.baniterio.api.inventario.ArticuloInventarioNoEncontradoException.class)
+    ResponseEntity<Map<String, Object>> articuloInventarioNoEncontrado() {
+        return error(HttpStatus.NOT_FOUND, "ARTICULO_INVENTARIO_NO_ENCONTRADO");
+    }
+
+    @ExceptionHandler(com.baniterio.api.inventario.SinPermisoInventarioException.class)
+    ResponseEntity<Map<String, Object>> sinPermisoInventario() {
+        return error(HttpStatus.FORBIDDEN, "SIN_PERMISO_INVENTARIO");
+    }
+
+    @ExceptionHandler(com.baniterio.api.inventario.TamanoInventarioNoValidoException.class)
+    ResponseEntity<Map<String, Object>> tamanoInventarioNoValido() {
+        return error(HttpStatus.BAD_REQUEST, "TAMANO_INVENTARIO_NO_VALIDO");
+    }
+
     @ExceptionHandler(com.baniterio.api.evento.SinPermisoEventoException.class)
     ResponseEntity<Map<String, Object>> sinPermisoEvento() {
         return error(HttpStatus.FORBIDDEN, "SIN_PERMISO_EVENTO");
