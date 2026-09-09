@@ -1,7 +1,6 @@
 package com.baniterio.app.ui.cuentas
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -35,9 +33,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -48,7 +44,6 @@ import com.baniterio.app.data.CuentasRepository
 import com.baniterio.app.data.ResultadoCuenta
 import com.baniterio.app.data.dto.CrearMovimientoInput
 import com.baniterio.app.data.dto.CuentaDetalleDto
-import com.baniterio.app.data.dto.MarcarRopaInput
 import com.baniterio.app.data.dto.MovimientoFilaDto
 import com.baniterio.app.data.dto.PenistaCuotaDto
 import com.baniterio.app.data.rememberSelectorArchivo
@@ -170,15 +165,6 @@ fun CuentaDetalleScreen(
     fun trasCambio(nueva: CuentaDetalleDto, msg: String) {
         estado = EstadoCuentaDetalle.Cargada(nueva)
         aviso = msg
-    }
-
-    fun guardarRopa(p: PenistaCuotaDto, cambio: MarcarRopaInput) {
-        scope.launch {
-            when (val r = cuentasRepo.marcarRopa(cuentaId, p.asistenciaId, cambio)) {
-                is ResultadoCuenta.Exito -> estado = EstadoCuentaDetalle.Cargada(r.dato)
-                is ResultadoCuenta.Error -> aviso = r.mensaje
-            }
-        }
     }
 
     Column(
@@ -364,17 +350,13 @@ fun CuentaDetalleScreen(
                                 ANCHO_ESTADO,
                                 color = BaniterioColors.muted,
                             )
-                            CeldaRopa(
-                                gestionar, p.camisetaCantidad, p.camisetaTalla, p.camisetaConfirmada,
-                                onCantidad = { guardarRopa(p, MarcarRopaInput(camisetaCantidad = it)) },
-                                onTalla = { guardarRopa(p, MarcarRopaInput(camisetaTalla = it)) },
-                                onConfirmada = { guardarRopa(p, MarcarRopaInput(camisetaConfirmada = it)) },
+                            Celda(
+                                ropaTexto(p.camisetaCantidad, p.camisetaTalla, p.camisetaConfirmada),
+                                ANCHO_ROPA, TextAlign.Center,
                             )
-                            CeldaRopa(
-                                gestionar, p.sudaderaCantidad, p.sudaderaTalla, p.sudaderaConfirmada,
-                                onCantidad = { guardarRopa(p, MarcarRopaInput(sudaderaCantidad = it)) },
-                                onTalla = { guardarRopa(p, MarcarRopaInput(sudaderaTalla = it)) },
-                                onConfirmada = { guardarRopa(p, MarcarRopaInput(sudaderaConfirmada = it)) },
+                            Celda(
+                                ropaTexto(p.sudaderaCantidad, p.sudaderaTalla, p.sudaderaConfirmada),
+                                ANCHO_ROPA, TextAlign.Center,
                             )
                             Celda("", ANCHO_DINERO)
                             Celda(
@@ -559,115 +541,6 @@ private fun ChipAnio(texto: Any, seleccionado: Boolean, onClick: () -> Unit) {
         color = if (seleccionado) BaniterioColors.ink else BaniterioColors.muted,
         fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Normal,
     )
-}
-
-/**
- * Celda de ropa: en lectura, texto; para el admin, cantidad + talla en una fila
- * (campos pequeños con borde, como en la web) y, si hay cantidad, un chip
- * "€ confirmado" que se enciende al tocarlo.
- */
-@Composable
-private fun CeldaRopa(
-    editable: Boolean,
-    cantidad: Int,
-    talla: String?,
-    confirmada: Boolean,
-    onCantidad: (Int) -> Unit,
-    onTalla: (String) -> Unit,
-    onConfirmada: (Boolean) -> Unit,
-) {
-    if (!editable) {
-        Celda(ropaTexto(cantidad, talla, confirmada), ANCHO_ROPA, TextAlign.Center)
-        return
-    }
-    Column(
-        Modifier.width(ANCHO_ROPA).padding(horizontal = 6.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        var txtCantidad by remember(cantidad) { mutableStateOf(if (cantidad == 0) "" else cantidad.toString()) }
-        var txtTalla by remember(talla) { mutableStateOf(talla ?: "") }
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            CampoMini(
-                valor = txtCantidad,
-                onValor = { nuevo ->
-                    txtCantidad = nuevo.filter { it.isDigit() }.take(2)
-                    onCantidad(txtCantidad.toIntOrNull() ?: 0)
-                },
-                ancho = 40.dp,
-                align = TextAlign.Center,
-                numerico = true,
-            )
-            CampoMini(
-                valor = txtTalla,
-                onValor = { txtTalla = it.take(6); onTalla(txtTalla) },
-                ancho = 78.dp,
-                placeholder = "talla",
-            )
-        }
-        if (cantidad > 0) {
-            Text(
-                if (confirmada) "€ confirmado ✓" else "€ confirmado",
-                modifier = Modifier
-                    .clickable { onConfirmada(!confirmada) }
-                    .background(
-                        if (confirmada) BaniterioColors.brand else BaniterioColors.surface,
-                        RoundedCornerShape(999.dp),
-                    )
-                    .padding(horizontal = 8.dp, vertical = 3.dp),
-                style = MaterialTheme.typography.labelSmall,
-                color = if (confirmada) BaniterioColors.ink else BaniterioColors.muted,
-            )
-        }
-    }
-}
-
-/** Campo de texto pequeño con borde, para meter en una celda de la tabla. */
-@Composable
-private fun CampoMini(
-    valor: String,
-    onValor: (String) -> Unit,
-    ancho: androidx.compose.ui.unit.Dp,
-    align: TextAlign = TextAlign.Start,
-    placeholder: String? = null,
-    numerico: Boolean = false,
-) {
-    Box(
-        Modifier
-            .width(ancho)
-            .border(1.dp, BaniterioColors.outline, RoundedCornerShape(6.dp))
-            .background(BaniterioColors.surface, RoundedCornerShape(6.dp))
-            .padding(horizontal = 6.dp, vertical = 5.dp),
-    ) {
-        BasicTextField(
-            value = valor,
-            onValueChange = onValor,
-            singleLine = true,
-            textStyle = MaterialTheme.typography.bodySmall.copy(
-                color = BaniterioColors.ink,
-                textAlign = align,
-            ),
-            cursorBrush = SolidColor(BaniterioColors.gold),
-            keyboardOptions = if (numerico) {
-                KeyboardOptions(keyboardType = KeyboardType.Number)
-            } else {
-                KeyboardOptions.Default
-            },
-            decorationBox = { inner ->
-                if (valor.isEmpty() && placeholder != null) {
-                    Text(
-                        placeholder,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = BaniterioColors.muted,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = align,
-                    )
-                }
-                inner()
-            },
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
 }
 
 @Composable
