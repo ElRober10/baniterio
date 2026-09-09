@@ -281,6 +281,16 @@ public class ApiExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, "TAMANO_INVENTARIO_NO_VALIDO");
     }
 
+    @ExceptionHandler(com.baniterio.api.inventario.NadaQueEnviarException.class)
+    ResponseEntity<Map<String, Object>> nadaQueEnviar() {
+        return error(HttpStatus.BAD_REQUEST, "NADA_QUE_ENVIAR");
+    }
+
+    @ExceptionHandler(com.baniterio.api.inventario.ArticuloEventoNoEncontradoException.class)
+    ResponseEntity<Map<String, Object>> articuloEventoNoEncontrado() {
+        return error(HttpStatus.NOT_FOUND, "ARTICULO_EVENTO_NO_ENCONTRADO");
+    }
+
     @ExceptionHandler(com.baniterio.api.evento.SinPermisoEventoException.class)
     ResponseEntity<Map<String, Object>> sinPermisoEvento() {
         return error(HttpStatus.FORBIDDEN, "SIN_PERMISO_EVENTO");
