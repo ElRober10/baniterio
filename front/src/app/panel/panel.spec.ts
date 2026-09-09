@@ -95,6 +95,13 @@ describe('Panel · nav lateral', () => {
     expect((enlace?.textContent ?? '').trim()).toBe('Cuentas');
   });
 
+  it('"Inventario" es un enlace real a /panel/inventario, no una sección "Pronto"', () => {
+    const el = render([]);
+    const enlace = el.querySelector('a[href="/panel/inventario"]');
+    expect(enlace).toBeTruthy();
+    expect((enlace?.textContent ?? '').trim()).toBe('Inventario');
+  });
+
   it('usuario sin áreas: no aparece "Administración" ni se pide el recuento', () => {
     expect(render([]).textContent).not.toContain('Administración');
     expect(refrescos).toBe(0);
