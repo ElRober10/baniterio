@@ -3,14 +3,21 @@ package com.baniterio.app.data
 import com.baniterio.app.data.dto.CuentaDetalleDto
 import com.baniterio.app.data.dto.CuentaResumen
 import com.baniterio.app.data.dto.ErrorResponse
+import com.baniterio.app.data.dto.MarcarRopaInput
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.parameter
 import io.ktor.client.request.post
+import io.ktor.client.request.put
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
 
 class CuentasRepositoryImpl(
@@ -27,12 +34,35 @@ class CuentasRepositoryImpl(
         http.get("$API_BASE_URL/cuentas") { auth() }.body()
     }
 
-    override suspend fun detalle(id: Long): ResultadoCuenta<CuentaDetalleDto> = peticion {
-        http.get("$API_BASE_URL/cuentas/$id") { auth() }.body()
+    override suspend fun detalle(id: Long, anio: Int?): ResultadoCuenta<CuentaDetalleDto> = peticion {
+        http.get("$API_BASE_URL/cuentas/$id") {
+            auth()
+            if (anio != null) parameter("anio", anio)
+        }.body()
     }
 
     override suspend fun marcarTransferido(id: Long): ResultadoCuenta<CuentaDetalleDto> = peticion {
         http.post("$API_BASE_URL/cuentas/$id/transferencia-a-pena") { auth() }.body()
+    }
+
+    override suspend fun cerrarAnio(id: Long): ResultadoCuenta<CuentaDetalleDto> = peticion {
+        http.post("$API_BASE_URL/cuentas/$id/cerrar-anio") { auth() }.body()
+    }
+
+    override suspend fun borrarMovimiento(movId: Long): ResultadoCuenta<CuentaDetalleDto> = peticion {
+        http.delete("$API_BASE_URL/cuentas/movimientos/$movId") { auth() }.body()
+    }
+
+    override suspend fun marcarRopa(
+        cuentaId: Long,
+        asistenciaId: Long,
+        cambio: MarcarRopaInput,
+    ): ResultadoCuenta<CuentaDetalleDto> = peticion {
+        http.put("$API_BASE_URL/cuentas/$cuentaId/asistencias/$asistenciaId/ropa") {
+            auth()
+            contentType(ContentType.Application.Json)
+            setBody(cambio)
+        }.body()
     }
 
     /**

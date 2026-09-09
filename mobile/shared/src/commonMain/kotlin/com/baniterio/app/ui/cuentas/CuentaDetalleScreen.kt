@@ -146,8 +146,8 @@ fun CuentaDetalleScreen(
                         Text(
                             estadoTexto(p.estadoPago) +
                                 (if (confirmado(p) && p.metodoPago != null) " · ${p.metodoPago}" else "") +
-                                (if (p.camisetaPagada) " · camiseta ✓" else "") +
-                                (if (p.sudaderaPagada) " · sudadera ✓" else ""),
+                                (if (p.camisetaCantidad > 0) " · camiseta ✓" else "") +
+                                (if (p.sudaderaCantidad > 0) " · sudadera ✓" else ""),
                             style = MaterialTheme.typography.bodySmall,
                             color = BaniterioColors.muted,
                         )
