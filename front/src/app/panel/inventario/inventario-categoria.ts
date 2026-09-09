@@ -153,6 +153,25 @@ export class InventarioCategoria implements OnInit {
     this.cargar();
   }
 
+  /** Da de baja un artículo (papelera, solo en modo edición). Pide confirmación. */
+  protected borrar(a: ArticuloInventario): void {
+    if (!confirm(`¿Quitar "${a.nombre}" del inventario?`)) return;
+    this.guardando.set(true);
+    this.aviso.set('');
+    this.inventarioService.borrar(a.id).subscribe({
+      next: () => {
+        this.guardando.set(false);
+        this.editando.set(false);
+        this.borrador.set({});
+        this.cargar();
+      },
+      error: () => {
+        this.guardando.set(false);
+        this.aviso.set('No se pudo quitar el artículo.');
+      },
+    });
+  }
+
   /** Placeholder: la funcionalidad de "enviar a un evento" llega más adelante. */
   protected enviarAEvento(a: ArticuloInventario): void {
     this.aviso.set(`"Enviar a evento" todavía no está disponible (${a.nombre}).`);

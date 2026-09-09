@@ -33,4 +33,11 @@ describe('InventarioService', () => {
     expect(req.request.body).toEqual({ nombre: 'Mixta', tamano: 'lata', cantidad: 9 });
     req.flush({ id: 7, nombre: 'Mixta', tamano: 'lata', cantidad: 9 });
   });
+
+  it('borrar() pega a DELETE /inventario/:id', () => {
+    service.borrar(7).subscribe();
+    const req = httpMock.expectOne(`${base}/inventario/7`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
+  });
 });

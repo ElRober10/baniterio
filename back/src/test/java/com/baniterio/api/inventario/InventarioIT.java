@@ -181,6 +181,43 @@ class InventarioIT extends IntegrationTest {
     }
 
     @Test
+    void delete_con_permiso_da_de_baja_el_articulo() {
+        String token = token(RolMembresia.MIEMBRO, true);
+        // Se crea uno de usar y tirar para no romper a los demás tests, que comparten BBDD.
+        http.post().uri("/api/v1/inventario")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .body(Map.of("categoria", "CERVEZA", "nombre", "Radler de baja",
+                        "tamano", "lata", "cantidad", 1))
+                .exchange().expectStatus().isCreated();
+        Long id = idDe("CERVEZA", "Radler de baja");
+
+        http.delete().uri("/api/v1/inventario/" + id)
+                .header(AUTHORIZATION, "Bearer " + token)
+                .exchange().expectStatus().isNoContent();
+
+        assertThat(articulos.findById(id)).isEmpty();
+    }
+
+    @Test
+    void delete_sin_permiso_es_403() {
+        String token = token(RolMembresia.MIEMBRO, false);
+        Long id = idDe("CERVEZA", "Mahou Clásica");
+
+        http.delete().uri("/api/v1/inventario/" + id)
+                .header(AUTHORIZATION, "Bearer " + token)
+                .exchange().expectStatus().isForbidden();
+    }
+
+    @Test
+    void delete_a_id_inexistente_es_404() {
+        String token = token(RolMembresia.MIEMBRO, true);
+
+        http.delete().uri("/api/v1/inventario/999999")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .exchange().expectStatus().isNotFound();
+    }
+
+    @Test
     void put_a_id_inexistente_es_404() {
         String token = token(RolMembresia.MIEMBRO, true);
 

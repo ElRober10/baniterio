@@ -9,6 +9,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -56,6 +57,10 @@ class InventarioRepositoryImpl(
             contentType(ContentType.Application.Json)
             setBody(CrearArticuloRequest(categoria, nombre, tamano, cantidad))
         }.body()
+    }
+
+    override suspend fun borrar(id: Long): ResultadoInventario<Unit> = peticion {
+        http.delete("$API_BASE_URL/inventario/$id") { auth() }.let { }
     }
 
     private suspend fun <T> peticion(bloque: suspend () -> T): ResultadoInventario<T> =
