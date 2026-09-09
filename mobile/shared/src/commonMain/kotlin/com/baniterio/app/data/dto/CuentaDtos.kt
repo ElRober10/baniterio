@@ -1,5 +1,6 @@
 package com.baniterio.app.data.dto
 
+import com.baniterio.app.data.ArchivoElegido
 import kotlinx.serialization.Serializable
 
 /** Ficha de una cuenta (`GET /cuentas`). El detalle usa [CuentaDetalleDto]. */
@@ -98,4 +99,19 @@ data class MarcarRopaInput(
     val sudaderaCantidad: Int? = null,
     val sudaderaTalla: String? = null,
     val sudaderaConfirmada: Boolean? = null,
+)
+
+/**
+ * Datos de un gasto/ingreso manual a crear (`POST …/movimientos`, multipart).
+ * `tipo` ∈ `GASTO | INGRESO`. `categoria` es uno de los códigos del backend
+ * (`REFRESCOS`, `COMIDA`, …). `recibo` opcional (PDF o imagen).
+ */
+data class CrearMovimientoInput(
+    val tipo: String,
+    val concepto: String,
+    val importe: Double,
+    val fecha: String? = null,
+    val categoria: String? = null,
+    val adelantadoPorId: Long? = null,
+    val recibo: ArchivoElegido? = null,
 )

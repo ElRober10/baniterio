@@ -1,5 +1,6 @@
 package com.baniterio.app.data
 
+import com.baniterio.app.data.dto.CrearMovimientoInput
 import com.baniterio.app.data.dto.CuentaDetalleDto
 import com.baniterio.app.data.dto.CuentaResumen
 import com.baniterio.app.data.dto.ErrorResponse
@@ -9,6 +10,8 @@ import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.delete
+import io.ktor.client.request.forms.formData
+import io.ktor.client.request.forms.submitFormWithBinaryData
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
@@ -16,6 +19,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
+import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
@@ -47,6 +51,33 @@ class CuentasRepositoryImpl(
 
     override suspend fun cerrarAnio(id: Long): ResultadoCuenta<CuentaDetalleDto> = peticion {
         http.post("$API_BASE_URL/cuentas/$id/cerrar-anio") { auth() }.body()
+    }
+
+    override suspend fun crearMovimiento(
+        id: Long,
+        datos: CrearMovimientoInput,
+    ): ResultadoCuenta<CuentaDetalleDto> = peticion {
+        http.submitFormWithBinaryData(
+            url = "$API_BASE_URL/cuentas/$id/movimientos",
+            formData = formData {
+                append("tipo", datos.tipo)
+                append("concepto", datos.concepto)
+                append("importe", datos.importe.toString())
+                datos.fecha?.let { append("fecha", it) }
+                datos.categoria?.let { append("categoria", it) }
+                datos.adelantadoPorId?.let { append("adelantadoPorId", it.toString()) }
+                datos.recibo?.let { r ->
+                    append(
+                        "recibo",
+                        r.bytes,
+                        Headers.build {
+                            append(HttpHeaders.ContentType, r.tipoMime)
+                            append(HttpHeaders.ContentDisposition, "filename=\"${r.nombre}\"")
+                        },
+                    )
+                }
+            },
+        ) { auth() }.body()
     }
 
     override suspend fun borrarMovimiento(movId: Long): ResultadoCuenta<CuentaDetalleDto> = peticion {

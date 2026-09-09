@@ -143,6 +143,22 @@ class CuentasRepositoryImplTest {
     }
 
     @Test
+    fun crearMovimiento_hace_post_multipart() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = """{"id":3,"nombre":"San Miguel"}""")
+        val res = r.crearMovimiento(
+            3,
+            com.baniterio.app.data.dto.CrearMovimientoInput(
+                tipo = "GASTO", concepto = "Hielo", importe = 12.5, categoria = "HIELOS",
+                recibo = ArchivoElegido(byteArrayOf(1, 2, 3), "recibo.pdf", "application/pdf"),
+            ),
+        )
+        assertIs<ResultadoCuenta.Exito<com.baniterio.app.data.dto.CuentaDetalleDto>>(res)
+        assertEquals("POST", vistas[0].metodo)
+        assertEquals("/api/v1/cuentas/3/movimientos", vistas[0].path)
+        assertEquals(true, vistas[0].cuerpo.contains("Hielo"))
+    }
+
+    @Test
     fun borrarMovimiento_hace_delete() = runTest {
         val (r, vistas) = repo(cuerpoRespuesta = """{"id":3,"nombre":"San Miguel"}""")
         r.borrarMovimiento(55)

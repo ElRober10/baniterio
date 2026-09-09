@@ -1,5 +1,6 @@
 package com.baniterio.app.data
 
+import com.baniterio.app.data.dto.CrearMovimientoInput
 import com.baniterio.app.data.dto.CuentaDetalleDto
 import com.baniterio.app.data.dto.CuentaResumen
 import com.baniterio.app.data.dto.MarcarRopaInput
@@ -20,6 +21,12 @@ interface CuentasRepository {
 
     /** El admin cierra el año en curso: el saldo pasa como saldo de partida al año siguiente. */
     suspend fun cerrarAnio(id: Long): ResultadoCuenta<CuentaDetalleDto>
+
+    /** El admin da de alta un gasto/ingreso manual, con recibo opcional. */
+    suspend fun crearMovimiento(
+        id: Long,
+        datos: CrearMovimientoInput,
+    ): ResultadoCuenta<CuentaDetalleDto>
 
     /** El admin borra un gasto/ingreso manual. */
     suspend fun borrarMovimiento(movId: Long): ResultadoCuenta<CuentaDetalleDto>

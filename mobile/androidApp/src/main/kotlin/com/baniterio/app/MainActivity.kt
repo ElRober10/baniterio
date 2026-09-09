@@ -67,6 +67,15 @@ class MainActivity : FragmentActivity() {
             @Suppress("DEPRECATION")
             startActivityForResult(intent, RC_CONTACTO)
         }
+        PuenteNativo.lanzarArchivo = {
+            val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                type = "*/*"
+                putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/pdf", "image/*"))
+                addCategory(Intent.CATEGORY_OPENABLE)
+            }
+            @Suppress("DEPRECATION")
+            startActivityForResult(intent, RC_ARCHIVO)
+        }
 
         // Ejecuta [bloque] con el token FCM actual, o no hace nada si el push no
         // está configurado (sin google-services.json, FirebaseApp.getInstance()
@@ -156,6 +165,18 @@ class MainActivity : FragmentActivity() {
                 cb?.invoke(foto)
             }
 
+            RC_ARCHIVO -> {
+                val cb = PuenteNativo.pendienteArchivo
+                PuenteNativo.pendienteArchivo = null
+                val uri = data?.data
+                val archivo = if (resultCode == RESULT_OK && uri != null) {
+                    leerArchivo(this, uri)
+                } else {
+                    null
+                }
+                cb?.invoke(archivo)
+            }
+
             RC_CONTACTO -> {
                 val cb = PuenteNativo.pendienteContacto
                 PuenteNativo.pendienteContacto = null
@@ -181,6 +202,7 @@ class MainActivity : FragmentActivity() {
         PuenteNativo.lanzarFotoGaleria = null
         PuenteNativo.lanzarFotoCamara = null
         PuenteNativo.lanzarContacto = null
+        PuenteNativo.lanzarArchivo = null
         super.onDestroy()
     }
 
@@ -190,5 +212,6 @@ class MainActivity : FragmentActivity() {
         const val RC_FOTO = 1002
         const val RC_CONTACTO = 1003
         const val RC_FOTO_CAMARA = 1004
+        const val RC_ARCHIVO = 1005
     }
 }

@@ -15,6 +15,8 @@ object PuenteNativo {
     var lanzarFotoGaleria: (() -> Unit)? = null
     var lanzarFotoCamara: (() -> Unit)? = null
     var lanzarContacto: (() -> Unit)? = null
+    var lanzarArchivo: (() -> Unit)? = null
     var pendienteFoto: ((FotoElegida?) -> Unit)? = null
     var pendienteContacto: ((String?) -> Unit)? = null
+    var pendienteArchivo: ((ArchivoElegido?) -> Unit)? = null
 }
