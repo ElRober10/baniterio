@@ -13,7 +13,7 @@ public enum CategoriaInventario {
     ALCOHOL("Alcohol", List.of("70 cl", "1 L", "1,5 L")),
     CERVEZA("Cerveza", List.of("lata", "botellín", "tercio")),
     REFRESCOS("Refrescos", List.of("botella", "lata", "garrafa", "brick")),
-    LIMPIEZA("Limpieza", List.of("unidad", "rollo", "paquete", "litro")),
+    LIMPIEZA("Limpieza y utensilios", List.of("unidad", "rollo", "paquete", "litro")),
     COMIDA("Comida", List.of("unidad", "paquete", "kg", "lata"));
 
     private final String etiqueta;

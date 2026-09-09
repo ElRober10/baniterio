@@ -44,6 +44,6 @@ export const CATEGORIAS: OpcionCategoria[] = [
   { clave: 'ALCOHOL', etiqueta: 'Alcohol', slug: 'alcohol' },
   { clave: 'CERVEZA', etiqueta: 'Cerveza', slug: 'cerveza' },
   { clave: 'REFRESCOS', etiqueta: 'Refrescos', slug: 'refrescos' },
-  { clave: 'LIMPIEZA', etiqueta: 'Limpieza', slug: 'limpieza' },
+  { clave: 'LIMPIEZA', etiqueta: 'Limpieza y utensilios', slug: 'limpieza' },
   { clave: 'COMIDA', etiqueta: 'Comida', slug: 'comida' },
 ];

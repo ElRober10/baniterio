@@ -141,5 +141,10 @@ export class InventarioCategoria implements OnInit {
     this.cargar();
   }
 
+  /** Placeholder: la funcionalidad de "enviar a un evento" llega más adelante. */
+  protected enviarAEvento(a: ArticuloInventario): void {
+    this.aviso.set(`"Enviar a evento" todavía no está disponible (${a.nombre}).`);
+  }
+
   protected trackArt = (_: number, a: ArticuloInventario) => a.id;
 }

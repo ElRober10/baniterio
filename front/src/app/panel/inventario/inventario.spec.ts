@@ -20,7 +20,7 @@ describe('Inventario (portada)', () => {
       'Alcohol',
       'Cerveza',
       'Refrescos',
-      'Limpieza',
+      'Limpieza y utensilios',
       'Comida',
     ]);
     expect(enlaces.map((a) => a.getAttribute('href'))).toEqual([
