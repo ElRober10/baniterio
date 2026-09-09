@@ -70,6 +70,50 @@ describe('InventarioCategoria', () => {
     );
   });
 
+  it('"Añadir artículo" abre el modal y crea vía POST', () => {
+    const { fixture, httpMock } = montar('cerveza');
+    fixture.detectChanges();
+    httpMock.expectOne(`${environment.apiBaseUrl}/inventario`).flush(RESPUESTA(true));
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Añadir artículo'))!
+      .dispatchEvent(new Event('click'));
+    fixture.detectChanges();
+
+    // el desplegable ofrece los nombres que ya hay + "Otro (nuevo)…"
+    const opciones = Array.from(el.querySelectorAll('select')).at(0)!.querySelectorAll('option');
+    const textos = Array.from(opciones).map((o) => o.textContent?.trim());
+    expect(textos).toContain('Mahou Clásica');
+    expect(textos).toContain('Otro (nuevo)…');
+
+    const sel = el.querySelector('select') as HTMLSelectElement;
+    sel.value = 'Mixta';
+    sel.dispatchEvent(new Event('change'));
+    const cantidad = el.querySelector('input[type="number"]') as HTMLInputElement;
+    cantidad.value = '6';
+    cantidad.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Añadir')!
+      .dispatchEvent(new Event('click'));
+
+    const post = httpMock.expectOne(`${environment.apiBaseUrl}/inventario`);
+    expect(post.request.method).toBe('POST');
+    expect(post.request.body).toEqual({
+      categoria: 'CERVEZA',
+      nombre: 'Mixta',
+      tamano: 'lata',
+      cantidad: 6,
+    });
+    post.flush({ id: 9, nombre: 'Mixta', tamano: 'lata', cantidad: 6 });
+
+    httpMock.expectOne(`${environment.apiBaseUrl}/inventario`).flush(RESPUESTA(true));
+    httpMock.verify();
+  });
+
   it('con permiso, editar + guardar manda un PUT por fila cambiada', () => {
     const { fixture, httpMock } = montar('cerveza');
     fixture.detectChanges();
