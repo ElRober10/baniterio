@@ -146,6 +146,41 @@ class InventarioIT extends IntegrationTest {
     }
 
     @Test
+    void post_con_permiso_crea_el_articulo() {
+        String token = token(RolMembresia.MIEMBRO, true);
+
+        http.post().uri("/api/v1/inventario")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .body(Map.of("categoria", "ALCOHOL", "nombre", "Ron Barceló Añejo",
+                        "tamano", "70 cl", "cantidad", 2))
+                .exchange().expectStatus().isCreated();
+
+        assertThat(articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(pena().getId()))
+                .anyMatch(a -> a.getNombre().equals("Ron Barceló Añejo")
+                        && a.getCategoria().name().equals("ALCOHOL"));
+    }
+
+    @Test
+    void post_sin_permiso_es_403() {
+        String token = token(RolMembresia.MIEMBRO, false);
+
+        http.post().uri("/api/v1/inventario")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .body(Map.of("categoria", "ALCOHOL", "nombre", "X", "tamano", "70 cl", "cantidad", 1))
+                .exchange().expectStatus().isForbidden();
+    }
+
+    @Test
+    void post_con_tamano_ajeno_a_la_categoria_es_400() {
+        String token = token(RolMembresia.MIEMBRO, true);
+
+        http.post().uri("/api/v1/inventario")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .body(Map.of("categoria", "ALCOHOL", "nombre", "X", "tamano", "garrafa", "cantidad", 1))
+                .exchange().expectStatus().isBadRequest();
+    }
+
+    @Test
     void put_a_id_inexistente_es_404() {
         String token = token(RolMembresia.MIEMBRO, true);
 
