@@ -12,6 +12,7 @@ import com.baniterio.api.cuenta.dto.CuentaResumen;
 import com.baniterio.api.identidad.CategoriaMovimiento;
 import com.baniterio.api.identidad.OrigenMovimiento;
 import com.baniterio.api.media.AlmacenRecibos;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -28,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
  * de gastos e ingresos con recibo. El recibo, una vez subido, se sirve por
  * {@code /api/v1/media/recibos/{archivo}} (nombre UUID, como las fotos de perfil).
  */
+@Tag(name = "Cuentas", description = "Hoja de cuentas de la peña: movimientos, saldos, ropa y cierre de año.")
 @RestController
 @RequestMapping("/api/v1/cuentas")
 public class CuentaController {
@@ -40,29 +42,34 @@ public class CuentaController {
         this.recibos = recibos;
     }
 
+    /** Lista las cuentas de la peña (una por año contable). */
     @GetMapping
     public List<CuentaResumen> listar() {
         return cuentaService.listar();
     }
 
+    /** La hoja completa de una cuenta: peñistas, libro de movimientos con saldo corriente y resumen de gastos. Con {@code anio} se consulta un año ya cerrado. */
     @GetMapping("/{id}")
     public CuentaDetalle detalle(@AuthenticationPrincipal UsuarioPrincipal principal, @PathVariable Long id,
             @RequestParam(required = false) Integer anio) {
         return cuentaService.detalle(principal.id(), id, anio);
     }
 
+    /** Marca "he transferido mi saldo al banco de la peña": solo apaga el aviso, no mueve el saldo. */
     @PostMapping("/{id}/transferencia-a-pena")
     public CuentaDetalle marcarTransferido(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long id) {
         return cuentaService.marcarTransferido(principal.id(), id);
     }
 
+    /** Cierra el año contable de la cuenta y abre el siguiente. Solo admin. */
     @PostMapping("/{id}/cerrar-anio")
     public CuentaDetalle cerrarAnio(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long id) {
         return cuentaService.cerrarAnio(principal.id(), id);
     }
 
+    /** Da de alta un gasto o ingreso manual (multipart), con recibo opcional (PDF/foto). Solo admin. */
     @PostMapping(path = "/{id}/movimientos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public CuentaDetalle crearMovimiento(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long id,
@@ -80,12 +87,14 @@ public class CuentaController {
                 adelantadoPorId, guardarReciboSiHay(recibo));
     }
 
+    /** Borra un gasto/ingreso manual. Solo admin. */
     @DeleteMapping("/movimientos/{movId}")
     public CuentaDetalle borrarMovimiento(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long movId) {
         return cuentaService.borrarMovimiento(principal.id(), movId);
     }
 
+    /** Marca la ropa (camiseta/sudadera: cantidad, talla, confirmada) de un asistente en el evento. Solo admin. */
     @org.springframework.web.bind.annotation.PutMapping("/{id}/asistencias/{asistenciaId}/ropa")
     public CuentaDetalle marcarRopa(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long id, @PathVariable Long asistenciaId,
@@ -100,6 +109,7 @@ public class CuentaController {
             Integer sudaderaCantidad, String sudaderaTalla, Boolean sudaderaConfirmada) {
     }
 
+    /** Adjunta (o reemplaza) el recibo de un movimiento ya creado. Solo admin. */
     @PostMapping(path = "/movimientos/{movId}/recibo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public void subirRecibo(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long movId, @RequestParam MultipartFile recibo) {

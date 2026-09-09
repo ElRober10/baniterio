@@ -7,6 +7,7 @@ import com.baniterio.api.auth.dto.SolicitudIngresoRequest;
 import com.baniterio.api.auth.dto.UsuarioResponse;
 import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>Los errores (403/409/400/401) no se manejan aquí: las excepciones que
  * lanza {@link AuthService} las recoge {@link com.baniterio.api.web.ApiExceptionHandler}.
  */
+@Tag(name = "Auth", description = "Registro, login y datos del usuario del token.")
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
@@ -49,12 +51,14 @@ public class AuthController {
         this.servicioPermisos = servicioPermisos;
     }
 
+    /** Alta de usuario para un teléfono que ya está autorizado en la peña. Devuelve 201. */
     @PostMapping("/registro")
     @ResponseStatus(HttpStatus.CREATED)
     public UsuarioResponse registro(@Valid @RequestBody RegistroRequest req) {
         return UsuarioResponse.de(authService.registrar(req));
     }
 
+    /** Inicia sesión con teléfono y contraseña; devuelve el JWT (válido 7 días). */
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest req) {
         return authService.login(req);
@@ -67,6 +71,7 @@ public class AuthController {
         authService.solicitarIngreso(req);
     }
 
+    /** Datos del usuario del token. Ruta protegida; 401 si el token es inválido o la cuenta está desactivada. */
     @GetMapping("/yo")
     public ResponseEntity<UsuarioResponse> yo(@AuthenticationPrincipal UsuarioPrincipal principal) {
         // `activo` es la única palanca de revocación con JWT stateless de 7 días:

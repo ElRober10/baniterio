@@ -45,3 +45,14 @@ app:
     credenciales-json: ${PUSH_CREDENCIALES:}  # ruta al service-account.json (solo modo fcm)
   media:
     dir: ${MEDIA_DIR:./media-baniterio}       # carpeta de fotos de perfil subidas (volumen persistente en prod)
+
+# Documentación de la API (springdoc / Swagger UI).
+# - La UI se sirve en /api  (sin enlace en la web: se entra tecleando la URL).
+# - En producción: SWAGGER_ENABLED=false para no exponerla.
+springdoc:
+  swagger-ui:
+    path: /api
+    enabled: ${SWAGGER_ENABLED:true}
+  api-docs:
+    path: /api/api-docs
+    enabled: ${SWAGGER_ENABLED:true}

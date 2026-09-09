@@ -34,8 +34,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  *       autentica sola con su JWT.
  *   <li><b>Rutas públicas</b>: {@code /health}, el alta/entrada de {@code /auth}
  *       ({@code registro}, {@code login}, {@code solicitudes}) y las imágenes de
- *       {@code /media/**} (avatares y fotos de perfil). Cualquier otra ruta
- *       exige estar autenticado.
+ *       {@code /media/**} (avatares y fotos de perfil) y la documentación de
+ *       la API ({@code /api}, {@code /api/api-docs/**}, {@code /swagger-ui/**}).
+ *       Cualquier otra ruta exige estar autenticado.
  *   <li><b>401 en vez de 403</b>: sin el {@code authenticationEntryPoint},
  *       Spring devolvería 403 a una petición sin token; forzamos 401.
  *   <li>{@code addFilterBefore(jwtFilter, ...)}: mete nuestro filtro JWT en la
@@ -58,6 +59,9 @@ public class SecurityConfig {
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers("/api/v1/health", "/api/v1/auth/registro", "/api/v1/auth/login",
                                 "/api/v1/auth/solicitudes", "/api/v1/media/**").permitAll()
+                        // Documentación de la API: Swagger UI en /api, su JSON en
+                        // /api/api-docs/** y los recursos estáticos en /swagger-ui/**.
+                        .requestMatchers("/api", "/api/api-docs/**", "/swagger-ui/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e.authenticationEntryPoint(
                         (req, res, ex) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED)))

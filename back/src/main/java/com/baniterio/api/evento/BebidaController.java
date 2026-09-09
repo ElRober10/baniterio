@@ -5,6 +5,7 @@ import java.util.List;
 import com.baniterio.api.auth.UsuarioPrincipal;
 import com.baniterio.api.evento.dto.BebidaPendiente;
 import com.baniterio.api.evento.dto.CatalogoBebidas;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
  * ({@code GET ?estado=PENDIENTE}, {@code POST /{id}/aceptar|rechazar}, solo
  * admin). Solo traduce HTTP ↔ dominio.
  */
+@Tag(name = "Bebidas", description = "Catálogo de bebidas y aprobación de las propuestas.")
 @RestController
 @RequestMapping("/api/v1/bebidas")
 public class BebidaController {
@@ -30,11 +32,13 @@ public class BebidaController {
         this.bebidaService = bebidaService;
     }
 
+    /** Catálogo de bebidas aprobadas (cualquier miembro). */
     @GetMapping("/catalogo")
     public CatalogoBebidas catalogo() {
         return bebidaService.catalogo();
     }
 
+    /** Bebidas propuestas pendientes de aprobar. Solo admin. */
     @GetMapping(params = "estado")
     public List<BebidaPendiente> pendientes(@AuthenticationPrincipal UsuarioPrincipal principal,
             @RequestParam String estado) {
@@ -42,12 +46,14 @@ public class BebidaController {
         return bebidaService.pendientes(principal.id());
     }
 
+    /** Acepta una bebida propuesta y la mete en el catálogo. Solo admin. */
     @PostMapping("/{id}/aceptar")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void aceptar(@AuthenticationPrincipal UsuarioPrincipal principal, @PathVariable Long id) {
         bebidaService.aceptar(principal.id(), id);
     }
 
+    /** Rechaza una bebida propuesta. Solo admin. */
     @PostMapping("/{id}/rechazar")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void rechazar(@AuthenticationPrincipal UsuarioPrincipal principal, @PathVariable Long id) {
