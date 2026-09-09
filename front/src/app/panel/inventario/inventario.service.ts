@@ -30,4 +30,8 @@ export class InventarioService {
   crear(nuevo: NuevoArticulo): Observable<ArticuloInventario> {
     return this.http.post<ArticuloInventario>(`${this.base}/inventario`, nuevo);
   }
+
+  borrar(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/inventario/${id}`);
+  }
 }

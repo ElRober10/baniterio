@@ -80,6 +80,7 @@ fun InventarioCategoriaScreen(
     var borrador by remember { mutableStateOf<Map<Long, Fila>>(emptyMap()) }
 
     var modalAbierto by remember { mutableStateOf(false) }
+    var confirmarBorrado by remember { mutableStateOf<ArticuloInventarioDto?>(null) }
     val scope = rememberCoroutineScope()
 
     androidx.compose.runtime.LaunchedEffect(intento) {
@@ -187,7 +188,9 @@ fun InventarioCategoriaScreen(
                         editando = editando,
                         puedoEditar = e.puedoEditar,
                         fila = borrador[a.id],
+                        guardando = guardando,
                         onCambio = { nueva -> borrador = borrador + (a.id to nueva) },
+                        onBorrar = { confirmarBorrado = a },
                         onEnviarAEvento = {
                             aviso = "«Enviar a evento» todavía no está disponible (${a.nombre})."
                         },
@@ -202,6 +205,30 @@ fun InventarioCategoriaScreen(
                 }
             }
         }
+    }
+
+    confirmarBorrado?.let { art ->
+        AlertDialog(
+            onDismissRequest = { confirmarBorrado = null },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmarBorrado = null
+                    scope.launch {
+                        guardando = true
+                        aviso = null
+                        when (val r = inventarioRepo.borrar(art.id)) {
+                            is ResultadoInventario.Exito -> Unit
+                            is ResultadoInventario.Error -> aviso = r.mensaje
+                        }
+                        guardando = false
+                        intento++
+                    }
+                }) { Text("Quitar") }
+            },
+            dismissButton = { TextButton(onClick = { confirmarBorrado = null }) { Text("Cancelar") } },
+            title = { Text("Quitar del inventario") },
+            text = { Text("¿Quitar «${art.nombre}» del inventario?") },
+        )
     }
 
     val cargada = estado as? EstadoCategoria.Cargada
@@ -233,7 +260,9 @@ private fun FilaArticulo(
     editando: Boolean,
     puedoEditar: Boolean,
     fila: Fila?,
+    guardando: Boolean,
     onCambio: (Fila) -> Unit,
+    onBorrar: () -> Unit,
     onEnviarAEvento: () -> Unit,
 ) {
     Column(
@@ -263,6 +292,13 @@ private fun FilaArticulo(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
             )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                OutlinedButton(
+                    enabled = !guardando,
+                    onClick = onBorrar,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = BaniterioColors.error),
+                ) { Text("🗑  Quitar") }
+            }
         } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column(Modifier.weight(1f)) {

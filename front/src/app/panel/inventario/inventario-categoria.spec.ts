@@ -114,6 +114,31 @@ describe('InventarioCategoria', () => {
     httpMock.verify();
   });
 
+  it('la papelera (modo edición) manda un DELETE', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const { fixture, httpMock } = montar('cerveza');
+    fixture.detectChanges();
+    httpMock.expectOne(`${environment.apiBaseUrl}/inventario`).flush(RESPUESTA(true));
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Editar'))!
+      .dispatchEvent(new Event('click'));
+    fixture.detectChanges();
+
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.getAttribute('aria-label') === 'Quitar del inventario')!
+      .dispatchEvent(new Event('click'));
+
+    const del = httpMock.expectOne(`${environment.apiBaseUrl}/inventario/1`);
+    expect(del.request.method).toBe('DELETE');
+    del.flush(null);
+
+    httpMock.expectOne(`${environment.apiBaseUrl}/inventario`).flush(RESPUESTA(true));
+    httpMock.verify();
+  });
+
   it('con permiso, editar + guardar manda un PUT por fila cambiada', () => {
     const { fixture, httpMock } = montar('cerveza');
     fixture.detectChanges();

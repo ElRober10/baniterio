@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -53,5 +54,12 @@ public class InventarioController {
     public ArticuloDto actualizar(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long id, @Valid @RequestBody ActualizarArticuloRequest req) {
         return service.actualizar(principal.id(), id, req);
+    }
+
+    /** Da de baja un artículo. Área {@code INVENTARIO}. */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void borrar(@AuthenticationPrincipal UsuarioPrincipal principal, @PathVariable Long id) {
+        service.borrar(principal.id(), id);
     }
 }

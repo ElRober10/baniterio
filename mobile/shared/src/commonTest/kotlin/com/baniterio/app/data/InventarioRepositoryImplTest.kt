@@ -79,6 +79,26 @@ class InventarioRepositoryImplTest {
     }
 
     @Test
+    fun borrar_hace_delete() = runTest {
+        val (r, vistas) = repo(status = HttpStatusCode.NoContent)
+        val res = r.borrar(4)
+        assertIs<ResultadoInventario.Exito<*>>(res)
+        assertEquals("DELETE", vistas[0].metodo)
+        assertEquals("/api/v1/inventario/4", vistas[0].path)
+    }
+
+    @Test
+    fun borrar_inexistente_devuelve_error_tipado() = runTest {
+        val (r, _) = repo(
+            status = HttpStatusCode.NotFound,
+            cuerpoRespuesta = """{"codigo":"ARTICULO_INVENTARIO_NO_ENCONTRADO"}""",
+        )
+        val res = r.borrar(9)
+        assertIs<ResultadoInventario.Error>(res)
+        assertEquals(CodigoErrorInventario.ARTICULO_NO_ENCONTRADO, res.codigo)
+    }
+
+    @Test
     fun actualizar_tamano_no_valido_devuelve_error_tipado() = runTest {
         val (r, _) = repo(
             status = HttpStatusCode.BadRequest,

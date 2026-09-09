@@ -105,4 +105,15 @@ public class InventarioService {
         art.setCantidad(req.cantidad());
         return ArticuloDto.de(articulos.save(art));
     }
+
+    @Transactional
+    public void borrar(Long usuarioId, Long articuloId) {
+        if (!permisos.puede(usuarioId, AreaProtegida.INVENTARIO)) {
+            throw new SinPermisoInventarioException();
+        }
+        ArticuloInventario art = articulos.findById(articuloId)
+                .filter(a -> a.getPena().getId().equals(penaId()))
+                .orElseThrow(ArticuloInventarioNoEncontradoException::new);
+        articulos.delete(art);
+    }
 }

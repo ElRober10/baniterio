@@ -22,4 +22,5 @@ interface InventarioRepository {
         tamano: String,
         cantidad: Double,
     ): ResultadoInventario<ArticuloInventarioDto>
+    suspend fun borrar(id: Long): ResultadoInventario<Unit>
 }
