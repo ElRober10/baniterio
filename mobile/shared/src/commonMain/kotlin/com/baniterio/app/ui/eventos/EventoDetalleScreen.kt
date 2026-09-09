@@ -75,6 +75,7 @@ fun EventoDetalleScreen(
     onEditar: () -> Unit,
     onBorrado: () -> Unit,
     onInventarioFiesta: () -> Unit,
+    onListaCompra: () -> Unit,
     onVolver: () -> Unit,
 ) {
     var estado by remember { mutableStateOf<EstadoDetalle>(EstadoDetalle.Cargando) }
@@ -283,6 +284,15 @@ fun EventoDetalleScreen(
                                 onClick = onInventarioFiesta,
                                 modifier = Modifier.weight(1f),
                             ) { Text("Inventario de la fiesta", fontWeight = FontWeight.Bold) }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            OutlinedButton(
+                                onClick = onListaCompra,
+                                modifier = Modifier.weight(1f),
+                            ) { Text("Lista de la compra", fontWeight = FontWeight.Bold) }
                         }
                     }
 
