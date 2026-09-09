@@ -1,6 +1,7 @@
 package com.baniterio.api.inventario;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -12,4 +13,8 @@ public interface ArticuloInventarioRepository extends JpaRepository<ArticuloInve
      * luego por {@code orden} dentro de la categoría, luego por nombre.
      */
     List<ArticuloInventario> findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(Long penaId);
+
+    /** La fila de un producto concreto (misma categoría, nombre —sin distinguir mayúsculas— y tamaño). */
+    Optional<ArticuloInventario> findByPenaIdAndCategoriaAndNombreIgnoreCaseAndTamano(
+            Long penaId, CategoriaInventario categoria, String nombre, String tamano);
 }

@@ -116,6 +116,23 @@ class EventoIT extends IntegrationTest {
     }
 
     @Test
+    void abiertos_incluye_los_futuros_y_no_los_pasados() {
+        Sesion s = crearMiembro(RolMembresia.MIEMBRO);
+        sembrarEvento("IT-abierto-futuro", LocalDate.of(2999, 2, 2), null);
+        sembrarEvento("IT-abierto-pasado", LocalDate.now().minusDays(20), null);
+
+        var lista = http.get().uri("/api/v1/eventos/abiertos")
+                .header(AUTHORIZATION, "Bearer " + s.token())
+                .exchange().expectStatus().isOk()
+                .expectBody(new org.springframework.core.ParameterizedTypeReference<List<Map<String, Object>>>() {})
+                .returnResult().getResponseBody();
+
+        var nombres = lista.stream().map(e -> (String) e.get("nombre")).toList();
+        assertThat(nombres).contains("IT-abierto-futuro").doesNotContain("IT-abierto-pasado");
+        assertThat(lista).allSatisfy(e -> assertThat(e.get("fecha")).isNotNull());
+    }
+
+    @Test
     void un_evento_es_pasado_cuando_han_transcurrido_mas_de_3_dias() {
         Sesion s = crearMiembro(RolMembresia.ADMIN);
         Evento vigente = sembrarEvento("IT-vigente-2d", LocalDate.now().minusDays(2), null);

@@ -146,6 +146,16 @@ public class EventoService {
         return permisos.esAdministrador(usuarioId);
     }
 
+    /** Eventos "abiertos" (no pasados, no ocultos), por fecha ascendente. Para el selector de "enviar a evento". */
+    @Transactional(readOnly = true)
+    public List<com.baniterio.api.evento.dto.EventoAbiertoDto> abiertos(Long usuarioId) {
+        return eventos.futuros(penaId(), limiteFuturo()).stream()
+                .sorted(java.util.Comparator.comparing(Evento::getFecha).thenComparing(Evento::getId))
+                .map(e -> new com.baniterio.api.evento.dto.EventoAbiertoDto(
+                        e.getId(), e.getNombre(), e.getFecha()))
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public ListaEventosResponse listar(Long usuarioId, int pagina) {
         Page<Evento> p = eventos.listar(penaId(), limiteFuturo(),

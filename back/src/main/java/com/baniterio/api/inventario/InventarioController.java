@@ -4,6 +4,9 @@ import com.baniterio.api.auth.UsuarioPrincipal;
 import com.baniterio.api.inventario.dto.ActualizarArticuloRequest;
 import com.baniterio.api.inventario.dto.ArticuloDto;
 import com.baniterio.api.inventario.dto.CrearArticuloRequest;
+import com.baniterio.api.inventario.dto.EnviarAEventoRequest;
+import com.baniterio.api.inventario.dto.EnviarCategoriaRequest;
+import com.baniterio.api.inventario.dto.InventarioEventoResponse;
 import com.baniterio.api.inventario.dto.InventarioResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -61,5 +64,36 @@ public class InventarioController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void borrar(@AuthenticationPrincipal UsuarioPrincipal principal, @PathVariable Long id) {
         service.borrar(principal.id(), id);
+    }
+
+    /** Mueve toda la cantidad de un artículo al inventario de un evento. Área {@code INVENTARIO}. */
+    @PostMapping("/{id}/enviar")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void enviar(@AuthenticationPrincipal UsuarioPrincipal principal, @PathVariable Long id,
+            @Valid @RequestBody EnviarAEventoRequest req) {
+        service.enviar(principal.id(), id, req.eventoId());
+    }
+
+    /** "Enviar todo": mueve al evento todas las filas de una categoría con cantidad &gt; 0. Área {@code INVENTARIO}. */
+    @PostMapping("/enviar-categoria")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void enviarCategoria(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @Valid @RequestBody EnviarCategoriaRequest req) {
+        service.enviarCategoria(principal.id(), req.categoria(), req.eventoId());
+    }
+
+    /** El inventario que se ha enviado a un evento, agrupado por categoría. Cualquier usuario logueado. */
+    @GetMapping("/evento/{eventoId}")
+    public InventarioEventoResponse verEvento(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long eventoId) {
+        return service.verEvento(principal.id(), eventoId);
+    }
+
+    /** Devuelve una línea entera del inventario de la fiesta al inventario general. Área {@code INVENTARIO}. */
+    @PostMapping("/evento/{eventoId}/{articuloEventoId}/devolver")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void devolver(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long eventoId, @PathVariable Long articuloEventoId) {
+        service.devolver(principal.id(), eventoId, articuloEventoId);
     }
 }

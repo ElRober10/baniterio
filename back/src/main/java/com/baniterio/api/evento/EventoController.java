@@ -1,9 +1,11 @@
 package com.baniterio.api.evento;
 
+import java.util.List;
 import java.util.Map;
 
 import com.baniterio.api.auth.UsuarioPrincipal;
 import com.baniterio.api.evento.dto.CrearSolicitudEventoRequest;
+import com.baniterio.api.evento.dto.EventoAbiertoDto;
 import com.baniterio.api.evento.dto.EventoDetalle;
 import com.baniterio.api.evento.dto.EventosOcultosResponse;
 import com.baniterio.api.evento.dto.GuardarEventoRequest;
@@ -44,6 +46,12 @@ public class EventoController {
     public ListaEventosResponse listar(@AuthenticationPrincipal UsuarioPrincipal principal,
             @RequestParam(defaultValue = "0") int pagina) {
         return eventoService.listar(principal.id(), pagina);
+    }
+
+    /** Eventos "abiertos" (no pasados, no ocultos) para elegir a cuál enviar inventario. */
+    @GetMapping("/abiertos")
+    public List<EventoAbiertoDto> abiertos(@AuthenticationPrincipal UsuarioPrincipal principal) {
+        return eventoService.abiertos(principal.id());
     }
 
     /** Los eventos "borrados" (ocultos, recuperables). Solo admin/superadmin. */
