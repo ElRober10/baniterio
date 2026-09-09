@@ -18,6 +18,7 @@ import { EventoDetalleComponent } from './panel/eventos/evento-detalle/evento-de
 import { Eventos } from './panel/eventos/eventos';
 import { EventosOcultos } from './panel/eventos/eventos-ocultos/eventos-ocultos';
 import { Inventario } from './panel/inventario/inventario';
+import { InventarioCategoria } from './panel/inventario/inventario-categoria';
 import { Miembros } from './panel/miembros/miembros';
 import { perfilCompletoGuard } from './panel/miembros/perfil-completo.guard';
 import { Registro } from './auth/registro/registro';
@@ -51,6 +52,11 @@ export const routes: Routes = [
       // Inventario: cualquier peñista lo ve; el permiso de área INVENTARIO (que
       // comprueba el backend) solo controla el botón "Editar". Sin areaGuard.
       { path: 'inventario', component: Inventario, canActivate: [perfilCompletoGuard] },
+      {
+        path: 'inventario/:categoria',
+        component: InventarioCategoria,
+        canActivate: [perfilCompletoGuard],
+      },
       // Índice de administración: sin areaGuard (cualquier miembro lo abre); solo
       // pinta las secciones para las que tiene área.
       { path: 'administracion', component: AdminIndice, canActivate: [perfilCompletoGuard] },
