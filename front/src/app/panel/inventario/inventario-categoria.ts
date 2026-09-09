@@ -158,6 +158,11 @@ export class InventarioCategoria implements OnInit {
     this.aviso.set(`"Enviar a evento" todavía no está disponible (${a.nombre}).`);
   }
 
+  /** Placeholder: enviar la categoría entera a un evento; llega más adelante. */
+  protected enviarTodoAEvento(): void {
+    this.aviso.set('"Enviar todo a evento" todavía no está disponible.');
+  }
+
   /** Nombres ya usados en esta categoría, sin repetir y ordenados, para el desplegable. */
   protected nombresExistentes(): string[] {
     const cat = this.categoria();
