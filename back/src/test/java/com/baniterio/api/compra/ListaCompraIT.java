@@ -72,11 +72,17 @@ class ListaCompraIT extends IntegrationTest {
         return (String) body.get("token");
     }
 
+    /**
+     * Evento propio para cada test. Fecha en el pasado (pero {@code oculto=false}):
+     * la lista de la compra solo exige que el evento no esté oculto, y así estos
+     * eventos de prueba no se cuelan en la primera página del listado de eventos
+     * (que ordena los futuros primero) y no rompen a los tests hermanos.
+     */
     long crearEventoDeUnDia(String nombre) {
         Cuenta c = cuentas.save(Cuenta.builder().pena(pena()).nombre(nombre + " cuenta")
                 .llevaFichaBebida(false).build());
         Evento e = eventos.save(Evento.builder().pena(pena()).cuenta(c).nombre(nombre)
-                .fecha(LocalDate.now().plusDays(30)).oculto(false).build());
+                .fecha(LocalDate.now().minusDays(60)).oculto(false).build());
         return e.getId();
     }
 
