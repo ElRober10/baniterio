@@ -123,6 +123,27 @@ describe('EventoDetalleComponent', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Listado de asistentes');
   });
 
+  it('muestra "Lista de la compra" e "Inventario de la fiesta" y son placeholder', () => {
+    crear();
+    fixture.detectChanges();
+    responder({
+      asistencia: {
+        ...asistenciaBase,
+        ficha: { llevaFicha: true, diasEvento: ['2026-09-25', '2026-09-26'], miFicha: null },
+      },
+    });
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('Lista de la compra');
+    expect(el.textContent).toContain('Inventario de la fiesta');
+
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Inventario de la fiesta')!
+      .dispatchEvent(new Event('click'));
+    fixture.detectChanges();
+    expect(el.textContent).toContain('«Inventario de la fiesta» todavía no está disponible.');
+  });
+
   it('no muestra "Listado de asistentes" si el evento no lleva ficha', () => {
     crear();
     fixture.detectChanges();
