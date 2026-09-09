@@ -9,6 +9,7 @@ import com.baniterio.api.identidad.PenaRepository;
 import com.baniterio.api.inventario.dto.ActualizarArticuloRequest;
 import com.baniterio.api.inventario.dto.ArticuloDto;
 import com.baniterio.api.inventario.dto.CategoriaInventarioDto;
+import com.baniterio.api.inventario.dto.CrearArticuloRequest;
 import com.baniterio.api.inventario.dto.InventarioResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,6 +60,31 @@ public class InventarioService {
                 .toList();
 
         return new InventarioResponse(puedoEditar, categorias);
+    }
+
+    @Transactional
+    public ArticuloDto crear(Long usuarioId, CrearArticuloRequest req) {
+        if (!permisos.puede(usuarioId, AreaProtegida.INVENTARIO)) {
+            throw new SinPermisoInventarioException();
+        }
+        if (!req.categoria().permiteTamano(req.tamano())) {
+            throw new TamanoInventarioNoValidoException();
+        }
+        Long penaId = penaId();
+        int orden = articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(penaId).stream()
+                .filter(a -> a.getCategoria() == req.categoria())
+                .mapToInt(ArticuloInventario::getOrden)
+                .max().orElse(0) + 1;
+
+        ArticuloInventario art = ArticuloInventario.builder()
+                .pena(penas.findBySlug(SLUG_PENA).orElseThrow())
+                .categoria(req.categoria())
+                .nombre(req.nombre().trim())
+                .tamano(req.tamano())
+                .cantidad(req.cantidad())
+                .orden(orden)
+                .build();
+        return ArticuloDto.de(articulos.save(art));
     }
 
     @Transactional

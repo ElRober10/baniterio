@@ -3,15 +3,19 @@ package com.baniterio.api.inventario;
 import com.baniterio.api.auth.UsuarioPrincipal;
 import com.baniterio.api.inventario.dto.ActualizarArticuloRequest;
 import com.baniterio.api.inventario.dto.ArticuloDto;
+import com.baniterio.api.inventario.dto.CrearArticuloRequest;
 import com.baniterio.api.inventario.dto.InventarioResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -34,6 +38,14 @@ public class InventarioController {
     @GetMapping
     public InventarioResponse ver(@AuthenticationPrincipal UsuarioPrincipal principal) {
         return service.ver(principal.id());
+    }
+
+    /** Da de alta un artículo en una categoría. Área {@code INVENTARIO}. */
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public ArticuloDto crear(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @Valid @RequestBody CrearArticuloRequest req) {
+        return service.crear(principal.id(), req);
     }
 
     /** Cambia nombre, tamaño y cantidad de un artículo. Área {@code INVENTARIO}. */
