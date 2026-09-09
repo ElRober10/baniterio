@@ -130,7 +130,9 @@ class AuthControllerIT extends IntegrationTest {
         assertThat(usuario.get("rol")).isEqualTo("ADMIN");
         @SuppressWarnings("unchecked")
         java.util.List<String> areas = (java.util.List<String>) usuario.get("areas");
-        assertThat(areas).containsExactlyInAnyOrder("ADMIN_SOLICITUDES", "ADMIN_PERMISOS");
+        assertThat(areas).containsExactlyInAnyOrder(
+                java.util.Arrays.stream(com.baniterio.api.identidad.AreaProtegida.values())
+                        .map(Enum::name).toArray(String[]::new));
     }
 
     @Test
