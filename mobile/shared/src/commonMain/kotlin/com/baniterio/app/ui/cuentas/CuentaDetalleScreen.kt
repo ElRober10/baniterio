@@ -13,10 +13,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,14 +36,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.baniterio.app.data.API_BASE_URL
+import com.baniterio.app.data.ArchivoElegido
 import com.baniterio.app.data.CuentasRepository
 import com.baniterio.app.data.ResultadoCuenta
+import com.baniterio.app.data.dto.CrearMovimientoInput
 import com.baniterio.app.data.dto.CuentaDetalleDto
+import com.baniterio.app.data.dto.MarcarRopaInput
 import com.baniterio.app.data.dto.MovimientoFilaDto
 import com.baniterio.app.data.dto.PenistaCuotaDto
+import com.baniterio.app.data.rememberSelectorArchivo
 import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.theme.BaniterioWordmark
 import com.baniterio.app.ui.comun.relieveDeCarta
@@ -50,6 +61,17 @@ private sealed interface EstadoCuentaDetalle {
     data class Cargada(val cuenta: CuentaDetalleDto) : EstadoCuentaDetalle
     data class Error(val mensaje: String) : EstadoCuentaDetalle
 }
+
+private val CATEGORIAS = listOf(
+    "REFRESCOS" to "Refrescos",
+    "CERVEZA_Y_TINTO" to "Cerveza y tinto",
+    "ALCOHOL" to "Alcohol",
+    "COMIDA" to "Comida",
+    "HIELOS" to "Hielos",
+    "MENAJE" to "Menaje",
+    "ROPA" to "Ropa",
+    "OTROS" to "Otros",
+)
 
 private fun estadoTexto(e: String?) = when (e) {
     "DECLARADO" -> "Pagado, pendiente de confirmar"
@@ -69,11 +91,11 @@ private fun ropaTexto(cantidad: Int, talla: String?, confirmada: Boolean): Strin
 }
 
 // Anchos de las 8 columnas de la hoja (réplica de la tabla de la web).
-private val ANCHO_CONCEPTO = 200.dp
+private val ANCHO_CONCEPTO = 220.dp
 private val ANCHO_ESTADO = 150.dp
-private val ANCHO_ROPA = 92.dp
+private val ANCHO_ROPA = 118.dp
 private val ANCHO_DINERO = 84.dp
-private val ANCHO_RECIBO = 68.dp
+private val ANCHO_RECIBO = 84.dp
 private val ANCHO_SALDO = 96.dp
 
 @Composable
@@ -114,16 +136,45 @@ fun CuentaDetalleScreen(
     var intento by remember { mutableStateOf(0) }
     var anioSel by remember { mutableStateOf<Int?>(null) }
     var mostrarAniosViejos by remember { mutableStateOf(false) }
+    var aviso by remember { mutableStateOf<String?>(null) }
     var confirmandoTransfer by remember { mutableStateOf(false) }
     var guardando by remember { mutableStateOf(false) }
+
+    var modalCerrarAnio by remember { mutableStateOf(false) }
+    var cerrandoAnio by remember { mutableStateOf(false) }
+
+    var formAbierto by remember { mutableStateOf(false) }
+    var formTipo by remember { mutableStateOf("GASTO") }
+    var formImporte by remember { mutableStateOf("") }
+    var formConcepto by remember { mutableStateOf("") }
+    var formFecha by remember { mutableStateOf("") }
+    var formCategoria by remember { mutableStateOf<String?>(null) }
+    var recibo by remember { mutableStateOf<ArchivoElegido?>(null) }
+    var guardandoMov by remember { mutableStateOf(false) }
+
     val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
+    val selectorArchivo = rememberSelectorArchivo()
 
     LaunchedEffect(cuentaId, intento, anioSel) {
         estado = EstadoCuentaDetalle.Cargando
         estado = when (val r = cuentasRepo.detalle(cuentaId, anioSel)) {
             is ResultadoCuenta.Exito -> EstadoCuentaDetalle.Cargada(r.dato)
             is ResultadoCuenta.Error -> EstadoCuentaDetalle.Error(r.mensaje)
+        }
+    }
+
+    fun trasCambio(nueva: CuentaDetalleDto, msg: String) {
+        estado = EstadoCuentaDetalle.Cargada(nueva)
+        aviso = msg
+    }
+
+    fun guardarRopa(p: PenistaCuotaDto, cambio: MarcarRopaInput) {
+        scope.launch {
+            when (val r = cuentasRepo.marcarRopa(cuentaId, p.asistenciaId, cambio)) {
+                is ResultadoCuenta.Exito -> estado = EstadoCuentaDetalle.Cargada(r.dato)
+                is ResultadoCuenta.Error -> aviso = r.mensaje
+            }
         }
     }
 
@@ -149,6 +200,7 @@ fun CuentaDetalleScreen(
             }
             is EstadoCuentaDetalle.Cargada -> {
                 val c = e.cuenta
+                val gestionar = c.puedoGestionar && c.esAnioActual
 
                 // Cabecera
                 Column(
@@ -163,19 +215,14 @@ fun CuentaDetalleScreen(
                         fontWeight = FontWeight.Bold,
                     )
 
-                    // Botones de año: el que se ve, encendido.
                     if (c.anios.isNotEmpty()) {
                         val visibles = if (mostrarAniosViejos) c.anios else c.anios.take(5)
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             visibles.forEach { a ->
-                                ChipAnio(a, seleccionado = a == c.anio) {
-                                    if (a != c.anio) anioSel = a
-                                }
+                                ChipAnio(a, seleccionado = a == c.anio) { if (a != c.anio) anioSel = a }
                             }
                             if (c.anios.size > 5 && !mostrarAniosViejos) {
-                                ChipAnio("Años anteriores", seleccionado = false) {
-                                    mostrarAniosViejos = true
-                                }
+                                ChipAnio("Años anteriores", seleccionado = false) { mostrarAniosViejos = true }
                             }
                         }
                     }
@@ -199,10 +246,78 @@ fun CuentaDetalleScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onBackground,
                         )
-                        Button(onClick = { confirmandoTransfer = true }) {
-                            Text("He transferido al banco")
+                        Button(onClick = { confirmandoTransfer = true }) { Text("He transferido al banco") }
+                    }
+                    if (gestionar) {
+                        OutlinedButton(onClick = { modalCerrarAnio = true }) {
+                            Text("Cerrar el año ${c.anio}")
                         }
                     }
+                }
+
+                aviso?.let {
+                    Text(
+                        it,
+                        modifier = Modifier.fillMaxWidth()
+                            .background(BaniterioColors.brandDark, RoundedCornerShape(12.dp))
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BaniterioColors.goldSoft,
+                    )
+                }
+
+                // "+ Gasto / Ingreso"
+                if (gestionar) {
+                    OutlinedButton(onClick = { formAbierto = !formAbierto }) {
+                        Text(if (formAbierto) "Cerrar" else "+ Gasto / Ingreso")
+                    }
+                }
+                if (gestionar && formAbierto) {
+                    FormMovimiento(
+                        tipo = formTipo, onTipo = { formTipo = it },
+                        importe = formImporte, onImporte = { formImporte = it },
+                        concepto = formConcepto, onConcepto = { formConcepto = it },
+                        fecha = formFecha, onFecha = { formFecha = it },
+                        categoria = formCategoria, onCategoria = { formCategoria = it },
+                        recibo = recibo,
+                        onElegirRecibo = if (selectorArchivo.disponible) {
+                            { selectorArchivo.elegir { recibo = it } }
+                        } else {
+                            null
+                        },
+                        guardando = guardandoMov,
+                        onGuardar = {
+                            val importe = formImporte.replace(',', '.').toDoubleOrNull()
+                            if (formConcepto.isBlank() || importe == null) {
+                                aviso = "Pon un concepto y un importe."
+                                return@FormMovimiento
+                            }
+                            guardandoMov = true
+                            scope.launch {
+                                val res = cuentasRepo.crearMovimiento(
+                                    c.id,
+                                    CrearMovimientoInput(
+                                        tipo = formTipo,
+                                        concepto = formConcepto.trim(),
+                                        importe = importe,
+                                        fecha = formFecha.ifBlank { null },
+                                        categoria = formCategoria,
+                                        recibo = recibo,
+                                    ),
+                                )
+                                when (res) {
+                                    is ResultadoCuenta.Exito -> {
+                                        trasCambio(res.dato, "Movimiento añadido.")
+                                        formAbierto = false
+                                        formImporte = ""; formConcepto = ""; formFecha = ""
+                                        formCategoria = null; recibo = null
+                                    }
+                                    is ResultadoCuenta.Error -> aviso = res.mensaje
+                                }
+                                guardandoMov = false
+                            }
+                        },
+                    )
                 }
 
                 // La hoja: una sola tabla con scroll horizontal.
@@ -211,7 +326,6 @@ fun CuentaDetalleScreen(
                         .relieveDeCarta(RoundedCornerShape(14.dp))
                         .horizontalScroll(rememberScrollState()),
                 ) {
-                    // Cabecera de columnas
                     Row(Modifier.background(BaniterioColors.panel)) {
                         Celda("Peñista / concepto", ANCHO_CONCEPTO, color = BaniterioColors.muted, negrita = true)
                         Celda("Estado", ANCHO_ESTADO, color = BaniterioColors.muted, negrita = true)
@@ -223,7 +337,6 @@ fun CuentaDetalleScreen(
                         Celda("Saldo", ANCHO_SALDO, TextAlign.End, BaniterioColors.muted, true)
                     }
 
-                    // Bloque 1: saldo de partida
                     Row {
                         Celda("Saldo del año anterior", ANCHO_CONCEPTO, color = BaniterioColors.muted)
                         Celda("", ANCHO_ESTADO)
@@ -235,7 +348,6 @@ fun CuentaDetalleScreen(
                         Celda("${formatoImporte(c.saldoInicial)} €", ANCHO_SALDO, TextAlign.End, BaniterioColors.gold, true)
                     }
 
-                    // Bloque 2: peñistas
                     FilaSeccion("Peñistas · ${c.penistas.count(::confirmado)} de ${c.penistas.size} han pagado")
                     if (c.penistas.isEmpty()) {
                         Celda("Nadie apuntado con cuota todavía.", ANCHO_CONCEPTO, color = BaniterioColors.muted)
@@ -249,13 +361,17 @@ fun CuentaDetalleScreen(
                                 ANCHO_ESTADO,
                                 color = BaniterioColors.muted,
                             )
-                            Celda(
-                                ropaTexto(p.camisetaCantidad, p.camisetaTalla, p.camisetaConfirmada),
-                                ANCHO_ROPA, TextAlign.Center,
+                            CeldaRopa(
+                                gestionar, p.camisetaCantidad, p.camisetaTalla, p.camisetaConfirmada,
+                                onCantidad = { guardarRopa(p, MarcarRopaInput(camisetaCantidad = it)) },
+                                onTalla = { guardarRopa(p, MarcarRopaInput(camisetaTalla = it)) },
+                                onConfirmada = { guardarRopa(p, MarcarRopaInput(camisetaConfirmada = it)) },
                             )
-                            Celda(
-                                ropaTexto(p.sudaderaCantidad, p.sudaderaTalla, p.sudaderaConfirmada),
-                                ANCHO_ROPA, TextAlign.Center,
+                            CeldaRopa(
+                                gestionar, p.sudaderaCantidad, p.sudaderaTalla, p.sudaderaConfirmada,
+                                onCantidad = { guardarRopa(p, MarcarRopaInput(sudaderaCantidad = it)) },
+                                onTalla = { guardarRopa(p, MarcarRopaInput(sudaderaTalla = it)) },
+                                onConfirmada = { guardarRopa(p, MarcarRopaInput(sudaderaConfirmada = it)) },
                             )
                             Celda("", ANCHO_DINERO)
                             Celda(
@@ -276,7 +392,6 @@ fun CuentaDetalleScreen(
                         )
                     }
 
-                    // Bloque 3: ropa confirmada, gastos e ingresos
                     FilaSeccion("Ingresos y gastos")
                     val gastos = c.movimientos.filter {
                         it.manual || it.origen == "CAMISETA" || it.origen == "SUDADERA"
@@ -298,7 +413,7 @@ fun CuentaDetalleScreen(
                                 if (m.importe > 0) "${formatoImporte(m.importe)} €" else "",
                                 ANCHO_DINERO, TextAlign.End, BaniterioColors.goldSoft,
                             )
-                            Box(Modifier.width(ANCHO_RECIBO).padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
+                            Column(Modifier.width(ANCHO_RECIBO).padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                 if (m.reciboArchivo != null) {
                                     Text(
                                         "📄",
@@ -309,12 +424,26 @@ fun CuentaDetalleScreen(
                                         },
                                     )
                                 }
+                                if (gestionar && m.manual) {
+                                    Text(
+                                        "borrar",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = BaniterioColors.muted,
+                                        modifier = Modifier.clickable {
+                                            scope.launch {
+                                                when (val r = cuentasRepo.borrarMovimiento(m.id)) {
+                                                    is ResultadoCuenta.Exito -> trasCambio(r.dato, "Movimiento borrado.")
+                                                    is ResultadoCuenta.Error -> aviso = r.mensaje
+                                                }
+                                            }
+                                        },
+                                    )
+                                }
                             }
                             Celda("${formatoImporte(m.saldoTras)} €", ANCHO_SALDO, TextAlign.End, negrita = true)
                         }
                     }
 
-                    // Pie
                     Row(Modifier.background(BaniterioColors.panel)) {
                         Celda("Saldo actual", ANCHO_CONCEPTO, negrita = true)
                         Celda("", ANCHO_ESTADO)
@@ -345,6 +474,37 @@ fun CuentaDetalleScreen(
                         }
                     }
                 }
+
+                if (modalCerrarAnio) {
+                    AlertDialog(
+                        onDismissRequest = { modalCerrarAnio = false },
+                        confirmButton = {
+                            TextButton(enabled = !cerrandoAnio, onClick = {
+                                cerrandoAnio = true
+                                scope.launch {
+                                    when (val r = cuentasRepo.cerrarAnio(c.id)) {
+                                        is ResultadoCuenta.Exito -> {
+                                            anioSel = null
+                                            mostrarAniosViejos = false
+                                            trasCambio(r.dato, "Año cerrado. Ahora estás en ${r.dato.anio}.")
+                                            modalCerrarAnio = false
+                                        }
+                                        is ResultadoCuenta.Error -> aviso = r.mensaje
+                                    }
+                                    cerrandoAnio = false
+                                }
+                            }) { Text("Sí, cerrar") }
+                        },
+                        dismissButton = { TextButton(onClick = { modalCerrarAnio = false }) { Text("No") } },
+                        title = { Text("¿Cerrar el año ${c.anio}?") },
+                        text = {
+                            Text(
+                                "El saldo de ${formatoImporte(c.saldo)} € pasará como saldo de partida a ${c.anio + 1}. " +
+                                    "No se puede deshacer.",
+                            )
+                        },
+                    )
+                }
             }
         }
     }
@@ -358,7 +518,7 @@ fun CuentaDetalleScreen(
                     scope.launch {
                         when (val r = cuentasRepo.marcarTransferido(cuentaId)) {
                             is ResultadoCuenta.Exito -> {
-                                estado = EstadoCuentaDetalle.Cargada(r.dato)
+                                trasCambio(r.dato, "Hecho, el dinero consta ingresado en el banco.")
                                 confirmandoTransfer = false
                             }
                             is ResultadoCuenta.Error -> Unit
@@ -396,4 +556,137 @@ private fun ChipAnio(texto: Any, seleccionado: Boolean, onClick: () -> Unit) {
         color = if (seleccionado) BaniterioColors.ink else BaniterioColors.muted,
         fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Normal,
     )
+}
+
+/** Celda de ropa: en lectura muestra texto; para el admin, cantidad + talla + "€ confirmado". */
+@Composable
+private fun CeldaRopa(
+    editable: Boolean,
+    cantidad: Int,
+    talla: String?,
+    confirmada: Boolean,
+    onCantidad: (Int) -> Unit,
+    onTalla: (String) -> Unit,
+    onConfirmada: (Boolean) -> Unit,
+) {
+    if (!editable) {
+        Celda(ropaTexto(cantidad, talla, confirmada), ANCHO_ROPA, TextAlign.Center)
+        return
+    }
+    Column(
+        Modifier.width(ANCHO_ROPA).padding(horizontal = 6.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        var txtCantidad by remember(cantidad) { mutableStateOf(if (cantidad == 0) "" else cantidad.toString()) }
+        var txtTalla by remember(talla) { mutableStateOf(talla ?: "") }
+        OutlinedTextField(
+            value = txtCantidad,
+            onValueChange = { nuevo ->
+                txtCantidad = nuevo.filter { it.isDigit() }.take(2)
+                onCantidad(txtCantidad.toIntOrNull() ?: 0)
+            },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.width(58.dp),
+        )
+        OutlinedTextField(
+            value = txtTalla,
+            onValueChange = { txtTalla = it.take(6); onTalla(txtTalla) },
+            singleLine = true,
+            placeholder = { Text("talla") },
+            modifier = Modifier.width(104.dp),
+        )
+        if (cantidad > 0) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = confirmada, onCheckedChange = onConfirmada)
+                Text("€ confirmado", style = MaterialTheme.typography.labelSmall, color = BaniterioColors.muted)
+            }
+        }
+    }
+}
+
+@Composable
+private fun FormMovimiento(
+    tipo: String,
+    onTipo: (String) -> Unit,
+    importe: String,
+    onImporte: (String) -> Unit,
+    concepto: String,
+    onConcepto: (String) -> Unit,
+    fecha: String,
+    onFecha: (String) -> Unit,
+    categoria: String?,
+    onCategoria: (String?) -> Unit,
+    recibo: ArchivoElegido?,
+    onElegirRecibo: (() -> Unit)?,
+    guardando: Boolean,
+    onGuardar: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth()
+            .background(BaniterioColors.surface, RoundedCornerShape(14.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Select("Tipo", if (tipo == "GASTO") "Gasto" else "Ingreso") { cerrar ->
+            DropdownMenuItem(text = { Text("Gasto") }, onClick = { onTipo("GASTO"); cerrar() })
+            DropdownMenuItem(text = { Text("Ingreso") }, onClick = { onTipo("INGRESO"); cerrar() })
+        }
+        OutlinedTextField(
+            value = importe, onValueChange = onImporte,
+            label = { Text("Importe (€)") }, singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = concepto, onValueChange = onConcepto,
+            label = { Text("Concepto") }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
+            value = fecha, onValueChange = onFecha,
+            label = { Text("Fecha (aaaa-mm-dd, opcional)") }, singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Select(
+            "Categoría (opcional)",
+            CATEGORIAS.firstOrNull { it.first == categoria }?.second ?: "—",
+        ) { cerrar ->
+            DropdownMenuItem(text = { Text("—") }, onClick = { onCategoria(null); cerrar() })
+            CATEGORIAS.forEach { (valor, txt) ->
+                DropdownMenuItem(text = { Text(txt) }, onClick = { onCategoria(valor); cerrar() })
+            }
+        }
+        if (onElegirRecibo != null) {
+            OutlinedButton(onClick = onElegirRecibo) {
+                Text(recibo?.let { "Recibo: ${it.nombre}" } ?: "Adjuntar recibo (PDF o foto)")
+            }
+        }
+        Button(onClick = onGuardar, enabled = !guardando) { Text("Guardar") }
+    }
+}
+
+/** Caja tipo "select": etiqueta + botón a lo ancho con el valor y ▾ + [DropdownMenu]. */
+@Composable
+private fun Select(
+    etiqueta: String,
+    valor: String,
+    menu: @Composable androidx.compose.foundation.layout.ColumnScope.(cerrar: () -> Unit) -> Unit,
+) {
+    var abierto by remember { mutableStateOf(false) }
+    Column {
+        Text(etiqueta, color = BaniterioColors.muted, style = MaterialTheme.typography.bodySmall)
+        Box {
+            OutlinedButton(onClick = { abierto = true }, modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(valor, color = MaterialTheme.colorScheme.onBackground)
+                    Text("▾", color = BaniterioColors.muted)
+                }
+            }
+            DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
+                menu { abierto = false }
+            }
+        }
+    }
 }
