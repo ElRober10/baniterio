@@ -7,6 +7,7 @@ import {
   ArticuloInventario,
   CATEGORIAS,
   CategoriaInventario,
+  EventoAbierto,
   OpcionCategoria,
 } from './inventario.types';
 
@@ -52,6 +53,14 @@ export class InventarioCategoria implements OnInit {
   protected readonly nuevoNombreTexto = signal('');
   protected readonly nuevoTamano = signal('');
   protected readonly nuevaCantidad = signal('');
+
+  // Modal "Enviar a evento". `enviarObjetivo` es un artículo concreto o 'todo'
+  // (toda la categoría).
+  protected readonly enviarAbierto = signal(false);
+  protected readonly enviarObjetivo = signal<ArticuloInventario | 'todo' | null>(null);
+  protected readonly eventosAbiertos = signal<EventoAbierto[]>([]);
+  protected readonly eventoSel = signal<number | null>(null);
+  protected readonly enviando = signal(false);
 
   ngOnInit(): void {
     const slug = this.ruta.snapshot.paramMap.get('categoria');
@@ -172,15 +181,58 @@ export class InventarioCategoria implements OnInit {
     });
   }
 
-  /** Placeholder: la funcionalidad de "enviar a un evento" llega más adelante. */
-  protected enviarAEvento(a: ArticuloInventario): void {
-    this.aviso.set(`"Enviar a evento" todavía no está disponible (${a.nombre}).`);
+  /** Abre el modal de "enviar a evento" para un artículo o para toda la categoría. */
+  protected abrirEnviar(objetivo: ArticuloInventario | 'todo'): void {
+    this.enviarObjetivo.set(objetivo);
+    this.aviso.set('');
+    this.eventoSel.set(null);
+    this.enviarAbierto.set(true);
+    if (this.eventosAbiertos().length === 0) {
+      this.inventarioService.eventosAbiertos().subscribe({
+        next: (evs) => this.eventosAbiertos.set(evs),
+        error: () => this.aviso.set('No se pudieron cargar los eventos.'),
+      });
+    }
   }
 
-  /** Placeholder: enviar la categoría entera a un evento; llega más adelante. */
-  protected enviarTodoAEvento(): void {
-    this.aviso.set('"Enviar todo a evento" todavía no está disponible.');
+  protected cerrarEnviar(): void {
+    this.enviarAbierto.set(false);
+    this.enviarObjetivo.set(null);
   }
+
+  /** Texto del artículo objetivo (nombre · tamaño), vacío si el objetivo es 'todo'. */
+  protected objetivoNombre(): string {
+    const o = this.enviarObjetivo();
+    return o && o !== 'todo' ? `${o.nombre} · ${o.tamano}` : '';
+  }
+
+  protected confirmarEnviar(): void {
+    const eventoId = this.eventoSel();
+    const objetivo = this.enviarObjetivo();
+    const opcion = this.opcion();
+    if (eventoId == null || objetivo == null || !opcion) return;
+    this.enviando.set(true);
+    const obs =
+      objetivo === 'todo'
+        ? this.inventarioService.enviarCategoria(opcion.clave, eventoId)
+        : this.inventarioService.enviarAEvento(objetivo.id, eventoId);
+    const nombreEvento = this.eventosAbiertos().find((e) => e.id === eventoId)?.nombre ?? 'el evento';
+    obs.subscribe({
+      next: () => {
+        this.enviando.set(false);
+        this.enviarAbierto.set(false);
+        this.enviarObjetivo.set(null);
+        this.aviso.set(`Enviado a «${nombreEvento}».`);
+        this.cargar();
+      },
+      error: () => {
+        this.enviando.set(false);
+        this.aviso.set('No se pudo enviar.');
+      },
+    });
+  }
+
+  protected trackEvento = (_: number, e: EventoAbierto) => e.id;
 
   /** Nombres ya usados en esta categoría, sin repetir y ordenados, para el desplegable. */
   protected nombresExistentes(): string[] {

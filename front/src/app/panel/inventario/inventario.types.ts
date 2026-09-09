@@ -40,6 +40,32 @@ export interface NuevoArticulo {
   cantidad: number;
 }
 
+/** Un evento "abierto" (no pasado, no oculto): opción del selector de "enviar a evento". */
+export interface EventoAbierto {
+  id: number;
+  nombre: string;
+  fecha: string;
+}
+
+/** Un artículo del inventario de un evento ("inventario de la fiesta"). */
+export interface ArticuloFiesta {
+  id: number;
+  nombre: string;
+  tamano: string;
+  cantidad: number;
+}
+
+export interface CategoriaFiesta {
+  categoria: CategoriaClave;
+  etiqueta: string;
+  articulos: ArticuloFiesta[];
+}
+
+export interface InventarioFiestaResponse {
+  puedoEditar: boolean;
+  categorias: CategoriaFiesta[];
+}
+
 /** Una categoría para la rejilla de botones y para resolver el slug de la URL. */
 export interface OpcionCategoria {
   clave: CategoriaClave;

@@ -40,4 +40,41 @@ describe('InventarioService', () => {
     expect(req.request.method).toBe('DELETE');
     req.flush(null);
   });
+
+  it('eventosAbiertos() pega a GET /eventos/abiertos', () => {
+    service.eventosAbiertos().subscribe();
+    const req = httpMock.expectOne(`${base}/eventos/abiertos`);
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
+
+  it('enviarAEvento() hace POST /inventario/:id/enviar con { eventoId }', () => {
+    service.enviarAEvento(4, 9).subscribe();
+    const req = httpMock.expectOne(`${base}/inventario/4/enviar`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ eventoId: 9 });
+    req.flush(null);
+  });
+
+  it('enviarCategoria() hace POST /inventario/enviar-categoria', () => {
+    service.enviarCategoria('ALCOHOL', 9).subscribe();
+    const req = httpMock.expectOne(`${base}/inventario/enviar-categoria`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ categoria: 'ALCOHOL', eventoId: 9 });
+    req.flush(null);
+  });
+
+  it('inventarioFiesta() pega a GET /inventario/evento/:id', () => {
+    service.inventarioFiesta(7).subscribe();
+    const req = httpMock.expectOne(`${base}/inventario/evento/7`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ puedoEditar: false, categorias: [] });
+  });
+
+  it('devolverAInventario() hace POST /inventario/evento/:e/:a/devolver', () => {
+    service.devolverAInventario(7, 3).subscribe();
+    const req = httpMock.expectOne(`${base}/inventario/evento/7/3/devolver`);
+    expect(req.request.method).toBe('POST');
+    req.flush(null);
+  });
 });
