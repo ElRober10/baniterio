@@ -1,0 +1,36 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+import { environment } from '../../../environments/environment';
+import { InventarioService } from './inventario.service';
+
+describe('InventarioService', () => {
+  let service: InventarioService;
+  let httpMock: HttpTestingController;
+  const base = environment.apiBaseUrl;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(InventarioService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => httpMock.verify());
+
+  it('ver() pega a GET /inventario', () => {
+    service.ver().subscribe();
+    const req = httpMock.expectOne(`${base}/inventario`);
+    expect(req.request.method).toBe('GET');
+    req.flush({ puedoEditar: false, categorias: [] });
+  });
+
+  it('actualizar() pega a PUT /inventario/:id con el cambio', () => {
+    service.actualizar(7, { nombre: 'Mixta', tamano: 'lata', cantidad: 9 }).subscribe();
+    const req = httpMock.expectOne(`${base}/inventario/7`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ nombre: 'Mixta', tamano: 'lata', cantidad: 9 });
+    req.flush({ id: 7, nombre: 'Mixta', tamano: 'lata', cantidad: 9 });
+  });
+});
