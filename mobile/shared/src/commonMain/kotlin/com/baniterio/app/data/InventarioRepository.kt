@@ -1,6 +1,8 @@
 package com.baniterio.app.data
 
 import com.baniterio.app.data.dto.ArticuloInventarioDto
+import com.baniterio.app.data.dto.EventoAbiertoDto
+import com.baniterio.app.data.dto.InventarioFiestaResponse
 import com.baniterio.app.data.dto.InventarioResponse
 
 /**
@@ -23,4 +25,11 @@ interface InventarioRepository {
         cantidad: Double,
     ): ResultadoInventario<ArticuloInventarioDto>
     suspend fun borrar(id: Long): ResultadoInventario<Unit>
+
+    // --- Inventario de la fiesta ---
+    suspend fun eventosAbiertos(): ResultadoInventario<List<EventoAbiertoDto>>
+    suspend fun enviarAEvento(articuloId: Long, eventoId: Long): ResultadoInventario<Unit>
+    suspend fun enviarCategoria(categoria: String, eventoId: Long): ResultadoInventario<Unit>
+    suspend fun inventarioFiesta(eventoId: Long): ResultadoInventario<InventarioFiestaResponse>
+    suspend fun devolver(eventoId: Long, articuloEventoId: Long): ResultadoInventario<Unit>
 }

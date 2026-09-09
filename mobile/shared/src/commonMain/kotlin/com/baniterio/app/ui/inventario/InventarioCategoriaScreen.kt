@@ -20,9 +20,11 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,6 +41,7 @@ import com.baniterio.app.data.InventarioRepository
 import com.baniterio.app.data.ResultadoInventario
 import com.baniterio.app.data.dto.ArticuloInventarioDto
 import com.baniterio.app.data.dto.CategoriaInventarioDto
+import com.baniterio.app.data.dto.EventoAbiertoDto
 import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.theme.BaniterioWordmark
 import com.baniterio.app.ui.comun.relieveDeCarta
@@ -46,6 +49,12 @@ import kotlinx.coroutines.launch
 
 /** Valor del desplegable de nombres que activa el input de "nombre nuevo". */
 private const val NOMBRE_NUEVO = "__nuevo__"
+
+/** Qué se envía a un evento: un artículo concreto o toda la categoría. */
+private sealed interface EnvioObjetivo {
+    data class Uno(val articulo: ArticuloInventarioDto) : EnvioObjetivo
+    data object Todo : EnvioObjetivo
+}
 
 private sealed interface EstadoCategoria {
     data object Cargando : EstadoCategoria
@@ -81,7 +90,18 @@ fun InventarioCategoriaScreen(
 
     var modalAbierto by remember { mutableStateOf(false) }
     var confirmarBorrado by remember { mutableStateOf<ArticuloInventarioDto?>(null) }
+    var enviarObjetivo by remember { mutableStateOf<EnvioObjetivo?>(null) }
+    var eventosAbiertos by remember { mutableStateOf<List<EventoAbiertoDto>>(emptyList()) }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(enviarObjetivo) {
+        if (enviarObjetivo != null && eventosAbiertos.isEmpty()) {
+            when (val r = inventarioRepo.eventosAbiertos()) {
+                is ResultadoInventario.Exito -> eventosAbiertos = r.dato
+                is ResultadoInventario.Error -> aviso = r.mensaje
+            }
+        }
+    }
 
     androidx.compose.runtime.LaunchedEffect(intento) {
         estado = EstadoCategoria.Cargando
@@ -191,16 +211,14 @@ fun InventarioCategoriaScreen(
                         guardando = guardando,
                         onCambio = { nueva -> borrador = borrador + (a.id to nueva) },
                         onBorrar = { confirmarBorrado = a },
-                        onEnviarAEvento = {
-                            aviso = "«Enviar a evento» todavía no está disponible (${a.nombre})."
-                        },
+                        onEnviar = { enviarObjetivo = EnvioObjetivo.Uno(a) },
                     )
                 }
                 if (e.puedoEditar && !editando && e.cat.articulos.isNotEmpty()) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        OutlinedButton(onClick = {
-                            aviso = "«Enviar todo a evento» todavía no está disponible."
-                        }) { Text("Enviar todo a evento") }
+                        OutlinedButton(onClick = { enviarObjetivo = EnvioObjetivo.Todo }) {
+                            Text("Enviar todo a evento")
+                        }
                     }
                 }
             }
@@ -228,6 +246,67 @@ fun InventarioCategoriaScreen(
             dismissButton = { TextButton(onClick = { confirmarBorrado = null }) { Text("Cancelar") } },
             title = { Text("Quitar del inventario") },
             text = { Text("¿Quitar «${art.nombre}» del inventario?") },
+        )
+    }
+
+    enviarObjetivo?.let { objetivo ->
+        var eventoSel by remember(objetivo) { mutableStateOf<Long?>(null) }
+        AlertDialog(
+            onDismissRequest = { enviarObjetivo = null },
+            confirmButton = {
+                TextButton(
+                    enabled = eventoSel != null,
+                    onClick = {
+                        val ev = eventoSel ?: return@TextButton
+                        enviarObjetivo = null
+                        scope.launch {
+                            val r = when (objetivo) {
+                                is EnvioObjetivo.Uno ->
+                                    inventarioRepo.enviarAEvento(objetivo.articulo.id, ev)
+                                EnvioObjetivo.Todo ->
+                                    inventarioRepo.enviarCategoria(categoria.clave, ev)
+                            }
+                            when (r) {
+                                is ResultadoInventario.Exito -> {
+                                    val n = eventosAbiertos.firstOrNull { it.id == ev }?.nombre ?: "el evento"
+                                    aviso = "Enviado a «$n»."
+                                }
+                                is ResultadoInventario.Error -> aviso = r.mensaje
+                            }
+                            intento++
+                        }
+                    },
+                ) { Text("Enviar") }
+            },
+            dismissButton = { TextButton(onClick = { enviarObjetivo = null }) { Text("Cancelar") } },
+            title = { Text("Enviar a evento") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        when (objetivo) {
+                            is EnvioObjetivo.Uno -> "${objetivo.articulo.nombre} · ${objetivo.articulo.tamano}"
+                            EnvioObjetivo.Todo -> "Se enviará todo lo de «${categoria.etiqueta}»."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BaniterioColors.muted,
+                    )
+                    if (eventosAbiertos.isEmpty()) {
+                        Text("No hay eventos abiertos.", color = BaniterioColors.muted)
+                    }
+                    eventosAbiertos.forEach { ev ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable { eventoSel = ev.id },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = eventoSel == ev.id, onClick = { eventoSel = ev.id })
+                            Text(
+                                "${ev.nombre} · ${ev.fecha}",
+                                color = MaterialTheme.colorScheme.onBackground,
+                            )
+                        }
+                    }
+                }
+            },
         )
     }
 
@@ -263,7 +342,7 @@ private fun FilaArticulo(
     guardando: Boolean,
     onCambio: (Fila) -> Unit,
     onBorrar: () -> Unit,
-    onEnviarAEvento: () -> Unit,
+    onEnviar: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -317,7 +396,7 @@ private fun FilaArticulo(
             }
             if (puedoEditar) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    OutlinedButton(onClick = onEnviarAEvento) { Text("Enviar a evento") }
+                    OutlinedButton(onClick = onEnviar) { Text("Enviar a evento") }
                 }
             }
         }

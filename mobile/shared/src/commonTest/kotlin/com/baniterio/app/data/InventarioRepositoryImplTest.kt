@@ -119,4 +119,57 @@ class InventarioRepositoryImplTest {
         assertIs<ResultadoInventario.Error>(res)
         assertEquals(CodigoErrorInventario.SIN_PERMISO, res.codigo)
     }
+
+    @Test
+    fun eventos_abiertos_hace_get() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = """[{"id":7,"nombre":"San Miguel","fecha":"2026-09-25"}]""")
+        val res = r.eventosAbiertos()
+        assertIs<ResultadoInventario.Exito<*>>(res)
+        assertEquals("/api/v1/eventos/abiertos", vistas[0].path)
+    }
+
+    @Test
+    fun enviar_a_evento_hace_post_con_body() = runTest {
+        val (r, vistas) = repo(status = HttpStatusCode.NoContent)
+        r.enviarAEvento(4, 7)
+        assertEquals("POST", vistas[0].metodo)
+        assertEquals("/api/v1/inventario/4/enviar", vistas[0].path)
+        assert(vistas[0].cuerpo.contains("\"eventoId\":7")) { vistas[0].cuerpo }
+    }
+
+    @Test
+    fun enviar_categoria_hace_post_con_body() = runTest {
+        val (r, vistas) = repo(status = HttpStatusCode.NoContent)
+        r.enviarCategoria("ALCOHOL", 7)
+        assertEquals("/api/v1/inventario/enviar-categoria", vistas[0].path)
+        assert(vistas[0].cuerpo.contains("\"categoria\":\"ALCOHOL\"")) { vistas[0].cuerpo }
+    }
+
+    @Test
+    fun inventario_fiesta_hace_get() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = """{"puedoEditar":true,"categorias":[]}""")
+        val res = r.inventarioFiesta(7)
+        assertIs<ResultadoInventario.Exito<*>>(res)
+        assertEquals("/api/v1/inventario/evento/7", vistas[0].path)
+    }
+
+    @Test
+    fun devolver_hace_post() = runTest {
+        val (r, vistas) = repo(status = HttpStatusCode.NoContent)
+        val res = r.devolver(7, 3)
+        assertIs<ResultadoInventario.Exito<*>>(res)
+        assertEquals("POST", vistas[0].metodo)
+        assertEquals("/api/v1/inventario/evento/7/3/devolver", vistas[0].path)
+    }
+
+    @Test
+    fun devolver_inexistente_error_tipado() = runTest {
+        val (r, _) = repo(
+            status = HttpStatusCode.NotFound,
+            cuerpoRespuesta = """{"codigo":"ARTICULO_EVENTO_NO_ENCONTRADO"}""",
+        )
+        val res = r.devolver(7, 9)
+        assertIs<ResultadoInventario.Error>(res)
+        assertEquals(CodigoErrorInventario.ARTICULO_EVENTO_NO_ENCONTRADO, res.codigo)
+    }
 }

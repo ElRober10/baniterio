@@ -43,6 +43,7 @@ import com.baniterio.app.ui.eventos.ResponderEventoScreen
 import com.baniterio.app.ui.historia.HistoriaScreen
 import com.baniterio.app.ui.inventario.CategoriaInventario
 import com.baniterio.app.ui.inventario.InventarioCategoriaScreen
+import com.baniterio.app.ui.inventario.InventarioFiestaScreen
 import com.baniterio.app.ui.inventario.InventarioScreen
 import com.baniterio.app.ui.auth.desbloqueo.DesbloqueoScreen
 import com.baniterio.app.ui.auth.login.LoginScreen
@@ -71,6 +72,7 @@ private const val CLAVE_CUENTAS = "Cuentas"
 private const val CLAVE_CUENTA_DETALLE = "CuentaDetalle"
 private const val CLAVE_INVENTARIO = "Inventario"
 private const val CLAVE_INVENTARIO_CATEGORIA = "InventarioCategoria"
+private const val CLAVE_INVENTARIO_FIESTA = "InventarioFiesta"
 private const val CLAVE_ADMIN_INDEX = "AdminIndex"
 private const val CLAVE_ADMIN_SOLICITUDES = "AdminSolicitudes"
 private const val CLAVE_ADMIN_PERMISOS = "AdminPermisos"
@@ -96,6 +98,7 @@ private fun Screen.aClave(): String = when (this) {
     Screen.CuentaDetalle -> CLAVE_CUENTA_DETALLE
     Screen.Inventario -> CLAVE_INVENTARIO
     Screen.InventarioCategoria -> CLAVE_INVENTARIO_CATEGORIA
+    Screen.InventarioFiesta -> CLAVE_INVENTARIO_FIESTA
     Screen.AdminIndex -> CLAVE_ADMIN_INDEX
     Screen.AdminSolicitudes -> CLAVE_ADMIN_SOLICITUDES
     Screen.AdminPermisos -> CLAVE_ADMIN_PERMISOS
@@ -121,6 +124,7 @@ private fun claveAScreen(clave: String): Screen = when (clave) {
     CLAVE_CUENTA_DETALLE -> Screen.CuentaDetalle
     CLAVE_INVENTARIO -> Screen.Inventario
     CLAVE_INVENTARIO_CATEGORIA -> Screen.InventarioCategoria
+    CLAVE_INVENTARIO_FIESTA -> Screen.InventarioFiesta
     CLAVE_ADMIN_INDEX -> Screen.AdminIndex
     CLAVE_ADMIN_SOLICITUDES -> Screen.AdminSolicitudes
     CLAVE_ADMIN_PERMISOS -> Screen.AdminPermisos
@@ -157,6 +161,7 @@ fun App(
                 screen == Screen.EventosOcultos ||
                 screen == Screen.Cuentas || screen == Screen.CuentaDetalle ||
                 screen == Screen.Inventario || screen == Screen.InventarioCategoria ||
+                screen == Screen.InventarioFiesta ||
                 screen == Screen.AdminIndex || screen == Screen.AdminSolicitudes ||
                 screen == Screen.AdminPermisos || screen == Screen.AdminBebidas ||
                 screen == Screen.AdminPagos)
@@ -191,6 +196,9 @@ fun App(
 
     // Sección Inventario: la categoría cuyo listado se está viendo (se guarda la clave).
     var categoriaInventarioClave by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // Inventario de la fiesta: el evento cuyo inventario enviado se está viendo.
+    var inventarioFiestaEventoId by rememberSaveable { mutableStateOf<Long?>(null) }
 
     fun ir(destino: Screen) {
         screenKey = destino.aClave()
@@ -345,6 +353,10 @@ fun App(
                             eventoId = id,
                             onEditar = { editorEventoId = id; ir(Screen.EditorEvento) },
                             onBorrado = { ir(Screen.Eventos) },
+                            onInventarioFiesta = {
+                                inventarioFiestaEventoId = id
+                                ir(Screen.InventarioFiesta)
+                            },
                             onVolver = { ir(Screen.Eventos) },
                         )
                     }
@@ -404,6 +416,19 @@ fun App(
                             inventarioRepo = deps.inventarioRepo,
                             categoria = cat,
                             onVolver = { ir(Screen.Inventario) },
+                        )
+                    }
+                }
+                is Screen.InventarioFiesta -> {
+                    BackHandler { ir(Screen.EventoDetalle) }
+                    val id = inventarioFiestaEventoId
+                    if (id == null) {
+                        LaunchedEffect(Unit) { ir(Screen.Eventos) }
+                    } else {
+                        InventarioFiestaScreen(
+                            inventarioRepo = deps.inventarioRepo,
+                            eventoId = id,
+                            onVolver = { ir(Screen.EventoDetalle) },
                         )
                     }
                 }
