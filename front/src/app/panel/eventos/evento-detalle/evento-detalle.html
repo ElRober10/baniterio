@@ -154,13 +154,12 @@
               }
             </div>
             <div class="mt-2 grid gap-2 grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]">
-              <button
-                type="button"
-                (click)="proximamente('Lista de la compra')"
+              <a
+                [routerLink]="['/panel/eventos', e.id, 'lista-compra']"
                 class="rounded-xl border border-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand/20"
               >
                 Lista de la compra
-              </button>
+              </a>
               <a
                 [routerLink]="['/panel/eventos', e.id, 'inventario']"
                 class="rounded-xl border border-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand/20"
