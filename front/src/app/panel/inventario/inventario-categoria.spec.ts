@@ -166,4 +166,69 @@ describe('InventarioCategoria', () => {
     httpMock.expectOne(`${environment.apiBaseUrl}/inventario`).flush(RESPUESTA(true));
     httpMock.verify();
   });
+
+  it('"Enviar a evento" abre modal, elige evento y hace POST /inventario/:id/enviar', () => {
+    const { fixture, httpMock } = montar('cerveza');
+    fixture.detectChanges();
+    httpMock.expectOne(`${environment.apiBaseUrl}/inventario`).flush(RESPUESTA(true));
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Enviar a evento')!
+      .dispatchEvent(new Event('click'));
+
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/eventos/abiertos`)
+      .flush([{ id: 7, nombre: 'San Miguel', fecha: '2026-09-25' }]);
+    fixture.detectChanges();
+
+    const sel = el.querySelector('select') as HTMLSelectElement;
+    sel.value = sel.options[1].value;
+    sel.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Enviar')!
+      .dispatchEvent(new Event('click'));
+
+    const post = httpMock.expectOne(`${environment.apiBaseUrl}/inventario/1/enviar`);
+    expect(post.request.method).toBe('POST');
+    expect(post.request.body).toEqual({ eventoId: 7 });
+    post.flush(null);
+
+    httpMock.expectOne(`${environment.apiBaseUrl}/inventario`).flush(RESPUESTA(true));
+    httpMock.verify();
+  });
+
+  it('"Enviar todo a evento" usa enviar-categoria', () => {
+    const { fixture, httpMock } = montar('cerveza');
+    fixture.detectChanges();
+    httpMock.expectOne(`${environment.apiBaseUrl}/inventario`).flush(RESPUESTA(true));
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Enviar todo a evento')!
+      .dispatchEvent(new Event('click'));
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/eventos/abiertos`)
+      .flush([{ id: 7, nombre: 'San Miguel', fecha: '2026-09-25' }]);
+    fixture.detectChanges();
+
+    const sel = el.querySelector('select') as HTMLSelectElement;
+    sel.value = sel.options[1].value;
+    sel.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Enviar')!
+      .dispatchEvent(new Event('click'));
+
+    const post = httpMock.expectOne(`${environment.apiBaseUrl}/inventario/enviar-categoria`);
+    expect(post.request.body).toEqual({ categoria: 'CERVEZA', eventoId: 7 });
+    post.flush(null);
+    httpMock.expectOne(`${environment.apiBaseUrl}/inventario`).flush(RESPUESTA(true));
+    httpMock.verify();
+  });
 });

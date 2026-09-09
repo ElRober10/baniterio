@@ -123,7 +123,7 @@ describe('EventoDetalleComponent', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Listado de asistentes');
   });
 
-  it('muestra "Lista de la compra" e "Inventario de la fiesta" y son placeholder', () => {
+  it('"Lista de la compra" (placeholder) e "Inventario de la fiesta" (enlace)', () => {
     crear();
     fixture.detectChanges();
     responder({
@@ -135,13 +135,11 @@ describe('EventoDetalleComponent', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.textContent).toContain('Lista de la compra');
-    expect(el.textContent).toContain('Inventario de la fiesta');
 
-    Array.from(el.querySelectorAll('button'))
-      .find((b) => b.textContent?.trim() === 'Inventario de la fiesta')!
-      .dispatchEvent(new Event('click'));
-    fixture.detectChanges();
-    expect(el.textContent).toContain('«Inventario de la fiesta» todavía no está disponible.');
+    const enlace = Array.from(el.querySelectorAll('a')).find(
+      (a) => a.textContent?.trim() === 'Inventario de la fiesta',
+    );
+    expect(enlace?.getAttribute('href')).toContain('/inventario');
   });
 
   it('no muestra "Listado de asistentes" si el evento no lleva ficha', () => {

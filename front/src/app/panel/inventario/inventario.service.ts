@@ -5,6 +5,9 @@ import { environment } from '../../../environments/environment';
 import {
   ArticuloInventario,
   CambioArticulo,
+  CategoriaClave,
+  EventoAbierto,
+  InventarioFiestaResponse,
   InventarioResponse,
   NuevoArticulo,
 } from './inventario.types';
@@ -33,5 +36,33 @@ export class InventarioService {
 
   borrar(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/inventario/${id}`);
+  }
+
+  /** Eventos "abiertos" para el selector de "enviar a evento". */
+  eventosAbiertos(): Observable<EventoAbierto[]> {
+    return this.http.get<EventoAbierto[]>(`${this.base}/eventos/abiertos`);
+  }
+
+  /** Mueve toda la cantidad de un artículo al inventario de un evento. */
+  enviarAEvento(articuloId: number, eventoId: number): Observable<void> {
+    return this.http.post<void>(`${this.base}/inventario/${articuloId}/enviar`, { eventoId });
+  }
+
+  /** "Enviar todo": mueve al evento todas las filas de la categoría con cantidad > 0. */
+  enviarCategoria(categoria: CategoriaClave, eventoId: number): Observable<void> {
+    return this.http.post<void>(`${this.base}/inventario/enviar-categoria`, { categoria, eventoId });
+  }
+
+  /** El inventario que se ha enviado a un evento. */
+  inventarioFiesta(eventoId: number): Observable<InventarioFiestaResponse> {
+    return this.http.get<InventarioFiestaResponse>(`${this.base}/inventario/evento/${eventoId}`);
+  }
+
+  /** Devuelve una línea entera del inventario de la fiesta al inventario general. */
+  devolverAInventario(eventoId: number, articuloEventoId: number): Observable<void> {
+    return this.http.post<void>(
+      `${this.base}/inventario/evento/${eventoId}/${articuloEventoId}/devolver`,
+      {},
+    );
   }
 }

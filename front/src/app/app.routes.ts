@@ -19,6 +19,7 @@ import { Eventos } from './panel/eventos/eventos';
 import { EventosOcultos } from './panel/eventos/eventos-ocultos/eventos-ocultos';
 import { Inventario } from './panel/inventario/inventario';
 import { InventarioCategoria } from './panel/inventario/inventario-categoria';
+import { InventarioFiesta } from './panel/eventos/inventario-fiesta/inventario-fiesta';
 import { Miembros } from './panel/miembros/miembros';
 import { perfilCompletoGuard } from './panel/miembros/perfil-completo.guard';
 import { Registro } from './auth/registro/registro';
@@ -46,6 +47,7 @@ export const routes: Routes = [
       { path: 'eventos/nuevo', component: EditorEvento, canActivate: [perfilCompletoGuard] },
       { path: 'eventos/ocultos', component: EventosOcultos, canActivate: [perfilCompletoGuard] },
       { path: 'eventos/:id/editar', component: EditorEvento, canActivate: [perfilCompletoGuard] },
+      { path: 'eventos/:id/inventario', component: InventarioFiesta, canActivate: [perfilCompletoGuard] },
       { path: 'eventos/:id', component: EventoDetalleComponent, canActivate: [perfilCompletoGuard] },
       { path: 'cuentas', component: Cuentas, canActivate: [perfilCompletoGuard] },
       { path: 'cuentas/:id', component: CuentaDetalleComponent, canActivate: [perfilCompletoGuard] },

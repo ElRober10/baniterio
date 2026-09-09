@@ -161,13 +161,12 @@
               >
                 Lista de la compra
               </button>
-              <button
-                type="button"
-                (click)="proximamente('Inventario de la fiesta')"
+              <a
+                [routerLink]="['/panel/eventos', e.id, 'inventario']"
                 class="rounded-xl border border-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand/20"
               >
                 Inventario de la fiesta
-              </button>
+              </a>
             </div>
             @if (pagoRechazado() && !pagoConfirmado()) {
               <p class="mt-2 text-sm text-red-300">
