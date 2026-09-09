@@ -7,10 +7,11 @@ package com.baniterio.api.identidad;
  * ({@link PermisoArea}).
  *
  * <p>Añadir un valor aquí = nueva área protegida: aparece sola en la pantalla
- * de permisos y en {@code GET /api/v1/auth/yo}. De momento solo las dos
- * secciones del panel de administración.
+ * de permisos y en {@code GET /api/v1/auth/yo}. Cubre las dos secciones del
+ * panel de administración y el editar del inventario.
  */
 public enum AreaProtegida {
     ADMIN_SOLICITUDES,
-    ADMIN_PERMISOS
+    ADMIN_PERMISOS,
+    INVENTARIO
 }
