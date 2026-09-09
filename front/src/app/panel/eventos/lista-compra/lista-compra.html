@@ -1,0 +1,61 @@
+<section class="mx-auto w-full max-w-5xl">
+  <div class="mb-4"><app-volver [destino]="'/panel/eventos/' + eventoId" etiqueta="Evento" /></div>
+
+  <h1 class="font-display text-2xl font-extrabold leading-tight">Lista de la compra</h1>
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <p class="mt-4 text-sm text-muted">Cargando…</p>
+    }
+    @case ('error') {
+      <p class="mt-4 text-sm text-red-300">No se ha podido cargar la lista.</p>
+      <button
+        type="button"
+        (click)="cargar()"
+        class="mt-2 rounded-lg border border-outline px-3 py-1 text-sm"
+      >
+        Reintentar
+      </button>
+    }
+    @case ('listo') {
+      <p class="mt-1 text-sm text-muted">
+        {{ apuntados() }} apuntados · {{ diasFiesta() }} día(s) de fiesta
+      </p>
+      @if (categorias().length === 0) {
+        <p class="mt-6 text-sm text-muted">Todavía no hay nada que comprar para este evento.</p>
+      } @else {
+        @for (cat of categorias(); track trackCat($index, cat)) {
+          <article class="carta-relieve mt-4 rounded-2xl p-5">
+            <h2 class="font-display text-lg font-bold text-gold-soft">{{ cat.etiqueta }}</h2>
+            <table class="mt-3 w-full text-sm">
+              <thead>
+                <tr class="text-left text-xs uppercase tracking-wide text-muted">
+                  <th class="pb-1">Artículo</th>
+                  <th class="pb-1">Tamaño</th>
+                  <th class="pb-1 text-right">Cantidad</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (l of cat.lineas; track l.nombre + l.tamano) {
+                  <tr class="border-t border-outline/30">
+                    <td class="py-1">
+                      {{ l.nombre }}
+                      @if (l.necesitaFicha) {
+                        <span class="text-xs text-muted">· necesita ficha de bebida</span>
+                      }
+                      @if (l.ajustada) {
+                        <span class="text-xs text-gold-soft">· ajustado</span>
+                      }
+                    </td>
+                    <td class="py-1">{{ l.tamano }}</td>
+                    <td class="py-1 text-right font-semibold">{{ l.cantidad }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </article>
+        }
+      }
+    }
+  }
+</section>
