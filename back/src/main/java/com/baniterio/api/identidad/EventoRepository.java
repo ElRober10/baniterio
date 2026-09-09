@@ -75,4 +75,13 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
             order by e.fecha desc, e.id desc
             """)
     List<Evento> ocultos(@Param("penaId") Long penaId);
+
+    /** Todos los eventos no ocultos de la peña, con la cuenta cargada. Más recientes primero. Para "Cantidades para eventos". */
+    @Query("""
+            select e from Evento e
+            join fetch e.cuenta
+            where e.pena.id = :penaId and e.oculto = false
+            order by e.fecha desc, e.id desc
+            """)
+    List<Evento> noOcultos(@Param("penaId") Long penaId);
 }
