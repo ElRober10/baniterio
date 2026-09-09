@@ -42,6 +42,10 @@ class InventarioIT extends IntegrationTest {
     @Autowired
     ArticuloInventarioRepository articulos;
     @Autowired
+    ArticuloEventoRepository articulosEvento;
+    @Autowired
+    com.baniterio.api.identidad.EventoRepository eventos;
+    @Autowired
     PasswordEncoder passwordEncoder;
 
     RestTestClient http;
@@ -76,6 +80,12 @@ class InventarioIT extends IntegrationTest {
     Long idDe(String categoria, String nombre) {
         return articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(pena().getId()).stream()
                 .filter(a -> a.getCategoria().name().equals(categoria) && a.getNombre().equals(nombre))
+                .findFirst().orElseThrow().getId();
+    }
+
+    Long algunEventoId() {
+        return eventos.findAll().stream()
+                .filter(e -> e.getPena().getId().equals(pena().getId()) && !e.isOculto())
                 .findFirst().orElseThrow().getId();
     }
 
@@ -225,5 +235,189 @@ class InventarioIT extends IntegrationTest {
                 .header(AUTHORIZATION, "Bearer " + token)
                 .body(Map.of("nombre", "X", "tamano", "lata", "cantidad", 1))
                 .exchange().expectStatus().isNotFound();
+    }
+
+    // --- Inventario de la fiesta ----------------------------------------------
+
+    @Test
+    void enviar_mueve_toda_la_cantidad_y_la_fila_desaparece_del_general() {
+        String token = token(RolMembresia.MIEMBRO, true);
+        Long eventoId = algunEventoId();
+        Long id = idDe("CERVEZA", "Coronita");
+
+        http.post().uri("/api/v1/inventario/" + id + "/enviar")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .body(Map.of("eventoId", eventoId))
+                .exchange().expectStatus().isNoContent();
+
+        assertThat(articulos.findById(id).orElseThrow().getCantidad().intValue()).isZero();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = http.get().uri("/api/v1/inventario")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .exchange().expectStatus().isOk().expectBody(Map.class).returnResult().getResponseBody();
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> cats = (List<Map<String, Object>>) body.get("categorias");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> cerveza = (List<Map<String, Object>>) cats.stream()
+                .filter(c -> c.get("categoria").equals("CERVEZA")).findFirst().orElseThrow().get("articulos");
+        assertThat(cerveza).noneMatch(a -> a.get("nombre").equals("Coronita"));
+    }
+
+    @Test
+    void enviar_con_cantidad_cero_es_400_nada_que_enviar() {
+        String token = token(RolMembresia.MIEMBRO, true);
+        Long eventoId = algunEventoId();
+        Long id = idDe("CERVEZA", "Sin gluten");
+        http.post().uri("/api/v1/inventario/" + id + "/enviar")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .body(Map.of("eventoId", eventoId)).exchange().expectStatus().isNoContent();
+
+        http.post().uri("/api/v1/inventario/" + id + "/enviar")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .body(Map.of("eventoId", eventoId))
+                .exchange().expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.codigo").isEqualTo("NADA_QUE_ENVIAR");
+    }
+
+    @Test
+    void enviar_sin_area_es_403() {
+        String token = token(RolMembresia.MIEMBRO, false);
+        Long eventoId = algunEventoId();
+        Long id = idDe("ALCOHOL", "Brugal");
+
+        http.post().uri("/api/v1/inventario/" + id + "/enviar")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .body(Map.of("eventoId", eventoId))
+                .exchange().expectStatus().isForbidden();
+    }
+
+    @Test
+    void enviar_a_evento_inexistente_es_404() {
+        String token = token(RolMembresia.MIEMBRO, true);
+        Long id = idDe("ALCOHOL", "Negrita");
+
+        http.post().uri("/api/v1/inventario/" + id + "/enviar")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .body(Map.of("eventoId", 999999))
+                .exchange().expectStatus().isNotFound();
+    }
+
+    @Test
+    void enviar_categoria_mueve_todas_las_filas_con_cantidad() {
+        String token = token(RolMembresia.MIEMBRO, true);
+        Long eventoId = algunEventoId();
+
+        http.post().uri("/api/v1/inventario/enviar-categoria")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .body(Map.of("categoria", "REFRESCOS", "eventoId", eventoId))
+                .exchange().expectStatus().isNoContent();
+
+        assertThat(articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(pena().getId()))
+                .filteredOn(a -> a.getCategoria().name().equals("REFRESCOS"))
+                .allMatch(a -> a.getCantidad().signum() == 0);
+    }
+
+    @Test
+    void crear_con_nombre_y_tamano_ya_existentes_actualiza_la_fila() {
+        String token = token(RolMembresia.MIEMBRO, true);
+        long antes = articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(pena().getId()).size();
+
+        http.post().uri("/api/v1/inventario")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .body(Map.of("categoria", "ALCOHOL", "nombre", "Tanqueray", "tamano", "70 cl", "cantidad", 4))
+                .exchange().expectStatus().isCreated();
+
+        long despues = articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(pena().getId()).size();
+        assertThat(despues).isEqualTo(antes);
+        assertThat(articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(pena().getId()).stream()
+                .filter(a -> a.getNombre().equals("Tanqueray") && a.getTamano().equals("70 cl"))
+                .findFirst().orElseThrow().getCantidad().intValue()).isEqualTo(4);
+    }
+
+    @Test
+    void ver_evento_devuelve_lo_enviado_agrupado_por_categoria() {
+        String token = token(RolMembresia.MIEMBRO, true);
+        Long eventoId = algunEventoId();
+        Long id = idDe("ALCOHOL", "Ballantine's");
+
+        http.post().uri("/api/v1/inventario/" + id + "/enviar")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .body(Map.of("eventoId", eventoId)).exchange().expectStatus().isNoContent();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = http.get().uri("/api/v1/inventario/evento/" + eventoId)
+                .header(AUTHORIZATION, "Bearer " + token)
+                .exchange().expectStatus().isOk().expectBody(Map.class).returnResult().getResponseBody();
+
+        assertThat(body.get("puedoEditar")).isEqualTo(true);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> cats = (List<Map<String, Object>>) body.get("categorias");
+        assertThat(cats).anySatisfy(c -> {
+            assertThat(c.get("categoria")).isEqualTo("ALCOHOL");
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> arts = (List<Map<String, Object>>) c.get("articulos");
+            assertThat(arts).anyMatch(a -> a.get("nombre").equals("Ballantine's"));
+        });
+    }
+
+    @Test
+    void ver_evento_puedoEditar_false_sin_area() {
+        String token = token(RolMembresia.MIEMBRO, false);
+        Long eventoId = algunEventoId();
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = http.get().uri("/api/v1/inventario/evento/" + eventoId)
+                .header(AUTHORIZATION, "Bearer " + token)
+                .exchange().expectStatus().isOk().expectBody(Map.class).returnResult().getResponseBody();
+        assertThat(body.get("puedoEditar")).isEqualTo(false);
+    }
+
+    @Test
+    void devolver_suma_de_vuelta_al_general_y_borra_la_linea() {
+        String token = token(RolMembresia.MIEMBRO, true);
+        Long eventoId = algunEventoId();
+        Long id = idDe("ALCOHOL", "Barceló");
+
+        http.post().uri("/api/v1/inventario/" + id + "/enviar")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .body(Map.of("eventoId", eventoId)).exchange().expectStatus().isNoContent();
+        assertThat(articulos.findById(id).orElseThrow().getCantidad().signum()).isZero();
+
+        Long lineaId = articulosEvento.findByEventoIdAndArticuloInventarioId(eventoId, id).orElseThrow().getId();
+
+        http.post().uri("/api/v1/inventario/evento/" + eventoId + "/" + lineaId + "/devolver")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .exchange().expectStatus().isNoContent();
+
+        assertThat(articulos.findById(id).orElseThrow().getCantidad())
+                .isEqualByComparingTo(new java.math.BigDecimal("0.5"));
+        assertThat(articulosEvento.findById(lineaId)).isEmpty();
+    }
+
+    @Test
+    void devolver_sin_area_es_403() {
+        String tokenSi = token(RolMembresia.MIEMBRO, true);
+        String tokenNo = token(RolMembresia.MIEMBRO, false);
+        Long eventoId = algunEventoId();
+        Long id = idDe("ALCOHOL", "Legendario");
+        http.post().uri("/api/v1/inventario/" + id + "/enviar")
+                .header(AUTHORIZATION, "Bearer " + tokenSi)
+                .body(Map.of("eventoId", eventoId)).exchange().expectStatus().isNoContent();
+        Long lineaId = articulosEvento.findByEventoIdAndArticuloInventarioId(eventoId, id).orElseThrow().getId();
+
+        http.post().uri("/api/v1/inventario/evento/" + eventoId + "/" + lineaId + "/devolver")
+                .header(AUTHORIZATION, "Bearer " + tokenNo)
+                .exchange().expectStatus().isForbidden();
+    }
+
+    @Test
+    void devolver_linea_ajena_al_evento_es_404() {
+        String token = token(RolMembresia.MIEMBRO, true);
+        Long eventoId = algunEventoId();
+        http.post().uri("/api/v1/inventario/evento/" + eventoId + "/999999/devolver")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .exchange().expectStatus().isNotFound()
+                .expectBody().jsonPath("$.codigo").isEqualTo("ARTICULO_EVENTO_NO_ENCONTRADO");
     }
 }
