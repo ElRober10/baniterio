@@ -10,6 +10,9 @@ import {
   OpcionCategoria,
 } from './inventario.types';
 
+/** Valor del desplegable de nombres que activa el input de "nombre nuevo". */
+const NOMBRE_NUEVO = '__nuevo__';
+
 type Borrador = Record<number, { nombre: string; tamano: string; cantidad: number }>;
 
 /**
@@ -40,6 +43,15 @@ export class InventarioCategoria implements OnInit {
   protected readonly guardando = signal(false);
   protected readonly aviso = signal('');
   protected readonly borrador = signal<Borrador>({});
+
+  // Modal "Añadir artículo".
+  protected readonly NOMBRE_NUEVO = NOMBRE_NUEVO;
+  protected readonly modalAbierto = signal(false);
+  protected readonly creando = signal(false);
+  protected readonly nuevoNombreSel = signal('');
+  protected readonly nuevoNombreTexto = signal('');
+  protected readonly nuevoTamano = signal('');
+  protected readonly nuevaCantidad = signal('');
 
   ngOnInit(): void {
     const slug = this.ruta.snapshot.paramMap.get('categoria');
@@ -144,6 +156,54 @@ export class InventarioCategoria implements OnInit {
   /** Placeholder: la funcionalidad de "enviar a un evento" llega más adelante. */
   protected enviarAEvento(a: ArticuloInventario): void {
     this.aviso.set(`"Enviar a evento" todavía no está disponible (${a.nombre}).`);
+  }
+
+  /** Nombres ya usados en esta categoría, sin repetir y ordenados, para el desplegable. */
+  protected nombresExistentes(): string[] {
+    const cat = this.categoria();
+    if (!cat) return [];
+    return [...new Set(cat.articulos.map((a) => a.nombre))].sort((x, y) => x.localeCompare(y));
+  }
+
+  protected abrirModal(): void {
+    this.nuevoNombreSel.set('');
+    this.nuevoNombreTexto.set('');
+    this.nuevoTamano.set(this.categoria()?.tamanos[0] ?? '');
+    this.nuevaCantidad.set('');
+    this.aviso.set('');
+    this.modalAbierto.set(true);
+  }
+
+  protected cerrarModal(): void {
+    this.modalAbierto.set(false);
+  }
+
+  protected crearArticulo(): void {
+    const opcion = this.opcion();
+    if (!opcion) return;
+    const nombre = (
+      this.nuevoNombreSel() === NOMBRE_NUEVO ? this.nuevoNombreTexto() : this.nuevoNombreSel()
+    ).trim();
+    const tamano = this.nuevoTamano();
+    const cantidad = Number(this.nuevaCantidad());
+    if (!nombre || !tamano || this.nuevaCantidad() === '' || Number.isNaN(cantidad) || cantidad < 0) {
+      this.aviso.set('Elige o escribe un nombre, un tamaño y una cantidad.');
+      return;
+    }
+    this.creando.set(true);
+    this.inventarioService
+      .crear({ categoria: opcion.clave, nombre, tamano, cantidad })
+      .subscribe({
+        next: () => {
+          this.creando.set(false);
+          this.modalAbierto.set(false);
+          this.cargar();
+        },
+        error: () => {
+          this.creando.set(false);
+          this.aviso.set('No se pudo añadir el artículo.');
+        },
+      });
   }
 
   protected trackArt = (_: number, a: ArticuloInventario) => a.id;

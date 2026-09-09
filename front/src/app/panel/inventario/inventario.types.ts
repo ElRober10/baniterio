@@ -32,6 +32,14 @@ export interface CambioArticulo {
   cantidad: number;
 }
 
+/** Cuerpo del POST: alta de un artículo en una categoría. */
+export interface NuevoArticulo {
+  categoria: CategoriaClave;
+  nombre: string;
+  tamano: string;
+  cantidad: number;
+}
+
 /** Una categoría para la rejilla de botones y para resolver el slug de la URL. */
 export interface OpcionCategoria {
   clave: CategoriaClave;
