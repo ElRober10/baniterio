@@ -13,7 +13,7 @@
             (click)="editar()"
             class="rounded-lg border border-outline px-3 py-1 text-xs font-medium hover:border-gold hover:text-gold"
           >
-            Editar
+            Editar cantidades
           </button>
           <button
             type="button"
@@ -120,13 +120,15 @@
                     <td class="px-3 py-2 text-muted">{{ a.tamano }}</td>
                     <td class="px-3 py-2 text-right font-medium">{{ a.cantidad }}</td>
                     <td class="px-3 py-2 text-right">
-                      <button
-                        type="button"
-                        (click)="enviarAEvento(a)"
-                        class="whitespace-nowrap rounded-lg border border-outline px-2 py-1 text-xs font-medium hover:border-gold hover:text-gold"
-                      >
-                        Enviar a evento
-                      </button>
+                      @if (puedoEditar()) {
+                        <button
+                          type="button"
+                          (click)="enviarAEvento(a)"
+                          class="whitespace-nowrap rounded-lg border border-outline px-2 py-1 text-xs font-medium hover:border-gold hover:text-gold"
+                        >
+                          Enviar a evento
+                        </button>
+                      }
                     </td>
                   }
                 </tr>
@@ -139,6 +141,18 @@
           </table>
         </div>
       </article>
+
+      @if (puedoEditar() && !editando()) {
+        <div class="mt-4 flex justify-end">
+          <button
+            type="button"
+            (click)="enviarTodoAEvento()"
+            class="rounded-xl bg-gold px-4 py-2 text-sm font-semibold text-brand-dark"
+          >
+            Enviar todo a evento
+          </button>
+        </div>
+      }
     }
   }
 
