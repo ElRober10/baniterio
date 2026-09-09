@@ -41,6 +41,9 @@ import com.baniterio.app.ui.eventos.EventosOcultosScreen
 import com.baniterio.app.ui.eventos.EventosScreen
 import com.baniterio.app.ui.eventos.ResponderEventoScreen
 import com.baniterio.app.ui.historia.HistoriaScreen
+import com.baniterio.app.ui.inventario.CategoriaInventario
+import com.baniterio.app.ui.inventario.InventarioCategoriaScreen
+import com.baniterio.app.ui.inventario.InventarioScreen
 import com.baniterio.app.ui.auth.desbloqueo.DesbloqueoScreen
 import com.baniterio.app.ui.auth.login.LoginScreen
 import com.baniterio.app.ui.miembros.CargandoSesionScreen
@@ -66,6 +69,8 @@ private const val CLAVE_EDITOR_EVENTO = "EditorEvento"
 private const val CLAVE_EVENTOS_OCULTOS = "EventosOcultos"
 private const val CLAVE_CUENTAS = "Cuentas"
 private const val CLAVE_CUENTA_DETALLE = "CuentaDetalle"
+private const val CLAVE_INVENTARIO = "Inventario"
+private const val CLAVE_INVENTARIO_CATEGORIA = "InventarioCategoria"
 private const val CLAVE_ADMIN_INDEX = "AdminIndex"
 private const val CLAVE_ADMIN_SOLICITUDES = "AdminSolicitudes"
 private const val CLAVE_ADMIN_PERMISOS = "AdminPermisos"
@@ -89,6 +94,8 @@ private fun Screen.aClave(): String = when (this) {
     Screen.EventosOcultos -> CLAVE_EVENTOS_OCULTOS
     Screen.Cuentas -> CLAVE_CUENTAS
     Screen.CuentaDetalle -> CLAVE_CUENTA_DETALLE
+    Screen.Inventario -> CLAVE_INVENTARIO
+    Screen.InventarioCategoria -> CLAVE_INVENTARIO_CATEGORIA
     Screen.AdminIndex -> CLAVE_ADMIN_INDEX
     Screen.AdminSolicitudes -> CLAVE_ADMIN_SOLICITUDES
     Screen.AdminPermisos -> CLAVE_ADMIN_PERMISOS
@@ -112,6 +119,8 @@ private fun claveAScreen(clave: String): Screen = when (clave) {
     CLAVE_EVENTOS_OCULTOS -> Screen.EventosOcultos
     CLAVE_CUENTAS -> Screen.Cuentas
     CLAVE_CUENTA_DETALLE -> Screen.CuentaDetalle
+    CLAVE_INVENTARIO -> Screen.Inventario
+    CLAVE_INVENTARIO_CATEGORIA -> Screen.InventarioCategoria
     CLAVE_ADMIN_INDEX -> Screen.AdminIndex
     CLAVE_ADMIN_SOLICITUDES -> Screen.AdminSolicitudes
     CLAVE_ADMIN_PERMISOS -> Screen.AdminPermisos
@@ -147,6 +156,7 @@ fun App(
                 screen == Screen.EventoDetalle || screen == Screen.EditorEvento ||
                 screen == Screen.EventosOcultos ||
                 screen == Screen.Cuentas || screen == Screen.CuentaDetalle ||
+                screen == Screen.Inventario || screen == Screen.InventarioCategoria ||
                 screen == Screen.AdminIndex || screen == Screen.AdminSolicitudes ||
                 screen == Screen.AdminPermisos || screen == Screen.AdminBebidas ||
                 screen == Screen.AdminPagos)
@@ -178,6 +188,9 @@ fun App(
 
     // Sección Cuentas: el id de la cuenta que se está viendo.
     var cuentaSeleccionada by rememberSaveable { mutableStateOf<Long?>(null) }
+
+    // Sección Inventario: la categoría cuyo listado se está viendo (se guarda la clave).
+    var categoriaInventarioClave by rememberSaveable { mutableStateOf<String?>(null) }
 
     fun ir(destino: Screen) {
         screenKey = destino.aClave()
@@ -366,6 +379,31 @@ fun App(
                             cuentasRepo = deps.cuentasRepo,
                             cuentaId = id,
                             onVolver = { ir(Screen.Cuentas) },
+                        )
+                    }
+                }
+                is Screen.Inventario -> {
+                    BackHandler { ir(Screen.Panel) }
+                    InventarioScreen(
+                        onAbrirCategoria = { cat ->
+                            categoriaInventarioClave = cat.clave
+                            ir(Screen.InventarioCategoria)
+                        },
+                        onVolver = { ir(Screen.Panel) },
+                    )
+                }
+                is Screen.InventarioCategoria -> {
+                    BackHandler { ir(Screen.Inventario) }
+                    val cat = categoriaInventarioClave?.let { clave ->
+                        CategoriaInventario.entries.firstOrNull { it.clave == clave }
+                    }
+                    if (cat == null) {
+                        LaunchedEffect(Unit) { ir(Screen.Inventario) }
+                    } else {
+                        InventarioCategoriaScreen(
+                            inventarioRepo = deps.inventarioRepo,
+                            categoria = cat,
+                            onVolver = { ir(Screen.Inventario) },
                         )
                     }
                 }
