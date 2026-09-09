@@ -2,6 +2,7 @@ package com.baniterio.api.push;
 
 import com.baniterio.api.auth.UsuarioPrincipal;
 import com.baniterio.api.push.dto.RegistrarDispositivoRequest;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
  * autenticada (sin token JWT → 401, lo pone {@code SecurityConfig}). El
  * {@code DELETE} es idempotente y solo afecta al dispositivo del propio usuario.
  */
+@Tag(name = "Dispositivos (push)", description = "Alta y baja del token de notificaciones push del dispositivo.")
 @RestController
 @RequestMapping("/api/v1/dispositivos")
 public class DispositivoController {
@@ -28,6 +30,7 @@ public class DispositivoController {
         this.dispositivos = dispositivos;
     }
 
+    /** Registra el token de push (FCM/APNs) del dispositivo del usuario con sesión. */
     @PostMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void registrar(@AuthenticationPrincipal UsuarioPrincipal principal,
@@ -35,6 +38,7 @@ public class DispositivoController {
         dispositivos.registrar(principal.id(), req.token(), req.plataforma());
     }
 
+    /** Da de baja el token de push indicado (idempotente; solo del propio usuario). */
     @DeleteMapping("/{token}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void darDeBaja(@AuthenticationPrincipal UsuarioPrincipal principal,

@@ -8,6 +8,7 @@ import com.baniterio.api.evento.dto.EventoDetalle;
 import com.baniterio.api.evento.dto.EventosOcultosResponse;
 import com.baniterio.api.evento.dto.GuardarEventoRequest;
 import com.baniterio.api.evento.dto.ListaEventosResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
  * traduce HTTP ↔ dominio; el id del usuario sale del token. Errores →
  * {@link com.baniterio.api.web.ApiExceptionHandler}.
  */
+@Tag(name = "Eventos", description = "Listado, detalle, alta/edición de eventos y solicitudes para organizarlos.")
 @RestController
 @RequestMapping("/api/v1/eventos")
 public class EventoController {
@@ -37,6 +39,7 @@ public class EventoController {
         this.eventoService = eventoService;
     }
 
+    /** Listado paginado de eventos visibles (próximos por fecha y luego pasados). */
     @GetMapping
     public ListaEventosResponse listar(@AuthenticationPrincipal UsuarioPrincipal principal,
             @RequestParam(defaultValue = "0") int pagina) {
@@ -49,12 +52,14 @@ public class EventoController {
         return new EventosOcultosResponse(eventoService.listarOcultos(principal.id()));
     }
 
+    /** Detalle completo de un evento. */
     @GetMapping("/{id}")
     public EventoDetalle detalle(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long id) {
         return eventoService.detalle(principal.id(), id);
     }
 
+    /** Crea un evento. Devuelve 201 con el detalle. Solo admin/superadmin. */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public EventoDetalle crear(@AuthenticationPrincipal UsuarioPrincipal principal,
@@ -62,6 +67,7 @@ public class EventoController {
         return eventoService.crear(principal.id(), req);
     }
 
+    /** Edita un evento existente. Solo admin/superadmin. */
     @PutMapping("/{id}")
     public EventoDetalle editar(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long id, @Valid @RequestBody GuardarEventoRequest req) {
@@ -82,6 +88,7 @@ public class EventoController {
         return eventoService.recuperar(principal.id(), id);
     }
 
+    /** Un miembro pide crédito/permiso para organizar un evento; queda PENDIENTE de que lo apruebe un admin. */
     @PostMapping("/solicitudes")
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, Object> solicitarCredito(@AuthenticationPrincipal UsuarioPrincipal principal,

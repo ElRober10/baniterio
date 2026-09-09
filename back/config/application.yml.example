@@ -31,3 +31,12 @@ app:
     # Clave para firmar los JWT en local (256+ bits en base64). Genérate una con:
     #   node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
     secret: PON_AQUI_UNA_CLAVE_BASE64_LARGA
+
+# Documentación de la API (Swagger UI en /api).
+# En local se deja activada. EN PRODUCCIÓN: arrancar con  SWAGGER_ENABLED=false
+# (o poner aquí springdoc.*.enabled: false) para no exponer la API.
+springdoc:
+  swagger-ui:
+    enabled: true
+  api-docs:
+    enabled: true

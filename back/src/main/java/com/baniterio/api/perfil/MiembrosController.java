@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.baniterio.api.auth.UsuarioPrincipal;
 import com.baniterio.api.perfil.dto.TarjetaMiembroResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>No confundir con {@code GET /api/v1/admin/miembros}, que es del panel de
  * administración y sí expone teléfono y rol. Aquí solo datos públicos de la peña.
  */
+@Tag(name = "Miembros", description = "Tarjetas públicas de los miembros de la peña.")
 @RestController
 @RequestMapping("/api/v1/miembros")
 public class MiembrosController {
@@ -27,6 +29,7 @@ public class MiembrosController {
         this.miembrosService = miembrosService;
     }
 
+    /** Lista las tarjetas de los miembros con perfil completo, ordenadas para quien pregunta. */
     @GetMapping
     public List<TarjetaMiembroResponse> miembros(@AuthenticationPrincipal UsuarioPrincipal principal) {
         return miembrosService.tarjetas(principal.id());

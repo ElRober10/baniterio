@@ -10,6 +10,7 @@ import com.baniterio.api.perfil.dto.AvatarResumen;
 import com.baniterio.api.perfil.dto.GuardarPerfilRequest;
 import com.baniterio.api.perfil.dto.PerfilResponse;
 import com.baniterio.api.perfil.dto.SubirFotoResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -33,6 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
  * <p>Errores → {@link com.baniterio.api.web.ApiExceptionHandler} (avatar
  * inexistente 400, ref de foto inválida 400, tipo de imagen 415, tamaño 413).
  */
+@Tag(name = "Perfil", description = "Editor del perfil propio: datos, imagen, foto, pareja e hijos.")
 @RestController
 @RequestMapping("/api/v1/perfil")
 public class PerfilController {
@@ -45,22 +47,26 @@ public class PerfilController {
         this.catalogo = catalogo;
     }
 
+    /** Devuelve mi perfil completo: datos, imagen, pareja e hijos. */
     @GetMapping
     public PerfilResponse miPerfil(@AuthenticationPrincipal UsuarioPrincipal principal) {
         return perfilService.miPerfil(principal.id());
     }
 
+    /** Guarda mi perfil entero de una vez (datos + imagen + pareja + hijos). */
     @PutMapping
     public PerfilResponse guardar(@AuthenticationPrincipal UsuarioPrincipal principal,
             @Valid @RequestBody GuardarPerfilRequest req) {
         return perfilService.guardar(principal.id(), req);
     }
 
+    /** Lista el catálogo de avatares que se puede elegir como imagen de perfil. */
     @GetMapping("/avatares")
     public List<AvatarResumen> avatares() {
         return catalogo.listar();
     }
 
+    /** Sube una foto de perfil (multipart, campo {@code archivo}) y devuelve su referencia. */
     @PostMapping("/foto")
     public SubirFotoResponse subirFoto(@AuthenticationPrincipal UsuarioPrincipal principal,
             @RequestParam("archivo") MultipartFile archivo) {

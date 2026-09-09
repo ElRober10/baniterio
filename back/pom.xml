@@ -142,6 +142,22 @@
 			<artifactId>firebase-admin</artifactId>
 			<version>9.4.3</version>
 		</dependency>
+		<!-- OpenAPI + Swagger UI. La rama 3.x de springdoc es la compatible con
+		     Spring Boot 4. Genera la documentación leyendo los @RestController. -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>3.1.1</version>
+		</dependency>
+		<!-- Hace que springdoc use los comentarios Javadoc de los controladores
+		     como descripción de cada endpoint (sin anotaciones @Operation). El
+		     processor therapi-runtime-javadoc-scribe (ver maven-compiler-plugin)
+		     guarda el Javadoc en el .class y esta librería lo lee en runtime. -->
+		<dependency>
+			<groupId>com.github.therapi</groupId>
+			<artifactId>therapi-runtime-javadoc</artifactId>
+			<version>0.15.0</version>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -178,6 +194,11 @@
 									<groupId>org.projectlombok</groupId>
 									<artifactId>lombok</artifactId>
 								</path>
+								<path>
+									<groupId>com.github.therapi</groupId>
+									<artifactId>therapi-runtime-javadoc-scribe</artifactId>
+									<version>0.15.0</version>
+								</path>
 							</annotationProcessorPaths>
 						</configuration>
 					</execution>
@@ -192,6 +213,11 @@
 								<path>
 									<groupId>org.projectlombok</groupId>
 									<artifactId>lombok</artifactId>
+								</path>
+								<path>
+									<groupId>com.github.therapi</groupId>
+									<artifactId>therapi-runtime-javadoc-scribe</artifactId>
+									<version>0.15.0</version>
 								</path>
 							</annotationProcessorPaths>
 						</configuration>

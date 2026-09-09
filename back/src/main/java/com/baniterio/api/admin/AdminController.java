@@ -14,6 +14,7 @@ import com.baniterio.api.auth.ServicioPermisos;
 import com.baniterio.api.auth.UsuarioPrincipal;
 import com.baniterio.api.identidad.AreaProtegida;
 import com.baniterio.api.identidad.EstadoSolicitud;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -37,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
  * gestión de miembros — rol, activo y áreas concedidas — (área
  * {@code ADMIN_PERMISOS}).
  */
+@Tag(name = "Administración", description = "Panel de administración: solicitudes de ingreso y gestión de miembros.")
 @RestController
 @RequestMapping("/api/v1/admin")
 public class AdminController {
@@ -56,6 +58,7 @@ public class AdminController {
         }
     }
 
+    /** Lista las solicitudes de ingreso por estado (por defecto {@code PENDIENTE}). Área {@code ADMIN_SOLICITUDES}. */
     @GetMapping("/solicitudes")
     public List<SolicitudResumen> solicitudes(
             @AuthenticationPrincipal UsuarioPrincipal principal,
@@ -64,6 +67,7 @@ public class AdminController {
         return adminService.listarSolicitudes(estado);
     }
 
+    /** Aprueba la solicitud de ingreso: autoriza el teléfono y devuelve el resultado. Área {@code ADMIN_SOLICITUDES}. */
     @PostMapping("/solicitudes/{id}/aprobar")
     public AprobarResponse aprobar(
             @AuthenticationPrincipal UsuarioPrincipal principal, @PathVariable Long id) {
@@ -71,6 +75,7 @@ public class AdminController {
         return adminService.aprobarSolicitud(id, principal.id());
     }
 
+    /** Rechaza la solicitud de ingreso, con un motivo opcional en el cuerpo. Área {@code ADMIN_SOLICITUDES}. */
     @PostMapping("/solicitudes/{id}/rechazar")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void rechazar(
@@ -82,12 +87,14 @@ public class AdminController {
 
     // --- Gestión de miembros (área ADMIN_PERMISOS) ---
 
+    /** Lista los miembros con teléfono, rol y áreas (vista de administración). Área {@code ADMIN_PERMISOS}. */
     @GetMapping("/miembros")
     public List<MiembroResumen> miembros(@AuthenticationPrincipal UsuarioPrincipal principal) {
         exigirArea(principal, AreaProtegida.ADMIN_PERMISOS);
         return adminService.listarMiembros();
     }
 
+    /** Cambia el rol de un miembro. Área {@code ADMIN_PERMISOS}. */
     @PutMapping("/miembros/{id}/rol")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void rol(@AuthenticationPrincipal UsuarioPrincipal principal, @PathVariable Long id,
@@ -96,6 +103,7 @@ public class AdminController {
         adminService.cambiarRol(id, principal.id(), req.rol());
     }
 
+    /** Activa o desactiva la cuenta de un miembro (revoca el acceso aunque tenga token vivo). Área {@code ADMIN_PERMISOS}. */
     @PutMapping("/miembros/{id}/activo")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void activo(@AuthenticationPrincipal UsuarioPrincipal principal, @PathVariable Long id,
@@ -104,6 +112,7 @@ public class AdminController {
         adminService.cambiarActivo(id, principal.id(), req.activo());
     }
 
+    /** Reemplaza el conjunto de áreas del panel concedidas a un miembro. Área {@code ADMIN_PERMISOS}. */
     @PutMapping("/miembros/{id}/areas")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void areas(@AuthenticationPrincipal UsuarioPrincipal principal, @PathVariable Long id,

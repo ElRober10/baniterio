@@ -1,0 +1,15 @@
+{
+  "//": "Solo para `ng serve` (desarrollo). Reenvía la documentación de la API",
+  "//2": "del backend (Swagger UI) para poder abrirla en http://localhost:4200/api.",
+  "//3": "Las llamadas normales del front usan la URL absoluta a :8080, no pasan por aquí.",
+  "/api": {
+    "target": "http://localhost:8080",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/swagger-ui": {
+    "target": "http://localhost:8080",
+    "secure": false,
+    "changeOrigin": true
+  }
+}

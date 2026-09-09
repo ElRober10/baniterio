@@ -6,6 +6,7 @@ import com.baniterio.api.auth.UsuarioPrincipal;
 import com.baniterio.api.evento.dto.RechazoEventoRequest;
 import com.baniterio.api.evento.dto.SolicitudEventoResumen;
 import com.baniterio.api.identidad.EstadoSolicitud;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
  * se comprueba en el servicio ({@code esAdministrador}); no lleva {@code areaGuard}
  * porque no hay área concedible para esto.
  */
+@Tag(name = "Administración · solicitudes de evento", description = "Aprobar o rechazar las solicitudes para organizar un evento.")
 @RestController
 @RequestMapping("/api/v1/admin/solicitudes-evento")
 public class SolicitudEventoAdminController {
@@ -33,18 +35,21 @@ public class SolicitudEventoAdminController {
         this.service = service;
     }
 
+    /** Lista las solicitudes de evento por estado (por defecto {@code PENDIENTE}). Solo admin/superadmin. */
     @GetMapping
     public List<SolicitudEventoResumen> listar(@AuthenticationPrincipal UsuarioPrincipal principal,
             @RequestParam(defaultValue = "PENDIENTE") EstadoSolicitud estado) {
         return service.listar(principal.id(), estado);
     }
 
+    /** Aprueba la solicitud de evento (el solicitante ya puede crearlo). Solo admin/superadmin. */
     @PostMapping("/{id}/aprobar")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void aprobar(@AuthenticationPrincipal UsuarioPrincipal principal, @PathVariable Long id) {
         service.aprobar(id, principal.id());
     }
 
+    /** Rechaza la solicitud de evento, con motivo opcional. Solo admin/superadmin. */
     @PostMapping("/{id}/rechazar")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void rechazar(@AuthenticationPrincipal UsuarioPrincipal principal, @PathVariable Long id,

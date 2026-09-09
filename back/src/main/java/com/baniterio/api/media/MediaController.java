@@ -3,6 +3,7 @@ package com.baniterio.api.media;
 import java.time.Duration;
 import java.util.regex.Pattern;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Sirve imágenes: avatares del jar y fotos de perfil del disco. Público. */
+@Tag(name = "Media", description = "Sirve imágenes y recibos: avatares, fotos de perfil y recibos de movimientos.")
 @RestController
 @RequestMapping("/api/v1/media")
 public class MediaController {
@@ -29,6 +31,7 @@ public class MediaController {
         this.recibos = recibos;
     }
 
+    /** Devuelve el PNG de un avatar del catálogo. Público. */
     @GetMapping("/avatares/{id}.png")
     ResponseEntity<byte[]> avatar(@PathVariable String id) {
         return catalogo.leerPng(id)
@@ -39,6 +42,7 @@ public class MediaController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    /** Devuelve una foto de perfil subida (JPG). Público; 400 si el nombre no es válido. */
     @GetMapping("/fotos/{archivo}")
     ResponseEntity<byte[]> foto(@PathVariable String archivo) {
         if (!NOMBRE_FOTO.matcher(archivo).matches()) {
@@ -55,6 +59,7 @@ public class MediaController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    /** Devuelve el recibo de un gasto/ingreso (PDF, JPG o PNG). Público; 400 si el nombre no es válido. */
     @GetMapping("/recibos/{archivo}")
     ResponseEntity<byte[]> recibo(@PathVariable String archivo) {
         if (!NOMBRE_RECIBO.matcher(archivo).matches()) {
