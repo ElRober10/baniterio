@@ -92,6 +92,15 @@ fun AdminIndexScreen(
             )
             Spacer(Modifier.height(16.dp))
         }
+        if ("INVENTARIO" in areas) {
+            TarjetaAdmin(
+                nombre = "Cantidades para eventos",
+                descripcion = "Ajusta las cantidades de la lista de la compra de cada evento y añade o quita artículos.",
+                cuenta = 0,
+                onClick = { onAbrir(Screen.ListaCompraAdmin) },
+            )
+            Spacer(Modifier.height(16.dp))
+        }
         if (esAdmin) {
             TarjetaAdmin(
                 nombre = "Bebidas",
@@ -108,7 +117,7 @@ fun AdminIndexScreen(
             )
             Spacer(Modifier.height(16.dp))
         }
-        if (!esAdmin && areas.none { it == "ADMIN_SOLICITUDES" || it == "ADMIN_PERMISOS" }) {
+        if (!esAdmin && areas.none { it == "ADMIN_SOLICITUDES" || it == "ADMIN_PERMISOS" || it == "INVENTARIO" }) {
             Text(
                 text = "No tienes ninguna sección de administración disponible.",
                 color = BaniterioColors.muted,
