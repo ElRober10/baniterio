@@ -46,7 +46,7 @@ export type Rol = 'ADMIN' | 'MIEMBRO';
  * `areaGuard(...)`: así `areaGuard('ADMIN_SOLICITUDS')` (con una errata) es un
  * error de compilación, no un guard que nunca deja pasar.
  */
-export type Area = 'ADMIN_SOLICITUDES' | 'ADMIN_PERMISOS';
+export type Area = 'ADMIN_SOLICITUDES' | 'ADMIN_PERMISOS' | 'INVENTARIO';
 
 /**
  * Áreas conocidas del panel de administración y su etiqueta legible. La clave es
@@ -55,6 +55,7 @@ export type Area = 'ADMIN_SOLICITUDES' | 'ADMIN_PERMISOS';
 export const AREAS: Record<Area, string> = {
   ADMIN_SOLICITUDES: 'Solicitudes',
   ADMIN_PERMISOS: 'Permisos',
+  INVENTARIO: 'Inventario',
 };
 
 /**
