@@ -178,50 +178,14 @@
                     </span>
                   </td>
                   <td class="px-3 py-2 text-center">
-                    @if (c.puedoGestionar && c.esAnioActual) {
-                      <span class="flex flex-col items-center gap-1">
-                        <span class="flex items-center gap-1">
-                          <input type="number" min="0" [value]="p.camisetaCantidad"
-                            (change)="guardarRopa(p, { camisetaCantidad: +$any($event.target).value })"
-                            class="w-12 rounded border border-outline bg-surface px-1 py-0.5 text-right" />
-                          <input type="text" [value]="p.camisetaTalla ?? ''" placeholder="talla"
-                            (change)="guardarRopa(p, { camisetaTalla: $any($event.target).value })"
-                            class="w-20 rounded border border-outline bg-surface px-1 py-0.5" />
-                        </span>
-                        @if (p.camisetaCantidad > 0) {
-                          <label class="flex items-center gap-1 text-xs text-muted">
-                            <input type="checkbox" [checked]="p.camisetaConfirmada"
-                              (change)="guardarRopa(p, { camisetaConfirmada: $any($event.target).checked })" />
-                            € confirmado
-                          </label>
-                        }
-                      </span>
-                    } @else if (p.camisetaCantidad > 0) {
+                    @if (p.camisetaCantidad > 0) {
                       {{ p.camisetaCantidad }}@if (p.camisetaTalla) { · {{ p.camisetaTalla }} }@if (p.camisetaConfirmada) { ✓ }
                     } @else {
                       ·
                     }
                   </td>
                   <td class="px-3 py-2 text-center">
-                    @if (c.puedoGestionar && c.esAnioActual) {
-                      <span class="flex flex-col items-center gap-1">
-                        <span class="flex items-center gap-1">
-                          <input type="number" min="0" [value]="p.sudaderaCantidad"
-                            (change)="guardarRopa(p, { sudaderaCantidad: +$any($event.target).value })"
-                            class="w-12 rounded border border-outline bg-surface px-1 py-0.5 text-right" />
-                          <input type="text" [value]="p.sudaderaTalla ?? ''" placeholder="talla"
-                            (change)="guardarRopa(p, { sudaderaTalla: $any($event.target).value })"
-                            class="w-20 rounded border border-outline bg-surface px-1 py-0.5" />
-                        </span>
-                        @if (p.sudaderaCantidad > 0) {
-                          <label class="flex items-center gap-1 text-xs text-muted">
-                            <input type="checkbox" [checked]="p.sudaderaConfirmada"
-                              (change)="guardarRopa(p, { sudaderaConfirmada: $any($event.target).checked })" />
-                            € confirmado
-                          </label>
-                        }
-                      </span>
-                    } @else if (p.sudaderaCantidad > 0) {
+                    @if (p.sudaderaCantidad > 0) {
                       {{ p.sudaderaCantidad }}@if (p.sudaderaTalla) { · {{ p.sudaderaTalla }} }@if (p.sudaderaConfirmada) { ✓ }
                     } @else {
                       ·

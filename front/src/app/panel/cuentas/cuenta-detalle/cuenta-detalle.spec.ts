@@ -77,27 +77,4 @@ describe('CuentaDetalleComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('+ Gasto / Ingreso');
     expect(fixture.nativeElement.querySelector('input[type=checkbox]')).toBeFalsy();
   });
-
-  it('guarda la cantidad de camiseta llamando a marcarRopa', () => {
-    const fixture = TestBed.createComponent(CuentaDetalleComponent);
-    fixture.detectChanges();
-    httpMock.expectOne(`${base}/cuentas/3`).flush(
-      detalle({
-        puedoGestionar: true,
-        penistas: [
-          { asistenciaId: 11, nombre: 'Ana', anio: 2026, cuota: 16, estadoPago: 'PENDIENTE_PAGO', metodoPago: null, camisetaCantidad: 0, camisetaTalla: null, camisetaConfirmada: false, sudaderaCantidad: 0, sudaderaTalla: null, sudaderaConfirmada: false, ingreso: null, saldoTras: null },
-        ],
-      }),
-    );
-    fixture.detectChanges();
-
-    const num = fixture.nativeElement.querySelector('input[type=number]') as HTMLInputElement;
-    num.value = '2';
-    num.dispatchEvent(new Event('change'));
-
-    const req = httpMock.expectOne(`${base}/cuentas/3/asistencias/11/ropa`);
-    expect(req.request.method).toBe('PUT');
-    expect(req.request.body).toEqual({ camisetaCantidad: 2 });
-    req.flush(detalle());
-  });
 });

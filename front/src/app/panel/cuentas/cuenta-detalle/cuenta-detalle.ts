@@ -184,28 +184,6 @@ export class CuentaDetalleComponent implements OnInit {
     });
   }
 
-  protected guardarRopa(
-    p: PenistaCuota,
-    cambio: {
-      camisetaCantidad?: number;
-      camisetaTalla?: string;
-      camisetaConfirmada?: boolean;
-      sudaderaCantidad?: number;
-      sudaderaTalla?: string;
-      sudaderaConfirmada?: boolean;
-    },
-  ): void {
-    this.cuentasService.marcarRopa(this.id, p.asistenciaId, cambio).subscribe({
-      next: (c) => this.cuenta.set(c),
-      error: (err) =>
-        this.aviso.set(
-          err?.error?.codigo === 'SIN_PRECIO_ROPA'
-            ? 'Pon antes el precio de la camiseta / sudadera en el evento.'
-            : 'No se ha podido cambiar.',
-        ),
-    });
-  }
-
   private trasCambio(c: CuentaDetalle, msg: string): void {
     this.cuenta.set(c);
     this.aviso.set(msg);
