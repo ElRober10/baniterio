@@ -1,0 +1,39 @@
+<section class="mx-auto w-full max-w-5xl">
+  <div class="mb-6"><app-volver destino="/panel/administracion" /></div>
+
+  <h1 class="font-display text-2xl font-extrabold leading-tight">Cantidades para eventos</h1>
+  <p class="mt-2 text-sm leading-relaxed text-muted">
+    Elige un evento para ajustar las cantidades de su lista de la compra según las sobras y añadir o
+    quitar artículos.
+  </p>
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <p class="mt-8 text-sm text-muted">Cargando…</p>
+    }
+    @case ('error') {
+      <p class="mt-8 text-sm text-red-300">No se han podido cargar los eventos.</p>
+    }
+    @case ('listo') {
+      @if (eventos().length === 0) {
+        <p class="mt-8 text-sm text-muted">No hay eventos.</p>
+      } @else {
+        <div class="mt-8 grid gap-5 sm:grid-cols-2">
+          @for (ev of eventos(); track ev.id) {
+            <a
+              [routerLink]="['/panel/administracion/lista-compra', ev.id]"
+              class="group rounded-2xl border border-outline bg-panel p-6 transition hover:border-gold"
+            >
+              <h2 class="font-display text-lg font-bold transition group-hover:text-gold">
+                {{ ev.nombre }}
+              </h2>
+              <p class="mt-2 text-sm text-muted">
+                {{ ev.fecha }}@if (ev.fechaFin) { – {{ ev.fechaFin }} }
+              </p>
+            </a>
+          }
+        </div>
+      }
+    }
+  }
+</section>

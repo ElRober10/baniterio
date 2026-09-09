@@ -21,7 +21,7 @@
         >
           <div class="flex items-center justify-between gap-2">
             <h2 class="font-display text-lg font-bold transition group-hover:text-gold">
-              {{ etiquetas[seccion.area] }}
+              {{ seccion.titulo ?? etiquetas[seccion.area] }}
             </h2>
             <app-aviso-pendientes [cuenta]="avisos.pendientes()[seccion.area] ?? 0" />
           </div>

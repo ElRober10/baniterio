@@ -5,6 +5,8 @@ import { AdminPagos } from './admin/pagos/pagos';
 import { AdminIndice } from './admin/indice/indice';
 import { AdminPermisos } from './admin/permisos/permisos';
 import { AdminSolicitudes } from './admin/solicitudes/solicitudes';
+import { ListaCompraAdmin } from './admin/lista-compra/lista-compra-admin';
+import { ListaCompraAdminEvento } from './admin/lista-compra/lista-compra-admin-evento';
 import { authGuard, invitadoGuard } from './auth/auth.guard';
 import { Home } from './home/home';
 import { Login } from './auth/login/login';
@@ -74,6 +76,16 @@ export const routes: Routes = [
         path: 'administracion/permisos',
         component: AdminPermisos,
         canActivate: [perfilCompletoGuard, areaGuard('ADMIN_PERMISOS')],
+      },
+      {
+        path: 'administracion/lista-compra',
+        component: ListaCompraAdmin,
+        canActivate: [perfilCompletoGuard, areaGuard('INVENTARIO')],
+      },
+      {
+        path: 'administracion/lista-compra/:id',
+        component: ListaCompraAdminEvento,
+        canActivate: [perfilCompletoGuard, areaGuard('INVENTARIO')],
       },
       // Bebidas propuestas: cualquier admin/superadmin (no un área); el propio
       // componente rebota a /panel si no lo eres.
