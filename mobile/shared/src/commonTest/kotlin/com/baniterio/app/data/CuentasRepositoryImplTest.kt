@@ -19,6 +19,7 @@ class CuentasRepositoryImplTest {
     private data class Vista(
         val metodo: String,
         val path: String,
+        val query: String,
         val auth: String?,
         val cuerpo: String,
     )
@@ -32,6 +33,7 @@ class CuentasRepositoryImplTest {
             vistas += Vista(
                 metodo = req.method.value,
                 path = req.url.encodedPath,
+                query = req.url.encodedQuery,
                 auth = req.headers[HttpHeaders.Authorization],
                 cuerpo = req.body.toByteArray().decodeToString(),
             )
@@ -90,5 +92,80 @@ class CuentasRepositoryImplTest {
         val res = r.detalle(99)
         assertIs<ResultadoCuenta.Error>(res)
         assertEquals(CodigoErrorCuenta.CUENTA_NO_ENCONTRADA, res.codigo)
+    }
+
+    @Test
+    fun detalle_con_anio_lo_pasa_como_query() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta =
+            """{"id":3,"nombre":"San Miguel","anio":2024,"anios":[2026,2025,2024],"esAnioActual":false}""")
+        val res = r.detalle(3, 2024)
+        assertIs<ResultadoCuenta.Exito<com.baniterio.app.data.dto.CuentaDetalleDto>>(res)
+        assertEquals("/api/v1/cuentas/3", vistas[0].path)
+        assertEquals("anio=2024", vistas[0].query)
+        assertEquals(2024, res.dato.anio)
+        assertEquals(listOf(2026, 2025, 2024), res.dato.anios)
+    }
+
+    @Test
+    fun detalle_sin_anio_no_pone_query() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = """{"id":3,"nombre":"San Miguel"}""")
+        r.detalle(3)
+        assertEquals("", vistas[0].query)
+    }
+
+    @Test
+    fun detalle_deserializa_ropa_y_saldo_inicial() = runTest {
+        val (r, _) = repo(cuerpoRespuesta = """
+            {"id":3,"nombre":"San Miguel","saldoInicial":91.13,
+             "penistas":[{"asistenciaId":10,"nombre":"Ana","anio":2026,"cuota":16.0,
+                          "estadoPago":"CONFIRMADO_EN_CUENTA","metodoPago":"BIZUM",
+                          "camisetaCantidad":2,"camisetaTalla":"M","camisetaConfirmada":true,
+                          "ingreso":16.0,"saldoTras":107.13}],
+             "movimientos":[{"concepto":"Camiseta Ana","importe":-20.0,"fecha":"2026-03-01",
+                             "saldoTras":87.13,"manual":false,"origen":"CAMISETA"}]}
+        """.trimIndent())
+        val res = r.detalle(3)
+        assertIs<ResultadoCuenta.Exito<com.baniterio.app.data.dto.CuentaDetalleDto>>(res)
+        assertEquals(91.13, res.dato.saldoInicial)
+        val p = res.dato.penistas[0]
+        assertEquals(2, p.camisetaCantidad)
+        assertEquals("M", p.camisetaTalla)
+        assertEquals(16.0, p.ingreso)
+        assertEquals("CAMISETA", res.dato.movimientos[0].origen)
+    }
+
+    @Test
+    fun cerrarAnio_hace_post() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = """{"id":3,"nombre":"San Miguel","anio":2027,"esAnioActual":true}""")
+        r.cerrarAnio(3)
+        assertEquals("POST", vistas[0].metodo)
+        assertEquals("/api/v1/cuentas/3/cerrar-anio", vistas[0].path)
+    }
+
+    @Test
+    fun borrarMovimiento_hace_delete() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = """{"id":3,"nombre":"San Miguel"}""")
+        r.borrarMovimiento(55)
+        assertEquals("DELETE", vistas[0].metodo)
+        assertEquals("/api/v1/cuentas/movimientos/55", vistas[0].path)
+    }
+
+    @Test
+    fun marcarRopa_hace_put_con_json_de_lo_que_cambia() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = """{"id":3,"nombre":"San Miguel"}""")
+        r.marcarRopa(3, 10, com.baniterio.app.data.dto.MarcarRopaInput(camisetaCantidad = 2, camisetaTalla = "L"))
+        assertEquals("PUT", vistas[0].metodo)
+        assertEquals("/api/v1/cuentas/3/asistencias/10/ropa", vistas[0].path)
+        assertEquals(true, vistas[0].cuerpo.contains("\"camisetaCantidad\":2"))
+        assertEquals(true, vistas[0].cuerpo.contains("\"camisetaTalla\":\"L\""))
+    }
+
+    @Test
+    fun marcarRopa_sin_precio_devuelve_error_tipado() = runTest {
+        val (r, _) = repo(status = HttpStatusCode.Conflict,
+            cuerpoRespuesta = """{"codigo":"SIN_PRECIO_ROPA"}""")
+        val res = r.marcarRopa(3, 10, com.baniterio.app.data.dto.MarcarRopaInput(camisetaCantidad = 1))
+        assertIs<ResultadoCuenta.Error>(res)
+        assertEquals(CodigoErrorCuenta.SIN_PRECIO_ROPA, res.codigo)
     }
 }
