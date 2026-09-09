@@ -19,6 +19,7 @@ sealed class Screen {
     data object CuentaDetalle : Screen()
     data object Inventario : Screen()
     data object InventarioCategoria : Screen()
+    data object InventarioFiesta : Screen()
     data object AdminIndex : Screen()
     data object AdminSolicitudes : Screen()
     data object AdminPermisos : Screen()

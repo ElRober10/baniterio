@@ -3,7 +3,11 @@ package com.baniterio.app.data
 import com.baniterio.app.data.dto.ActualizarArticuloRequest
 import com.baniterio.app.data.dto.ArticuloInventarioDto
 import com.baniterio.app.data.dto.CrearArticuloRequest
+import com.baniterio.app.data.dto.EnviarAEventoBody
+import com.baniterio.app.data.dto.EnviarCategoriaBody
 import com.baniterio.app.data.dto.ErrorResponse
+import com.baniterio.app.data.dto.EventoAbiertoDto
+import com.baniterio.app.data.dto.InventarioFiestaResponse
 import com.baniterio.app.data.dto.InventarioResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -61,6 +65,34 @@ class InventarioRepositoryImpl(
 
     override suspend fun borrar(id: Long): ResultadoInventario<Unit> = peticion {
         http.delete("$API_BASE_URL/inventario/$id") { auth() }.let { }
+    }
+
+    override suspend fun eventosAbiertos(): ResultadoInventario<List<EventoAbiertoDto>> = peticion {
+        http.get("$API_BASE_URL/eventos/abiertos") { auth() }.body()
+    }
+
+    override suspend fun enviarAEvento(articuloId: Long, eventoId: Long): ResultadoInventario<Unit> = peticion {
+        http.post("$API_BASE_URL/inventario/$articuloId/enviar") {
+            auth()
+            contentType(ContentType.Application.Json)
+            setBody(EnviarAEventoBody(eventoId))
+        }.let { }
+    }
+
+    override suspend fun enviarCategoria(categoria: String, eventoId: Long): ResultadoInventario<Unit> = peticion {
+        http.post("$API_BASE_URL/inventario/enviar-categoria") {
+            auth()
+            contentType(ContentType.Application.Json)
+            setBody(EnviarCategoriaBody(categoria, eventoId))
+        }.let { }
+    }
+
+    override suspend fun inventarioFiesta(eventoId: Long): ResultadoInventario<InventarioFiestaResponse> = peticion {
+        http.get("$API_BASE_URL/inventario/evento/$eventoId") { auth() }.body()
+    }
+
+    override suspend fun devolver(eventoId: Long, articuloEventoId: Long): ResultadoInventario<Unit> = peticion {
+        http.post("$API_BASE_URL/inventario/evento/$eventoId/$articuloEventoId/devolver") { auth() }.let { }
     }
 
     private suspend fun <T> peticion(bloque: suspend () -> T): ResultadoInventario<T> =
