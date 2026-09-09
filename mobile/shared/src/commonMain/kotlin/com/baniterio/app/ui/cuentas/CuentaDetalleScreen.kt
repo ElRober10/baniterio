@@ -1,6 +1,7 @@
 package com.baniterio.app.ui.cuentas
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -13,11 +14,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -34,7 +35,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -93,7 +96,7 @@ private fun ropaTexto(cantidad: Int, talla: String?, confirmada: Boolean): Strin
 // Anchos de las 8 columnas de la hoja (réplica de la tabla de la web).
 private val ANCHO_CONCEPTO = 220.dp
 private val ANCHO_ESTADO = 150.dp
-private val ANCHO_ROPA = 118.dp
+private val ANCHO_ROPA = 150.dp
 private val ANCHO_DINERO = 84.dp
 private val ANCHO_RECIBO = 84.dp
 private val ANCHO_SALDO = 96.dp
@@ -558,7 +561,11 @@ private fun ChipAnio(texto: Any, seleccionado: Boolean, onClick: () -> Unit) {
     )
 }
 
-/** Celda de ropa: en lectura muestra texto; para el admin, cantidad + talla + "€ confirmado". */
+/**
+ * Celda de ropa: en lectura, texto; para el admin, cantidad + talla en una fila
+ * (campos pequeños con borde, como en la web) y, si hay cantidad, un chip
+ * "€ confirmado" que se enciende al tocarlo.
+ */
 @Composable
 private fun CeldaRopa(
     editable: Boolean,
@@ -574,35 +581,92 @@ private fun CeldaRopa(
         return
     }
     Column(
-        Modifier.width(ANCHO_ROPA).padding(horizontal = 6.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp),
+        Modifier.width(ANCHO_ROPA).padding(horizontal = 6.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         var txtCantidad by remember(cantidad) { mutableStateOf(if (cantidad == 0) "" else cantidad.toString()) }
         var txtTalla by remember(talla) { mutableStateOf(talla ?: "") }
-        OutlinedTextField(
-            value = txtCantidad,
-            onValueChange = { nuevo ->
-                txtCantidad = nuevo.filter { it.isDigit() }.take(2)
-                onCantidad(txtCantidad.toIntOrNull() ?: 0)
-            },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.width(58.dp),
-        )
-        OutlinedTextField(
-            value = txtTalla,
-            onValueChange = { txtTalla = it.take(6); onTalla(txtTalla) },
-            singleLine = true,
-            placeholder = { Text("talla") },
-            modifier = Modifier.width(104.dp),
-        )
-        if (cantidad > 0) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = confirmada, onCheckedChange = onConfirmada)
-                Text("€ confirmado", style = MaterialTheme.typography.labelSmall, color = BaniterioColors.muted)
-            }
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            CampoMini(
+                valor = txtCantidad,
+                onValor = { nuevo ->
+                    txtCantidad = nuevo.filter { it.isDigit() }.take(2)
+                    onCantidad(txtCantidad.toIntOrNull() ?: 0)
+                },
+                ancho = 40.dp,
+                align = TextAlign.Center,
+                numerico = true,
+            )
+            CampoMini(
+                valor = txtTalla,
+                onValor = { txtTalla = it.take(6); onTalla(txtTalla) },
+                ancho = 78.dp,
+                placeholder = "talla",
+            )
         }
+        if (cantidad > 0) {
+            Text(
+                if (confirmada) "€ confirmado ✓" else "€ confirmado",
+                modifier = Modifier
+                    .clickable { onConfirmada(!confirmada) }
+                    .background(
+                        if (confirmada) BaniterioColors.brand else BaniterioColors.surface,
+                        RoundedCornerShape(999.dp),
+                    )
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = if (confirmada) BaniterioColors.ink else BaniterioColors.muted,
+            )
+        }
+    }
+}
+
+/** Campo de texto pequeño con borde, para meter en una celda de la tabla. */
+@Composable
+private fun CampoMini(
+    valor: String,
+    onValor: (String) -> Unit,
+    ancho: androidx.compose.ui.unit.Dp,
+    align: TextAlign = TextAlign.Start,
+    placeholder: String? = null,
+    numerico: Boolean = false,
+) {
+    Box(
+        Modifier
+            .width(ancho)
+            .border(1.dp, BaniterioColors.outline, RoundedCornerShape(6.dp))
+            .background(BaniterioColors.surface, RoundedCornerShape(6.dp))
+            .padding(horizontal = 6.dp, vertical = 5.dp),
+    ) {
+        BasicTextField(
+            value = valor,
+            onValueChange = onValor,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodySmall.copy(
+                color = BaniterioColors.ink,
+                textAlign = align,
+            ),
+            cursorBrush = SolidColor(BaniterioColors.gold),
+            keyboardOptions = if (numerico) {
+                KeyboardOptions(keyboardType = KeyboardType.Number)
+            } else {
+                KeyboardOptions.Default
+            },
+            decorationBox = { inner ->
+                if (valor.isEmpty() && placeholder != null) {
+                    Text(
+                        placeholder,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BaniterioColors.muted,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = align,
+                    )
+                }
+                inner()
+            },
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 
