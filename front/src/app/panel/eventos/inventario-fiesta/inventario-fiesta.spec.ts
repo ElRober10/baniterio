@@ -11,7 +11,9 @@ const RESPUESTA = (puedoEditar: boolean) => ({
     {
       categoria: 'ALCOHOL',
       etiqueta: 'Alcohol',
-      articulos: [{ id: 5, nombre: 'Tanqueray', tamano: '70 cl', cantidad: 1.5 }],
+      articulos: [
+        { id: 5, nombre: 'Tanqueray', tamano: '70 cl', cantidad: 1.5, cantidadComprada: 0 },
+      ],
     },
   ],
 });
@@ -50,6 +52,41 @@ describe('InventarioFiesta', () => {
       .dispatchEvent(new Event('click'));
 
     const post = httpMock.expectOne(`${environment.apiBaseUrl}/inventario/evento/7/5/devolver`);
+    expect(post.request.method).toBe('POST');
+    post.flush(null);
+    httpMock.expectOne(`${environment.apiBaseUrl}/inventario/evento/7`).flush(RESPUESTA(true));
+    httpMock.verify();
+  });
+
+  it('muestra "Devolver a la lista" cuando cantidadComprada > 0 y oculta el de stock', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const { fixture, httpMock } = montar();
+    fixture.detectChanges();
+    httpMock.expectOne(`${environment.apiBaseUrl}/inventario/evento/7`).flush({
+      puedoEditar: true,
+      categorias: [
+        {
+          categoria: 'LIMPIEZA',
+          etiqueta: 'Limpieza y utensilios',
+          articulos: [
+            { id: 9, nombre: 'Platos', tamano: 'unidad', cantidad: 12, cantidadComprada: 12 },
+          ],
+        },
+      ],
+    });
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    const botones = Array.from(el.querySelectorAll('button')).map((b) => b.textContent?.trim());
+    expect(botones).toContain('Devolver a la lista');
+    expect(botones).not.toContain('Devolver a inventario');
+
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Devolver a la lista')!
+      .dispatchEvent(new Event('click'));
+    const post = httpMock.expectOne(
+      `${environment.apiBaseUrl}/inventario/evento/7/9/devolver-a-lista`,
+    );
     expect(post.request.method).toBe('POST');
     post.flush(null);
     httpMock.expectOne(`${environment.apiBaseUrl}/inventario/evento/7`).flush(RESPUESTA(true));

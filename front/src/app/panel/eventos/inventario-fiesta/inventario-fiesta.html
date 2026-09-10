@@ -53,14 +53,28 @@
                     <td class="px-3 py-2 text-right font-medium">{{ a.cantidad }}</td>
                     <td class="px-3 py-2 text-right">
                       @if (puedoEditar()) {
-                        <button
-                          type="button"
-                          [disabled]="devolviendo()"
-                          (click)="devolver(a)"
-                          class="whitespace-nowrap rounded-lg border border-outline px-2 py-1 text-xs font-medium hover:border-gold hover:text-gold disabled:opacity-50"
-                        >
-                          Devolver a inventario
-                        </button>
+                        <div class="flex flex-col items-end gap-1">
+                          @if (stockDe(a) > 0) {
+                            <button
+                              type="button"
+                              [disabled]="devolviendo()"
+                              (click)="devolver(a)"
+                              class="whitespace-nowrap rounded-lg border border-outline px-2 py-1 text-xs font-medium hover:border-gold hover:text-gold disabled:opacity-50"
+                            >
+                              Devolver a inventario
+                            </button>
+                          }
+                          @if (a.cantidadComprada > 0) {
+                            <button
+                              type="button"
+                              [disabled]="devolviendo()"
+                              (click)="devolverALista(a)"
+                              class="whitespace-nowrap rounded-lg border border-outline px-2 py-1 text-xs font-medium hover:border-gold hover:text-gold disabled:opacity-50"
+                            >
+                              Devolver a la lista
+                            </button>
+                          }
+                        </div>
                       }
                     </td>
                   </tr>

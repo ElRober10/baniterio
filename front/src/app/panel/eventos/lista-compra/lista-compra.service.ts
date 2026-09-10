@@ -52,4 +52,17 @@ export class ListaCompraService {
       `${this.base}/admin/lista-compra/eventos/${eventoId}/reglas/${reglaId}`,
     );
   }
+
+  /** Marca una línea como comprada: pasa al inventario de la fiesta. */
+  comprado(eventoId: number, lineaId: number): Observable<void> {
+    return this.http.post<void>(
+      `${this.base}/eventos/${eventoId}/lista-compra/lineas/${lineaId}/comprado`,
+      {},
+    );
+  }
+
+  /** Bloquea o desbloquea el auto-cálculo de la lista de la compra. */
+  bloqueo(eventoId: number, bloqueada: boolean): Observable<void> {
+    return this.http.put<void>(`${this.base}/eventos/${eventoId}/lista-compra/bloqueo`, { bloqueada });
+  }
 }
