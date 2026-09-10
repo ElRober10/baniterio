@@ -1,8 +1,9 @@
-package com.baniterio.api.inventario;
+package com.baniterio.api.compra;
 
 import java.math.BigDecimal;
 
 import com.baniterio.api.identidad.Evento;
+import com.baniterio.api.inventario.CategoriaInventario;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -22,21 +23,20 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Una línea del inventario de un evento (tabla {@code articulo_evento}, ver V37 y
- * V39). Una fila por producto {@code (evento, categoria, nombre, tamano)}. Puede
- * tener parte de stock ({@code cantidad}, con {@code articuloInventario} de
- * origen, al que se le devuelve al deshacer el envío) y parte comprada desde la
- * lista de la compra ({@code cantidadComprada}, sin origen, que se devuelve a la
- * lista). {@code categoria}, {@code nombre} y {@code tamano} son copia congelada.
+ * Una línea de la lista de la compra mostrada de un evento (tabla
+ * {@code linea_compra_evento}, ver V39). Se sincroniza con el resultado del
+ * cálculo en cada lectura mientras la lista no está bloqueada; una vez
+ * {@code comprada}, queda congelada y enlazada a una fila de
+ * {@code articulo_evento} por {@code articuloEventoId}.
  */
 @Entity
-@Table(name = "articulo_evento")
+@Table(name = "linea_compra_evento")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ArticuloEvento {
+public class LineaCompraEvento {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,11 +45,6 @@ public class ArticuloEvento {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "evento_id", nullable = false)
     private Evento evento;
-
-    /** Artículo de origen de la parte de stock; {@code null} si toda la fila viene de la lista de la compra. */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "articulo_inventario_id")
-    private ArticuloInventario articuloInventario;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -61,14 +56,24 @@ public class ArticuloEvento {
     @Column(nullable = false, length = 20)
     private String tamano;
 
-    /** Parte de stock: viene del inventario general y vuelve a él al devolver. */
     @Column(nullable = false, precision = 8, scale = 2)
     private BigDecimal cantidad;
 
-    /** Parte comprada desde la lista de la compra; vuelve a la lista al devolver (V39). */
-    @Column(name = "cantidad_comprada", nullable = false, precision = 8, scale = 2)
-    private BigDecimal cantidadComprada;
-
     @Column(nullable = false)
     private int orden;
+
+    @Column(nullable = false)
+    private boolean dinamica;
+
+    @Column(name = "necesita_ficha", nullable = false)
+    private boolean necesitaFicha;
+
+    @Column(nullable = false)
+    private boolean ajustada;
+
+    @Column(nullable = false)
+    private boolean comprada;
+
+    @Column(name = "articulo_evento_id")
+    private Long articuloEventoId;
 }

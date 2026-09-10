@@ -95,6 +95,13 @@ public class Evento {
     @Column(nullable = false)
     private boolean oculto;
 
+    /**
+     * Al activarlo, la lista de la compra deja de recalcularse cuando se apunta
+     * más gente; el administrador sigue pudiendo ajustar reglas a mano (V39).
+     */
+    @Column(name = "lista_compra_bloqueada", nullable = false)
+    private boolean listaCompraBloqueada;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "creado_por")
     private Usuario creadoPor;
