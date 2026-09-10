@@ -6,6 +6,6 @@ import java.util.List;
  * La lista de la compra calculada de un evento. {@code puedoEditar} =
  * quien pregunta tiene el área INVENTARIO (puede ir a "Cantidades para eventos").
  */
-public record ListaCompraResponse(boolean puedoEditar, boolean llevaFicha, int apuntados, int diasFiesta,
-                                  List<CategoriaListaCompraDto> categorias) {
+public record ListaCompraResponse(boolean puedoEditar, boolean llevaFicha, boolean bloqueada,
+                                  int apuntados, int diasFiesta, List<CategoriaListaCompraDto> categorias) {
 }

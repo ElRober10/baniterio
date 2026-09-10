@@ -321,6 +321,16 @@ public class ApiExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, "FORMULA_NO_CREABLE");
     }
 
+    @ExceptionHandler(com.baniterio.api.compra.LineaCompraNoEncontradaException.class)
+    ResponseEntity<Map<String, Object>> lineaCompraNoEncontrada() {
+        return error(HttpStatus.NOT_FOUND, "LINEA_COMPRA_NO_ENCONTRADA");
+    }
+
+    @ExceptionHandler(com.baniterio.api.inventario.NadaQueDevolverException.class)
+    ResponseEntity<Map<String, Object>> nadaQueDevolver() {
+        return error(HttpStatus.BAD_REQUEST, "NADA_QUE_DEVOLVER");
+    }
+
     @ExceptionHandler(com.baniterio.api.evento.SinPermisoEventoException.class)
     ResponseEntity<Map<String, Object>> sinPermisoEvento() {
         return error(HttpStatus.FORBIDDEN, "SIN_PERMISO_EVENTO");

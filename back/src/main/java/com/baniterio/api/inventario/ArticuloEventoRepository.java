@@ -11,4 +11,7 @@ public interface ArticuloEventoRepository extends JpaRepository<ArticuloEvento, 
     List<ArticuloEvento> findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(Long eventoId);
 
     Optional<ArticuloEvento> findByEventoIdAndArticuloInventarioId(Long eventoId, Long articuloInventarioId);
+
+    Optional<ArticuloEvento> findByEventoIdAndCategoriaAndNombreAndTamano(
+            Long eventoId, CategoriaInventario categoria, String nombre, String tamano);
 }
