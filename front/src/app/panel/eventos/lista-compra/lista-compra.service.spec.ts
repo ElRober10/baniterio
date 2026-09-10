@@ -74,4 +74,19 @@ describe('ListaCompraService', () => {
     expect(req.request.method).toBe('DELETE');
     req.flush(null);
   });
+
+  it('comprado() hace POST a la ruta de la línea', () => {
+    service.comprado(7, 3).subscribe();
+    const req = http.expectOne(`${base}/eventos/7/lista-compra/lineas/3/comprado`);
+    expect(req.request.method).toBe('POST');
+    req.flush(null);
+  });
+
+  it('bloqueo() hace PUT con { bloqueada }', () => {
+    service.bloqueo(7, true).subscribe();
+    const req = http.expectOne(`${base}/eventos/7/lista-compra/bloqueo`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ bloqueada: true });
+    req.flush(null);
+  });
 });

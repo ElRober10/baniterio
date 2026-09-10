@@ -58,6 +58,26 @@ export class InventarioFiesta implements OnInit {
     });
   }
 
+  protected devolverALista(a: ArticuloFiesta): void {
+    if (!confirm(`¿Devolver "${a.nombre}" a la lista de la compra?`)) return;
+    this.devolviendo.set(true);
+    this.aviso.set('');
+    this.inventarioService.devolverALista(this.eventoId, a.id).subscribe({
+      next: () => {
+        this.devolviendo.set(false);
+        this.cargar();
+      },
+      error: () => {
+        this.devolviendo.set(false);
+        this.aviso.set('No se pudo devolver a la lista.');
+      },
+    });
+  }
+
+  protected stockDe(a: ArticuloFiesta): number {
+    return a.cantidad - a.cantidadComprada;
+  }
+
   protected trackCat = (_: number, c: CategoriaFiesta) => c.categoria;
   protected trackArt = (_: number, a: ArticuloFiesta) => a.id;
 }

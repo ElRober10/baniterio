@@ -32,6 +32,7 @@ describe('ListaCompra', () => {
     http.expectOne(`${base}/eventos/7/lista-compra`).flush({
       puedoEditar: false,
       llevaFicha: true,
+      bloqueada: false,
       apuntados: 10,
       diasFiesta: 2,
       categorias: [
@@ -40,6 +41,7 @@ describe('ListaCompra', () => {
           etiqueta: 'Limpieza y utensilios',
           lineas: [
             {
+              id: 1,
               nombre: 'Platos',
               tamano: 'unidad',
               cantidad: 30,
@@ -47,6 +49,7 @@ describe('ListaCompra', () => {
               ajustada: false,
               dinamica: false,
               necesitaFicha: false,
+              comprada: false,
             },
           ],
         },
@@ -65,6 +68,7 @@ describe('ListaCompra', () => {
     http.expectOne(`${base}/eventos/7/lista-compra`).flush({
       puedoEditar: false,
       llevaFicha: false,
+      bloqueada: false,
       apuntados: 3,
       diasFiesta: 1,
       categorias: [
@@ -73,6 +77,7 @@ describe('ListaCompra', () => {
           etiqueta: 'Cerveza',
           lineas: [
             {
+              id: 1,
               nombre: 'Cerveza',
               tamano: 'lata',
               cantidad: 0,
@@ -80,6 +85,7 @@ describe('ListaCompra', () => {
               ajustada: false,
               dinamica: false,
               necesitaFicha: true,
+              comprada: false,
             },
           ],
         },
@@ -87,6 +93,78 @@ describe('ListaCompra', () => {
     });
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('necesita ficha de bebida');
+    http.verify();
+  });
+
+  it('con permiso muestra "Comprado" en líneas pendientes y "Bloquear lista"', () => {
+    const { fixture, http } = montar();
+    fixture.detectChanges();
+    http.expectOne(`${base}/eventos/7/lista-compra`).flush({
+      puedoEditar: true,
+      llevaFicha: false,
+      bloqueada: false,
+      apuntados: 4,
+      diasFiesta: 1,
+      categorias: [
+        {
+          categoria: 'LIMPIEZA',
+          etiqueta: 'Limpieza y utensilios',
+          lineas: [
+            {
+              id: 5,
+              nombre: 'Platos',
+              tamano: 'unidad',
+              cantidad: 12,
+              cantidadCalculada: 12,
+              ajustada: false,
+              dinamica: false,
+              necesitaFicha: false,
+              comprada: false,
+            },
+          ],
+        },
+      ],
+    });
+    fixture.detectChanges();
+    const txt = (fixture.nativeElement as HTMLElement).textContent!;
+    expect(txt).toContain('Comprado');
+    expect(txt).toContain('Bloquear lista');
+    http.verify();
+  });
+
+  it('una línea comprada se muestra como "✓ Comprada" y sin botón', () => {
+    const { fixture, http } = montar();
+    fixture.detectChanges();
+    http.expectOne(`${base}/eventos/7/lista-compra`).flush({
+      puedoEditar: true,
+      llevaFicha: false,
+      bloqueada: false,
+      apuntados: 4,
+      diasFiesta: 1,
+      categorias: [
+        {
+          categoria: 'LIMPIEZA',
+          etiqueta: 'Limpieza y utensilios',
+          lineas: [
+            {
+              id: 5,
+              nombre: 'Platos',
+              tamano: 'unidad',
+              cantidad: 12,
+              cantidadCalculada: 12,
+              ajustada: false,
+              dinamica: false,
+              necesitaFicha: false,
+              comprada: true,
+            },
+          ],
+        },
+      ],
+    });
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('✓ Comprada');
+    expect(el.querySelector('button')?.textContent).not.toContain('Comprado');
     http.verify();
   });
 });

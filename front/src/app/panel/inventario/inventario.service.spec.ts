@@ -77,4 +77,11 @@ describe('InventarioService', () => {
     expect(req.request.method).toBe('POST');
     req.flush(null);
   });
+
+  it('devolverALista() hace POST /inventario/evento/:e/:a/devolver-a-lista', () => {
+    service.devolverALista(7, 4).subscribe();
+    const req = httpMock.expectOne(`${base}/inventario/evento/7/4/devolver-a-lista`);
+    expect(req.request.method).toBe('POST');
+    req.flush(null);
+  });
 });

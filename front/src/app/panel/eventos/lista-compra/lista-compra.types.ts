@@ -18,6 +18,7 @@ export type TipoFormula =
   | 'REFRESCO_SELECCIONADO';
 
 export interface LineaCompra {
+  id: number;
   nombre: string;
   tamano: string;
   cantidad: number;
@@ -25,6 +26,7 @@ export interface LineaCompra {
   ajustada: boolean;
   dinamica: boolean;
   necesitaFicha: boolean;
+  comprada: boolean;
 }
 
 export interface CategoriaListaCompra {
@@ -36,6 +38,7 @@ export interface CategoriaListaCompra {
 export interface ListaCompraResponse {
   puedoEditar: boolean;
   llevaFicha: boolean;
+  bloqueada: boolean;
   apuntados: number;
   diasFiesta: number;
   categorias: CategoriaListaCompra[];
@@ -66,6 +69,7 @@ export interface ReglaCompraEvento {
 
 export interface ListaCompraAdminResponse {
   evento: EventoListaCompra;
+  bloqueada: boolean;
   apuntados: number;
   diasFiesta: number;
   reglas: ReglaCompraEvento[];
