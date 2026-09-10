@@ -32,4 +32,5 @@ interface InventarioRepository {
     suspend fun enviarCategoria(categoria: String, eventoId: Long): ResultadoInventario<Unit>
     suspend fun inventarioFiesta(eventoId: Long): ResultadoInventario<InventarioFiestaResponse>
     suspend fun devolver(eventoId: Long, articuloEventoId: Long): ResultadoInventario<Unit>
+    suspend fun devolverALista(eventoId: Long, articuloEventoId: Long): ResultadoInventario<Unit>
 }

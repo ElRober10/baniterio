@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 /** Una línea de la lista de la compra de un evento. */
 @Serializable
 data class LineaCompraDto(
+    val id: Long = 0,
     val nombre: String,
     val tamano: String,
     val cantidad: Double,
@@ -12,6 +13,7 @@ data class LineaCompraDto(
     val ajustada: Boolean = false,
     val dinamica: Boolean = false,
     val necesitaFicha: Boolean = false,
+    val comprada: Boolean = false,
 )
 
 @Serializable
@@ -26,6 +28,7 @@ data class CategoriaListaCompraDto(
 data class ListaCompraResponse(
     val puedoEditar: Boolean = false,
     val llevaFicha: Boolean = false,
+    val bloqueada: Boolean = false,
     val apuntados: Int = 0,
     val diasFiesta: Int = 0,
     val categorias: List<CategoriaListaCompraDto> = emptyList(),
@@ -62,6 +65,7 @@ data class ReglaCompraEventoDto(
 @Serializable
 data class ListaCompraAdminResponse(
     val evento: EventoListaCompraDto,
+    val bloqueada: Boolean = false,
     val apuntados: Int = 0,
     val diasFiesta: Int = 0,
     val reglas: List<ReglaCompraEventoDto> = emptyList(),
@@ -70,6 +74,10 @@ data class ListaCompraAdminResponse(
 /** Cuerpo de `PUT .../reglas/{id}`. */
 @Serializable
 data class AjustarReglaBody(val cantidadAjustada: Double?, val activa: Boolean)
+
+/** Cuerpo de `PUT /api/v1/eventos/{id}/lista-compra/bloqueo`. */
+@Serializable
+data class CambiarBloqueoBody(val bloqueada: Boolean)
 
 /** Cuerpo de `POST .../reglas`. */
 @Serializable

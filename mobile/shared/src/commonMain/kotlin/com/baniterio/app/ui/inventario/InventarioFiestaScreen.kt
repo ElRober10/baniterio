@@ -60,6 +60,7 @@ fun InventarioFiestaScreen(
     var intento by remember { mutableStateOf(0) }
     var aviso by remember { mutableStateOf<String?>(null) }
     var confirmar by remember { mutableStateOf<ArticuloFiestaDto?>(null) }
+    var confirmarLista by remember { mutableStateOf<ArticuloFiestaDto?>(null) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(intento) {
@@ -138,9 +139,19 @@ fun InventarioFiestaScreen(
                                 )
                             }
                             if (e.puedoEditar) {
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                                    OutlinedButton(onClick = { confirmar = a }) {
-                                        Text("Devolver a inventario")
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    if (a.cantidad - a.cantidadComprada > 0.0) {
+                                        OutlinedButton(onClick = { confirmar = a }) {
+                                            Text("Devolver a inventario")
+                                        }
+                                    }
+                                    if (a.cantidadComprada > 0.0) {
+                                        OutlinedButton(onClick = { confirmarLista = a }) {
+                                            Text("Devolver a la lista")
+                                        }
                                     }
                                 }
                             }
@@ -170,6 +181,28 @@ fun InventarioFiestaScreen(
             dismissButton = { TextButton(onClick = { confirmar = null }) { Text("Cancelar") } },
             title = { Text("Devolver a inventario") },
             text = { Text("¿Devolver «${art.nombre}» al inventario general?") },
+        )
+    }
+
+    confirmarLista?.let { art ->
+        AlertDialog(
+            onDismissRequest = { confirmarLista = null },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmarLista = null
+                    scope.launch {
+                        aviso = null
+                        when (val r = inventarioRepo.devolverALista(eventoId, art.id)) {
+                            is ResultadoInventario.Exito -> Unit
+                            is ResultadoInventario.Error -> aviso = r.mensaje
+                        }
+                        intento++
+                    }
+                }) { Text("Devolver") }
+            },
+            dismissButton = { TextButton(onClick = { confirmarLista = null }) { Text("Cancelar") } },
+            title = { Text("Devolver a la lista de la compra") },
+            text = { Text("¿Devolver «${art.nombre}» a la lista de la compra?") },
         )
     }
 }

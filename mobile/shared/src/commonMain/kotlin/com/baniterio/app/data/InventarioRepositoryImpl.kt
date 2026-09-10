@@ -95,6 +95,10 @@ class InventarioRepositoryImpl(
         http.post("$API_BASE_URL/inventario/evento/$eventoId/$articuloEventoId/devolver") { auth() }.let { }
     }
 
+    override suspend fun devolverALista(eventoId: Long, articuloEventoId: Long): ResultadoInventario<Unit> = peticion {
+        http.post("$API_BASE_URL/inventario/evento/$eventoId/$articuloEventoId/devolver-a-lista") { auth() }.let { }
+    }
+
     private suspend fun <T> peticion(bloque: suspend () -> T): ResultadoInventario<T> =
         try {
             ResultadoInventario.Exito(bloque())

@@ -58,7 +58,13 @@ data class EnviarCategoriaBody(val categoria: String, val eventoId: Long)
 
 /** Un artículo del inventario de un evento ("inventario de la fiesta"). */
 @Serializable
-data class ArticuloFiestaDto(val id: Long, val nombre: String, val tamano: String, val cantidad: Double)
+data class ArticuloFiestaDto(
+    val id: Long,
+    val nombre: String,
+    val tamano: String,
+    val cantidad: Double,
+    val cantidadComprada: Double = 0.0,
+)
 
 @Serializable
 data class CategoriaFiestaDto(
