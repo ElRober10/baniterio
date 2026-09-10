@@ -1,6 +1,7 @@
 package com.baniterio.app.data
 
 import com.baniterio.app.data.dto.AjustarReglaBody
+import com.baniterio.app.data.dto.CambiarBloqueoBody
 import com.baniterio.app.data.dto.CrearReglaBody
 import com.baniterio.app.data.dto.ErrorResponse
 import com.baniterio.app.data.dto.EventoListaCompraDto
@@ -66,6 +67,18 @@ class ListaCompraRepositoryImpl(
 
     override suspend fun borrarRegla(eventoId: Long, reglaId: Long): ResultadoListaCompra<Unit> = peticion {
         http.delete("$API_BASE_URL/admin/lista-compra/eventos/$eventoId/reglas/$reglaId") { auth() }.let { }
+    }
+
+    override suspend fun marcarComprada(eventoId: Long, lineaId: Long): ResultadoListaCompra<Unit> = peticion {
+        http.post("$API_BASE_URL/eventos/$eventoId/lista-compra/lineas/$lineaId/comprado") { auth() }.let { }
+    }
+
+    override suspend fun cambiarBloqueo(eventoId: Long, bloqueada: Boolean): ResultadoListaCompra<Unit> = peticion {
+        http.put("$API_BASE_URL/eventos/$eventoId/lista-compra/bloqueo") {
+            auth()
+            contentType(ContentType.Application.Json)
+            setBody(CambiarBloqueoBody(bloqueada))
+        }.let { }
     }
 
     private suspend fun <T> peticion(bloque: suspend () -> T): ResultadoListaCompra<T> =

@@ -15,6 +15,7 @@ enum class CodigoErrorListaCompra {
     AJUSTE_NO_APLICA,
     POR_CADA_NO_APLICA,
     FORMULA_NO_CREABLE,
+    LINEA_NO_ENCONTRADA,
     SIN_CONEXION,
     DESCONOCIDO;
 
@@ -28,6 +29,7 @@ enum class CodigoErrorListaCompra {
             "AJUSTE_NO_APLICA" -> AJUSTE_NO_APLICA
             "POR_CADA_NO_APLICA" -> POR_CADA_NO_APLICA
             "FORMULA_NO_CREABLE" -> FORMULA_NO_CREABLE
+            "LINEA_COMPRA_NO_ENCONTRADA" -> LINEA_NO_ENCONTRADA
             else -> DESCONOCIDO
         }
     }
@@ -42,6 +44,7 @@ enum class CodigoErrorListaCompra {
             AJUSTE_NO_APLICA -> "Las reglas por marca no admiten cantidad fija."
             POR_CADA_NO_APLICA -> "«Por cada N» necesita el número N."
             FORMULA_NO_CREABLE -> "Esa fórmula no se puede crear a mano."
+            LINEA_NO_ENCONTRADA -> "Esa línea ya no está en la lista."
             SIN_CONEXION -> "No se pudo conectar con el servidor."
             DESCONOCIDO -> "Algo ha ido mal. Inténtalo de nuevo."
         }

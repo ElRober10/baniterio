@@ -100,4 +100,30 @@ class ListaCompraRepositoryImplTest {
         assertIs<ResultadoListaCompra.Error>(res)
         assertEquals(CodigoErrorListaCompra.REGLA_NO_BORRABLE, res.codigo)
     }
+
+    @Test
+    fun marcar_comprada_hace_post() = runTest {
+        val (r, v) = repo(status = HttpStatusCode.NoContent)
+        r.marcarComprada(7, 3)
+        assertEquals("POST", v[0].metodo)
+        assertEquals("/api/v1/eventos/7/lista-compra/lineas/3/comprado", v[0].path)
+        assertEquals("Bearer jwt-x", v[0].auth)
+    }
+
+    @Test
+    fun cambiar_bloqueo_hace_put_con_body() = runTest {
+        val (r, v) = repo(status = HttpStatusCode.NoContent)
+        r.cambiarBloqueo(7, true)
+        assertEquals("PUT", v[0].metodo)
+        assertEquals("/api/v1/eventos/7/lista-compra/bloqueo", v[0].path)
+        assert(v[0].cuerpo.contains("\"bloqueada\":true")) { v[0].cuerpo }
+    }
+
+    @Test
+    fun marcar_comprada_linea_no_encontrada_error_tipado() = runTest {
+        val (r, _) = repo(status = HttpStatusCode.NotFound, cuerpo = """{"codigo":"LINEA_COMPRA_NO_ENCONTRADA"}""")
+        val res = r.marcarComprada(7, 3)
+        assertIs<ResultadoListaCompra.Error>(res)
+        assertEquals(CodigoErrorListaCompra.LINEA_NO_ENCONTRADA, res.codigo)
+    }
 }

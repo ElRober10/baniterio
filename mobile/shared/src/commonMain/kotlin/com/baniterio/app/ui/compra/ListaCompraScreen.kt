@@ -12,13 +12,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,7 +34,13 @@ import com.baniterio.app.ui.comun.relieveDeCarta
 
 private sealed interface EstadoLista {
     data object Cargando : EstadoLista
-    data class Cargada(val apuntados: Int, val diasFiesta: Int, val categorias: List<CategoriaListaCompraDto>) : EstadoLista
+    data class Cargada(
+        val puedoEditar: Boolean,
+        val bloqueada: Boolean,
+        val apuntados: Int,
+        val diasFiesta: Int,
+        val categorias: List<CategoriaListaCompraDto>,
+    ) : EstadoLista
     data class Error(val mensaje: String) : EstadoLista
 }
 
@@ -51,12 +60,20 @@ fun ListaCompraScreen(
 ) {
     var estado by remember { mutableStateOf<EstadoLista>(EstadoLista.Cargando) }
     var intento by remember { mutableStateOf(0) }
+    var ocupado by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(intento) {
         estado = EstadoLista.Cargando
         estado = when (val r = listaCompraRepo.lista(eventoId)) {
             is ResultadoListaCompra.Exito ->
-                EstadoLista.Cargada(r.dato.apuntados, r.dato.diasFiesta, r.dato.categorias)
+                EstadoLista.Cargada(
+                    r.dato.puedoEditar,
+                    r.dato.bloqueada,
+                    r.dato.apuntados,
+                    r.dato.diasFiesta,
+                    r.dato.categorias,
+                )
             is ResultadoListaCompra.Error -> EstadoLista.Error(r.mensaje)
         }
     }
@@ -89,10 +106,24 @@ fun ListaCompraScreen(
             }
             is EstadoLista.Cargada -> {
                 Text(
-                    "${e.apuntados} apuntados · ${e.diasFiesta} día(s) de fiesta",
+                    "${e.apuntados} apuntados · ${e.diasFiesta} día(s) de fiesta" +
+                        if (e.bloqueada) " · lista bloqueada" else "",
                     style = MaterialTheme.typography.bodyMedium,
                     color = BaniterioColors.muted,
                 )
+                if (e.puedoEditar) {
+                    OutlinedButton(
+                        enabled = !ocupado,
+                        onClick = {
+                            ocupado = true
+                            scope.launch {
+                                listaCompraRepo.cambiarBloqueo(eventoId, !e.bloqueada)
+                                ocupado = false
+                                intento++
+                            }
+                        },
+                    ) { Text(if (e.bloqueada) "Desbloquear lista" else "Bloquear lista") }
+                }
                 if (e.categorias.isEmpty()) {
                     Text("Todavía no hay nada que comprar para este evento.", color = BaniterioColors.muted)
                 }
@@ -130,6 +161,27 @@ fun ListaCompraScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onBackground,
                                 )
+                                if (e.puedoEditar) {
+                                    if (l.comprada) {
+                                        Text(
+                                            "✓ Comprada",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = BaniterioColors.gold,
+                                        )
+                                    } else if (l.cantidad > 0.0) {
+                                        OutlinedButton(
+                                            enabled = !ocupado,
+                                            onClick = {
+                                                ocupado = true
+                                                scope.launch {
+                                                    listaCompraRepo.marcarComprada(eventoId, l.id)
+                                                    ocupado = false
+                                                    intento++
+                                                }
+                                            },
+                                        ) { Text("Comprado") }
+                                    }
+                                }
                             }
                         }
                     }
