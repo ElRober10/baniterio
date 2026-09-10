@@ -3,9 +3,11 @@ package com.baniterio.api.compra;
 import java.math.BigDecimal;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -31,6 +33,8 @@ import com.baniterio.api.identidad.EventoRepository;
 import com.baniterio.api.identidad.FichaBebida;
 import com.baniterio.api.identidad.FichaBebidaRepository;
 import com.baniterio.api.identidad.PenaRepository;
+import com.baniterio.api.inventario.ArticuloEvento;
+import com.baniterio.api.inventario.ArticuloEventoRepository;
 import com.baniterio.api.inventario.CategoriaInventario;
 import com.baniterio.api.inventario.SinPermisoInventarioException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -51,6 +55,8 @@ public class ListaCompraService {
 
     private final ReglaCompraRepository plantilla;
     private final ReglaCompraEventoRepository reglasEvento;
+    private final LineaCompraEventoRepository lineas;
+    private final ArticuloEventoRepository articulosEvento;
     private final EventoRepository eventos;
     private final AsistenciaEventoRepository asistencias;
     private final FichaBebidaRepository fichas;
@@ -58,15 +64,24 @@ public class ListaCompraService {
     private final ServicioPermisos permisos;
 
     public ListaCompraService(ReglaCompraRepository plantilla, ReglaCompraEventoRepository reglasEvento,
+                              LineaCompraEventoRepository lineas, ArticuloEventoRepository articulosEvento,
                               EventoRepository eventos, AsistenciaEventoRepository asistencias,
                               FichaBebidaRepository fichas, PenaRepository penas, ServicioPermisos permisos) {
         this.plantilla = plantilla;
         this.reglasEvento = reglasEvento;
+        this.lineas = lineas;
+        this.articulosEvento = articulosEvento;
         this.eventos = eventos;
         this.asistencias = asistencias;
         this.fichas = fichas;
         this.penas = penas;
         this.permisos = permisos;
+    }
+
+    /** Una línea del cálculo con su clave de identidad. */
+    private record LineaCalc(CategoriaInventario categoria, String nombre, String tamano,
+                             BigDecimal cantidad, int orden, boolean dinamica,
+                             boolean necesitaFicha, boolean ajustada) {
     }
 
     private Long penaId() {
@@ -137,34 +152,130 @@ public class ListaCompraService {
         Evento e = eventoAbierto(eventoId);
         materializar(e);
         DatosEvento datos = datosDe(e);
+        if (!e.isListaCompraBloqueada()) {
+            sincronizar(e, datos);
+        }
         boolean puedoEditar = permisos.puede(usuarioId, AreaProtegida.INVENTARIO);
-
-        List<ReglaCompraEvento> activas = reglasEvento
-                .findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(eventoId).stream()
-                .filter(ReglaCompraEvento::isActiva).toList();
 
         Map<CategoriaInventario, List<LineaCompraDto>> porCategoria = new LinkedHashMap<>();
         for (CategoriaInventario cat : CategoriaInventario.values()) {
             porCategoria.put(cat, new ArrayList<>());
         }
+        for (LineaCompraEvento l : lineas.findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(eventoId)) {
+            porCategoria.get(l.getCategoria()).add(new LineaCompraDto(
+                    l.getId(), l.getNombre(), l.getTamano(), l.getCantidad(), BigDecimal.ZERO,
+                    l.isAjustada(), l.isDinamica(), l.isNecesitaFicha(), l.isComprada()));
+        }
+
+        List<CategoriaListaCompraDto> categorias = new ArrayList<>();
+        porCategoria.forEach((cat, ls) -> {
+            if (!ls.isEmpty()) {
+                categorias.add(new CategoriaListaCompraDto(cat.name(), cat.etiqueta(), ls));
+            }
+        });
+        return new ListaCompraResponse(puedoEditar, datos.llevaFicha(), e.isListaCompraBloqueada(),
+                datos.apuntados(), datos.diasFiesta(), categorias);
+    }
+
+    /** Todas las líneas que el cálculo produce ahora mismo para el evento. */
+    private List<LineaCalc> calcular(Long eventoId, DatosEvento datos) {
+        List<ReglaCompraEvento> activas = reglasEvento
+                .findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(eventoId).stream()
+                .filter(ReglaCompraEvento::isActiva).toList();
+        List<LineaCalc> out = new ArrayList<>();
         for (ReglaCompraEvento r : activas) {
             for (LineaCalculada lc : CalculadoraListaCompra.lineasDe(r, datos)) {
                 BigDecimal calculada = CalculadoraListaCompra.ceil(lc.bruto());
                 boolean ajustada = !r.getTipoFormula().esDinamica() && r.getCantidadAjustada() != null;
                 BigDecimal cantidad = ajustada ? r.getCantidadAjustada() : calculada;
-                porCategoria.get(r.getCategoria()).add(new LineaCompraDto(
-                        lc.nombre(), lc.tamano(), cantidad, calculada, ajustada, lc.dinamica(), lc.necesitaFicha()));
+                out.add(new LineaCalc(r.getCategoria(), lc.nombre(), lc.tamano(), cantidad,
+                        r.getOrden(), lc.dinamica(), lc.necesitaFicha(), ajustada));
             }
         }
+        return out;
+    }
 
-        List<CategoriaListaCompraDto> categorias = new ArrayList<>();
-        porCategoria.forEach((cat, lineas) -> {
-            if (!lineas.isEmpty()) {
-                categorias.add(new CategoriaListaCompraDto(cat.name(), cat.etiqueta(), lineas));
+    /** Alinea linea_compra_evento con el cálculo actual. No toca las líneas compradas. */
+    private void sincronizar(Evento e, DatosEvento datos) {
+        List<LineaCalc> calculadas = calcular(e.getId(), datos);
+        Map<String, LineaCompraEvento> existentes = new LinkedHashMap<>();
+        for (LineaCompraEvento l : lineas.findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(e.getId())) {
+            existentes.put(clave(l.getCategoria(), l.getNombre(), l.getTamano()), l);
+        }
+        Set<String> vistas = new HashSet<>();
+        for (LineaCalc c : calculadas) {
+            String k = clave(c.categoria(), c.nombre(), c.tamano());
+            vistas.add(k);
+            LineaCompraEvento fila = existentes.get(k);
+            if (fila == null) {
+                lineas.save(LineaCompraEvento.builder()
+                        .evento(e).categoria(c.categoria()).nombre(c.nombre()).tamano(c.tamano())
+                        .cantidad(c.cantidad()).orden(c.orden()).dinamica(c.dinamica())
+                        .necesitaFicha(c.necesitaFicha()).ajustada(c.ajustada())
+                        .comprada(false).build());
+            } else if (!fila.isComprada()) {
+                fila.setCantidad(c.cantidad());
+                fila.setOrden(c.orden());
+                fila.setDinamica(c.dinamica());
+                fila.setNecesitaFicha(c.necesitaFicha());
+                fila.setAjustada(c.ajustada());
+                lineas.save(fila);
             }
-        });
-        return new ListaCompraResponse(puedoEditar, datos.llevaFicha(), datos.apuntados(),
-                datos.diasFiesta(), categorias);
+        }
+        for (Map.Entry<String, LineaCompraEvento> en : existentes.entrySet()) {
+            if (!vistas.contains(en.getKey()) && !en.getValue().isComprada()) {
+                lineas.delete(en.getValue());
+            }
+        }
+    }
+
+    private static String clave(CategoriaInventario cat, String nombre, String tamano) {
+        return cat.name() + "\u0000" + nombre + "\u0000" + tamano;
+    }
+
+    /** Marca una linea como comprada: su cantidad pasa al inventario de la fiesta y queda congelada. */
+    @Transactional
+    public void marcarComprada(Long usuarioId, Long eventoId, Long lineaId) {
+        exigirArea(usuarioId);
+        Evento e = eventoAbierto(eventoId);
+        LineaCompraEvento linea = lineas.findByIdAndEventoId(lineaId, eventoId)
+                .orElseThrow(LineaCompraNoEncontradaException::new);
+        if (linea.isComprada()) {
+            return;
+        }
+        ArticuloEvento fila = articulosEvento
+                .findByEventoIdAndCategoriaAndNombreAndTamano(
+                        eventoId, linea.getCategoria(), linea.getNombre(), linea.getTamano())
+                .orElse(null);
+        if (fila == null) {
+            int orden = articulosEvento.findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(eventoId).stream()
+                    .filter(f -> f.getCategoria() == linea.getCategoria())
+                    .mapToInt(ArticuloEvento::getOrden).max().orElse(0) + 1;
+            fila = ArticuloEvento.builder()
+                    .evento(e).articuloInventario(null).categoria(linea.getCategoria())
+                    .nombre(linea.getNombre()).tamano(linea.getTamano())
+                    .cantidad(BigDecimal.ZERO).cantidadComprada(linea.getCantidad())
+                    .orden(orden).build();
+        } else {
+            fila.setCantidadComprada(fila.getCantidadComprada().add(linea.getCantidad()));
+        }
+        fila = articulosEvento.save(fila);
+        linea.setComprada(true);
+        linea.setArticuloEventoId(fila.getId());
+        lineas.save(linea);
+    }
+
+    /** Bloquea o desbloquea el auto-calculo de la lista. Al bloquear, sincroniza una ultima vez. */
+    @Transactional
+    public void cambiarBloqueo(Long usuarioId, Long eventoId, boolean bloqueada) {
+        exigirArea(usuarioId);
+        Evento e = eventoAbierto(eventoId);
+        materializar(e);
+        if (bloqueada && !e.isListaCompraBloqueada()) {
+            sincronizar(e, datosDe(e));
+        }
+        e.setListaCompraBloqueada(bloqueada);
+        eventos.save(e);
     }
 
     // --- Administración -------------------------------------------------------
@@ -191,7 +302,7 @@ public class ListaCompraService {
 
         return new ListaCompraAdminResponse(
                 new EventoListaCompraDto(e.getId(), e.getNombre(), e.getFecha(), e.getFechaFin()),
-                datos.apuntados(), datos.diasFiesta(), reglas);
+                e.isListaCompraBloqueada(), datos.apuntados(), datos.diasFiesta(), reglas);
     }
 
     private static ReglaCompraEventoDto aDto(ReglaCompraEvento r, DatosEvento datos) {

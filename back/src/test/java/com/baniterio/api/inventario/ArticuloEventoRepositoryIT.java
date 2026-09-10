@@ -45,6 +45,7 @@ class ArticuloEventoRepositoryIT extends IntegrationTest {
                 .nombre(origen.getNombre())
                 .tamano(origen.getTamano())
                 .cantidad(new BigDecimal("2.00"))
+                .cantidadComprada(BigDecimal.ZERO)
                 .orden(1)
                 .build());
 

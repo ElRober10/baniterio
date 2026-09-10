@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.baniterio.api.auth.ServicioPermisos;
+import com.baniterio.api.compra.LineaCompraEventoRepository;
 import com.baniterio.api.evento.EventoNoEncontradoException;
 import com.baniterio.api.identidad.AreaProtegida;
 import com.baniterio.api.identidad.Evento;
@@ -34,15 +35,18 @@ public class InventarioService {
 
     private final ArticuloInventarioRepository articulos;
     private final ArticuloEventoRepository articulosEvento;
+    private final LineaCompraEventoRepository lineasCompra;
     private final EventoRepository eventos;
     private final PenaRepository penas;
     private final ServicioPermisos permisos;
 
     public InventarioService(ArticuloInventarioRepository articulos,
-                             ArticuloEventoRepository articulosEvento, EventoRepository eventos,
+                             ArticuloEventoRepository articulosEvento,
+                             LineaCompraEventoRepository lineasCompra, EventoRepository eventos,
                              PenaRepository penas, ServicioPermisos permisos) {
         this.articulos = articulos;
         this.articulosEvento = articulosEvento;
+        this.lineasCompra = lineasCompra;
         this.eventos = eventos;
         this.penas = penas;
         this.permisos = permisos;
@@ -181,7 +185,8 @@ public class InventarioService {
 
     private void moverAlEvento(Evento evento, ArticuloInventario art) {
         ArticuloEvento fila = articulosEvento
-                .findByEventoIdAndArticuloInventarioId(evento.getId(), art.getId())
+                .findByEventoIdAndCategoriaAndNombreAndTamano(
+                        evento.getId(), art.getCategoria(), art.getNombre(), art.getTamano())
                 .orElse(null);
         if (fila == null) {
             int orden = articulosEvento.findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(evento.getId())
@@ -196,9 +201,13 @@ public class InventarioService {
                     .nombre(art.getNombre())
                     .tamano(art.getTamano())
                     .cantidad(art.getCantidad())
+                    .cantidadComprada(BigDecimal.ZERO)
                     .orden(orden)
                     .build();
         } else {
+            if (fila.getArticuloInventario() == null) {
+                fila.setArticuloInventario(art);
+            }
             fila.setCantidad(fila.getCantidad().add(art.getCantidad()));
         }
         articulosEvento.save(fila);
@@ -219,7 +228,7 @@ public class InventarioService {
                         cat.etiqueta(),
                         filas.stream()
                                 .filter(f -> f.getCategoria() == cat)
-                                .map(f -> new ArticuloDto(f.getId(), f.getNombre(), f.getTamano(), f.getCantidad()))
+                                .map(ArticuloDto::deEvento)
                                 .toList()))
                 .filter(c -> !c.articulos().isEmpty())
                 .toList();
@@ -227,6 +236,7 @@ public class InventarioService {
         return new InventarioEventoResponse(puedoEditar, categorias);
     }
 
+    /** Devuelve la parte de stock de una fila del inventario de la fiesta al inventario general. */
     @Transactional
     public void devolver(Long usuarioId, Long eventoId, Long articuloEventoId) {
         if (!permisos.puede(usuarioId, AreaProtegida.INVENTARIO)) {
@@ -236,8 +246,40 @@ public class InventarioService {
                 .filter(f -> f.getEvento().getId().equals(eventoId))
                 .orElseThrow(ArticuloEventoNoEncontradoException::new);
         ArticuloInventario origen = fila.getArticuloInventario();
-        origen.setCantidad(origen.getCantidad().add(fila.getCantidad()));
-        articulos.save(origen);
-        articulosEvento.delete(fila);
+        if (origen != null && fila.getCantidad().signum() > 0) {
+            origen.setCantidad(origen.getCantidad().add(fila.getCantidad()));
+            articulos.save(origen);
+        }
+        fila.setCantidad(BigDecimal.ZERO);
+        if (fila.getCantidadComprada().signum() == 0) {
+            articulosEvento.delete(fila);
+        } else {
+            articulosEvento.save(fila);
+        }
+    }
+
+    /** Devuelve la parte comprada de una fila del inventario de la fiesta a la lista de la compra. */
+    @Transactional
+    public void devolverALista(Long usuarioId, Long eventoId, Long articuloEventoId) {
+        if (!permisos.puede(usuarioId, AreaProtegida.INVENTARIO)) {
+            throw new SinPermisoInventarioException();
+        }
+        ArticuloEvento fila = articulosEvento.findById(articuloEventoId)
+                .filter(f -> f.getEvento().getId().equals(eventoId))
+                .orElseThrow(ArticuloEventoNoEncontradoException::new);
+        if (fila.getCantidadComprada().signum() == 0) {
+            throw new NadaQueDevolverException();
+        }
+        lineasCompra.findByEventoIdAndArticuloEventoId(eventoId, fila.getId()).ifPresent(l -> {
+            l.setComprada(false);
+            l.setArticuloEventoId(null);
+            lineasCompra.save(l);
+        });
+        fila.setCantidadComprada(BigDecimal.ZERO);
+        if (fila.getCantidad().signum() == 0) {
+            articulosEvento.delete(fila);
+        } else {
+            articulosEvento.save(fila);
+        }
     }
 }
