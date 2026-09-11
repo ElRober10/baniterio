@@ -34,15 +34,13 @@ import com.baniterio.app.data.ResultadoListaCompra
 import com.baniterio.app.data.dto.CrearReglaBody
 import com.baniterio.app.data.dto.ReglaCompraEventoDto
 import com.baniterio.app.theme.BaniterioColors
-import com.baniterio.app.theme.BaniterioWordmark
+import com.baniterio.app.ui.comun.CabeceraPantalla
+import com.baniterio.app.ui.comun.EstadoCarga
+import com.baniterio.app.ui.comun.PantallaConEstado
 import com.baniterio.app.ui.comun.relieveDeCarta
 import kotlinx.coroutines.launch
 
-private sealed interface EstadoEditor {
-    data object Cargando : EstadoEditor
-    data class Cargada(val nombre: String, val reglas: List<ReglaCompraEventoDto>) : EstadoEditor
-    data class Error(val mensaje: String) : EstadoEditor
-}
+private data class DatosEditor(val nombre: String, val reglas: List<ReglaCompraEventoDto>)
 
 private val FORMULAS_CREABLES = listOf(
     "POR_PENISTA" to "Por peñista",
@@ -91,7 +89,7 @@ fun ListaCompraAdminEventoScreen(
     eventoId: Long,
     onVolver: () -> Unit,
 ) {
-    var estado by remember { mutableStateOf<EstadoEditor>(EstadoEditor.Cargando) }
+    var estado by remember { mutableStateOf<EstadoCarga<DatosEditor>>(EstadoCarga.Cargando) }
     var intento by remember { mutableStateOf(0) }
     var aviso by remember { mutableStateOf<String?>(null) }
     var confirmarBorrado by remember { mutableStateOf<ReglaCompraEventoDto?>(null) }
@@ -99,10 +97,10 @@ fun ListaCompraAdminEventoScreen(
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(intento) {
-        estado = EstadoEditor.Cargando
+        estado = EstadoCarga.Cargando
         estado = when (val r = listaCompraRepo.adminEvento(eventoId)) {
-            is ResultadoListaCompra.Exito -> EstadoEditor.Cargada(r.dato.evento.nombre, r.dato.reglas)
-            is ResultadoListaCompra.Error -> EstadoEditor.Error(r.mensaje)
+            is ResultadoListaCompra.Exito -> EstadoCarga.Cargado(DatosEditor(r.dato.evento.nombre, r.dato.reglas))
+            is ResultadoListaCompra.Error -> EstadoCarga.Error(r.mensaje)
         }
     }
 
@@ -110,43 +108,33 @@ fun ListaCompraAdminEventoScreen(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BaniterioWordmark()
-            Text("Volver", color = BaniterioColors.brandBright, modifier = Modifier.clickable { onVolver() })
-        }
+        CabeceraPantalla(onVolver)
 
-        when (val e = estado) {
-            is EstadoEditor.Cargando -> Text("Cargando…", color = BaniterioColors.muted)
-            is EstadoEditor.Error -> {
-                Text(e.mensaje, color = BaniterioColors.muted)
-                Button(onClick = { intento++ }) { Text("Reintentar") }
-            }
-            is EstadoEditor.Cargada -> {
-                Text(
-                    "Cantidades — ${e.nombre}",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    fontWeight = FontWeight.Bold,
+        PantallaConEstado(estado, onReintentar = { intento++ }) { datos ->
+            Text(
+                "Cantidades — ${datos.nombre}",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onBackground,
+                fontWeight = FontWeight.Bold,
+            )
+            aviso?.let { Text(it, color = BaniterioColors.gold) }
+
+            datos.reglas.forEach { r ->
+                FilaRegla(
+                    regla = r,
+                    onGuardar = { cantidad, activa ->
+                        scope.launch {
+                            aviso = null
+                            val res = listaCompraRepo.ajustarRegla(eventoId, r.id, cantidad, activa)
+                            if (res is ResultadoListaCompra.Error) aviso = res.mensaje
+                            intento++
+                        }
+                    },
+                    onQuitar = { confirmarBorrado = r },
                 )
-                aviso?.let { Text(it, color = BaniterioColors.gold) }
-
-                e.reglas.forEach { r ->
-                    FilaRegla(
-                        regla = r,
-                        onGuardar = { cantidad, activa ->
-                            scope.launch {
-                                aviso = null
-                                val res = listaCompraRepo.ajustarRegla(eventoId, r.id, cantidad, activa)
-                                if (res is ResultadoListaCompra.Error) aviso = res.mensaje
-                                intento++
-                            }
-                        },
-                        onQuitar = { confirmarBorrado = r },
-                    )
-                }
-
-                OutlinedButton(onClick = { dialogoAnadir = true }) { Text("Añadir artículo") }
             }
+
+            OutlinedButton(onClick = { dialogoAnadir = true }) { Text("Añadir artículo") }
         }
     }
 

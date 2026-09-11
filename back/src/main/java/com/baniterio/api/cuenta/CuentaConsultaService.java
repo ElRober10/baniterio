@@ -9,17 +9,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.baniterio.api.admin.SinPermisoException;
 import com.baniterio.api.auth.ServicioPermisos;
 import com.baniterio.api.cuenta.dto.CuentaDetalle;
 import com.baniterio.api.cuenta.dto.CuentaResumen;
 import com.baniterio.api.cuenta.dto.MovimientoFila;
 import com.baniterio.api.cuenta.dto.PenistaCuota;
 import com.baniterio.api.cuenta.dto.ResumenGasto;
-import com.baniterio.api.identidad.CategoriaMovimiento;
 import com.baniterio.api.identidad.Cuenta;
 import com.baniterio.api.identidad.CuentaRepository;
-import com.baniterio.api.identidad.EstadoPagoCuota;
 import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
 import com.baniterio.api.identidad.FichaBebida;
@@ -27,51 +24,42 @@ import com.baniterio.api.identidad.FichaBebidaRepository;
 import com.baniterio.api.identidad.MovimientoCuenta;
 import com.baniterio.api.identidad.MovimientoCuentaRepository;
 import com.baniterio.api.identidad.OrigenMovimiento;
-import com.baniterio.api.identidad.PenaRepository;
-import com.baniterio.api.identidad.Usuario;
-import com.baniterio.api.identidad.UsuarioRepository;
+import com.baniterio.api.identidad.PenaPilotoService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Reglas de la sección Cuentas: de momento solo listar y ver el detalle. Crear,
- * editar, borrar y los movimientos llegan en tareas siguientes. Crear cuentas se
- * hace desde el editor de eventos ({@code EventoService}). La peña se resuelve
- * por slug como en {@code EventoService}.
+ * Lectura de la sección Cuentas: listar las cuentas de la peña y armar la hoja
+ * de una cuenta (peñistas, libro de movimientos con saldo corriente y resumen
+ * de gastos). Las mutaciones (cerrar año, movimientos manuales, ropa) están en
+ * {@link CuentaAdminService}, que usa {@link #detalle} para devolver la hoja
+ * actualizada tras cada cambio.
  */
 @Service
-public class CuentaService {
+public class CuentaConsultaService {
 
-    private static final String SLUG_PENA = "baniterio";
     /** Igual que {@code EventoService.DIAS_PARA_PASADO}: un evento cuenta como futuro hasta 3 días después de su fecha. */
     private static final int DIAS_PARA_PASADO = 3;
 
     private final CuentaRepository cuentas;
     private final EventoRepository eventos;
-    private final PenaRepository penas;
+    private final PenaPilotoService pena;
     private final MovimientoCuentaRepository movimientos;
-    private final MovimientoCuentaService movimientoCuenta;
     private final FichaBebidaRepository fichas;
-    private final UsuarioRepository usuarios;
     private final ServicioPermisos permisos;
 
-    public CuentaService(CuentaRepository cuentas, EventoRepository eventos, PenaRepository penas,
-            MovimientoCuentaRepository movimientos, MovimientoCuentaService movimientoCuenta,
-            FichaBebidaRepository fichas, UsuarioRepository usuarios, ServicioPermisos permisos) {
+    public CuentaConsultaService(CuentaRepository cuentas, EventoRepository eventos, PenaPilotoService pena,
+            MovimientoCuentaRepository movimientos, FichaBebidaRepository fichas, ServicioPermisos permisos) {
         this.cuentas = cuentas;
         this.eventos = eventos;
-        this.penas = penas;
+        this.pena = pena;
         this.movimientos = movimientos;
-        this.movimientoCuenta = movimientoCuenta;
         this.fichas = fichas;
-        this.usuarios = usuarios;
         this.permisos = permisos;
     }
 
     private Long penaId() {
-        return penas.findBySlug(SLUG_PENA)
-                .orElseThrow(() -> new IllegalStateException("Falta la peña piloto '" + SLUG_PENA + "'"))
-                .getId();
+        return pena.id();
     }
 
     private static CuentaResumen aResumen(Cuenta c) {
@@ -105,7 +93,7 @@ public class CuentaService {
 
         return cuentas.findByPenaId(penaId).stream()
                 .sorted(orden)
-                .map(CuentaService::aResumen)
+                .map(CuentaConsultaService::aResumen)
                 .toList();
     }
 
@@ -171,7 +159,7 @@ public class CuentaService {
         List<PenistaCuota> penistas = conCuota.stream()
                 .sorted(Comparator
                         .comparing((FichaBebida f) -> cuotaMovId.getOrDefault(f.getAsistenciaId(), Long.MAX_VALUE))
-                        .thenComparing(CuentaService::nombreDe, String.CASE_INSENSITIVE_ORDER))
+                        .thenComparing(CuentaConsultaService::nombreDe, String.CASE_INSENSITIVE_ORDER))
                 .map(f -> aPenista(f, cuotaImporte.get(f.getAsistenciaId()),
                         cuotaSaldoTras.get(f.getAsistenciaId())))
                 .toList();
@@ -205,34 +193,6 @@ public class CuentaService {
                 precioCamiseta, precioSudadera, penistas, totalCuotas, totalCobrado, filas, resumen);
     }
 
-    /**
-     * "Cerrar el año": el admin da por cerrado el año en curso. El saldo que
-     * quede se apunta como saldo de partida del año siguiente ("Saldo del año
-     * N"), y la cuenta pasa a ese año. 403 {@code SIN_PERMISO} si no es admin.
-     */
-    @Transactional
-    public CuentaDetalle cerrarAnio(Long adminId, Long cuentaId) {
-        if (!permisos.esAdministrador(adminId)) {
-            throw new SinPermisoException();
-        }
-        Cuenta c = cuentas.findById(cuentaId).orElseThrow(CuentaNoEncontradaException::new);
-        int anioCerrado = c.getAnioActual();
-        int anioNuevo = anioCerrado + 1;
-        BigDecimal saldoFinal = movimientos.sumImporteAnio(cuentaId, anioCerrado);
-
-        movimientos.save(MovimientoCuenta.builder()
-                .cuenta(c)
-                .anio(anioNuevo)
-                .concepto("Saldo del año " + anioCerrado)
-                .importe(saldoFinal)
-                .fecha(LocalDate.of(anioNuevo, 1, 1))
-                .origen(OrigenMovimiento.SALDO_INICIAL)
-                .build());
-        c.setAnioActual(anioNuevo);
-        cuentas.save(c);
-        return detalle(adminId, cuentaId);
-    }
-
     private static String nombreDe(FichaBebida f) {
         var a = f.getAsistencia();
         return a.getUsuario() != null ? a.getUsuario().getNombre() : a.getNombre();
@@ -249,124 +209,8 @@ public class CuentaService {
                 ingreso, saldoTras);
     }
 
-    /**
-     * "He transferido el dinero a la peña": el admin ha pasado al banco lo cobrado
-     * por bizum/efectivo. Solo apaga el aviso (las fichas {@code CONFIRMADO_PENDIENTE_ENVIO}
-     * pasan a {@code CONFIRMADO_EN_CUENTA}); el saldo NO cambia, ese dinero ya
-     * contaba desde que se confirmó. 403 {@code SIN_PERMISO} si no es admin.
-     */
-    @Transactional
-    public CuentaDetalle marcarTransferido(Long adminId, Long cuentaId) {
-        if (!permisos.esAdministrador(adminId)) {
-            throw new SinPermisoException();
-        }
-        cuentas.findById(cuentaId).orElseThrow(CuentaNoEncontradaException::new);
-        for (FichaBebida f : fichas.findByEstadoYCuenta(EstadoPagoCuota.CONFIRMADO_PENDIENTE_ENVIO, cuentaId)) {
-            f.setEstadoPago(EstadoPagoCuota.CONFIRMADO_EN_CUENTA);
-            fichas.save(f);
-        }
-        return detalle(adminId, cuentaId);
-    }
-
-    /** Alta de un gasto o ingreso manual. 403 si no es admin. */
-    @Transactional
-    public CuentaDetalle crearMovimiento(Long adminId, Long cuentaId, OrigenMovimiento tipo,
-            String concepto, BigDecimal importe, LocalDate fecha, CategoriaMovimiento categoria,
-            Long adelantadoPorId, String reciboArchivo) {
-        if (!permisos.esAdministrador(adminId)) {
-            throw new SinPermisoException();
-        }
-        Cuenta c = cuentas.findById(cuentaId).orElseThrow(CuentaNoEncontradaException::new);
-        Usuario admin = usuarios.findById(adminId).orElseThrow();
-        Usuario adelantadoPor = adelantadoPorId != null
-                ? usuarios.findById(adelantadoPorId).orElse(null) : null;
-        movimientoCuenta.crearManual(c, tipo, concepto, importe, fecha, categoria,
-                adelantadoPor, admin, reciboArchivo);
-        return detalle(adminId, cuentaId);
-    }
-
-    /**
-     * El admin apunta cuánta camiseta / sudadera pide un peñista, de qué talla y
-     * si ya ha confirmado que el dinero ha entrado. Cada campo {@code null} = "no
-     * tocar". Al confirmar una prenda con cantidad, {@code precio (del evento) ×
-     * cantidad} entra en el libro y suma al saldo (409 {@code SIN_PRECIO_ROPA} si
-     * el evento no tiene precio); al desmarcar o poner cantidad 0, se quita.
-     */
-    @Transactional
-    public CuentaDetalle marcarRopa(Long adminId, Long cuentaId, Long asistenciaId,
-            Integer camisetaCantidad, String camisetaTalla, Boolean camisetaConfirmada,
-            Integer sudaderaCantidad, String sudaderaTalla, Boolean sudaderaConfirmada) {
-        if (!permisos.esAdministrador(adminId)) {
-            throw new SinPermisoException();
-        }
-        FichaBebida f = fichas.findByAsistenciaId(asistenciaId)
-                .orElseThrow(MovimientoNoEncontradoException::new);
-        Usuario admin = usuarios.findById(adminId).orElseThrow();
-        Evento e = f.getAsistencia().getEvento();
-
-        if (camisetaCantidad != null) {
-            f.setCamisetaCantidad(Math.max(0, camisetaCantidad));
-        }
-        if (camisetaTalla != null) {
-            f.setCamisetaTalla(camisetaTalla.isBlank() ? null : camisetaTalla.trim());
-        }
-        if (sudaderaCantidad != null) {
-            f.setSudaderaCantidad(Math.max(0, sudaderaCantidad));
-        }
-        if (sudaderaTalla != null) {
-            f.setSudaderaTalla(sudaderaTalla.isBlank() ? null : sudaderaTalla.trim());
-        }
-
-        sincronizarRopa(f, OrigenMovimiento.CAMISETA, camisetaConfirmada, f.getCamisetaCantidad(),
-                e.getPrecioCamiseta(), f.isCamisetaConfirmada(), f::setCamisetaConfirmada, admin);
-        sincronizarRopa(f, OrigenMovimiento.SUDADERA, sudaderaConfirmada, f.getSudaderaCantidad(),
-                e.getPrecioSudadera(), f.isSudaderaConfirmada(), f::setSudaderaConfirmada, admin);
-
-        fichas.save(f);
-        return detalle(adminId, cuentaId);
-    }
-
-    private void sincronizarRopa(FichaBebida f, OrigenMovimiento tipo, Boolean pedido, int cantidad,
-            BigDecimal precio, boolean actual, java.util.function.Consumer<Boolean> setConfirmada,
-            Usuario admin) {
-        boolean quiere = pedido != null ? pedido : actual;
-        if (quiere && cantidad > 0) {
-            if (precio == null) {
-                throw new com.baniterio.api.evento.SinPrecioRopaException();
-            }
-            movimientoCuenta.registrarRopa(f, tipo, precio.multiply(BigDecimal.valueOf(cantidad)), admin);
-            setConfirmada.accept(true);
-        } else {
-            movimientoCuenta.revertirRopa(f, tipo);
-            setConfirmada.accept(false);
-        }
-    }
-
-    @Transactional
-    public CuentaDetalle borrarMovimiento(Long adminId, Long movId) {
-        if (!permisos.esAdministrador(adminId)) {
-            throw new SinPermisoException();
-        }
-        MovimientoCuenta m = movimientos.findById(movId).orElseThrow(MovimientoNoEncontradoException::new);
-        if (!m.getOrigen().esManual()) {
-            throw new MovimientoNoManualException();
-        }
-        Long cuentaId = m.getCuenta().getId();
-        movimientoCuenta.borrarManual(m);
-        return detalle(adminId, cuentaId);
-    }
-
     @Transactional(readOnly = true)
     public MovimientoCuenta movimiento(Long movId) {
         return movimientos.findById(movId).orElseThrow(MovimientoNoEncontradoException::new);
-    }
-
-    @Transactional
-    public void guardarRecibo(Long adminId, Long movId, String reciboArchivo) {
-        if (!permisos.esAdministrador(adminId)) {
-            throw new SinPermisoException();
-        }
-        MovimientoCuenta m = movimientos.findById(movId).orElseThrow(MovimientoNoEncontradoException::new);
-        movimientoCuenta.ponerRecibo(m, reciboArchivo);
     }
 }

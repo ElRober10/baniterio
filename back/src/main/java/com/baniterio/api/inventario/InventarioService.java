@@ -10,7 +10,7 @@ import com.baniterio.api.evento.EventoNoEncontradoException;
 import com.baniterio.api.identidad.AreaProtegida;
 import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
-import com.baniterio.api.identidad.PenaRepository;
+import com.baniterio.api.identidad.PenaPilotoService;
 import com.baniterio.api.inventario.dto.ActualizarArticuloRequest;
 import com.baniterio.api.inventario.dto.ArticuloDto;
 import com.baniterio.api.inventario.dto.CategoriaEventoDto;
@@ -24,38 +24,34 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Sección Inventario: montar la hoja de listado, actualizar un artículo y mover
  * stock a un evento ("inventario de la fiesta"). La peña es la piloto
- * ({@code slug = "baniterio"}), igual que en {@code CuentaService}. Ver un
+ * ({@code slug = "baniterio"}), igual que en {@code CuentaConsultaService}. Ver un
  * artículo lo puede cualquier usuario logueado; editarlo, darlo de alta/baja y
  * enviarlo a un evento exige el área {@link AreaProtegida#INVENTARIO}.
  */
 @Service
 public class InventarioService {
 
-    private static final String SLUG_PENA = "baniterio";
-
     private final ArticuloInventarioRepository articulos;
     private final ArticuloEventoRepository articulosEvento;
     private final LineaCompraEventoRepository lineasCompra;
     private final EventoRepository eventos;
-    private final PenaRepository penas;
+    private final PenaPilotoService pena;
     private final ServicioPermisos permisos;
 
     public InventarioService(ArticuloInventarioRepository articulos,
                              ArticuloEventoRepository articulosEvento,
                              LineaCompraEventoRepository lineasCompra, EventoRepository eventos,
-                             PenaRepository penas, ServicioPermisos permisos) {
+                             PenaPilotoService pena, ServicioPermisos permisos) {
         this.articulos = articulos;
         this.articulosEvento = articulosEvento;
         this.lineasCompra = lineasCompra;
         this.eventos = eventos;
-        this.penas = penas;
+        this.pena = pena;
         this.permisos = permisos;
     }
 
     private Long penaId() {
-        return penas.findBySlug(SLUG_PENA)
-                .orElseThrow(() -> new IllegalStateException("Falta la peña piloto '" + SLUG_PENA + "'"))
-                .getId();
+        return pena.id();
     }
 
     @Transactional(readOnly = true)
@@ -81,9 +77,7 @@ public class InventarioService {
 
     @Transactional
     public ArticuloDto crear(Long usuarioId, CrearArticuloRequest req) {
-        if (!permisos.puede(usuarioId, AreaProtegida.INVENTARIO)) {
-            throw new SinPermisoInventarioException();
-        }
+        permisos.exigir(usuarioId, AreaProtegida.INVENTARIO, SinPermisoInventarioException::new);
         if (!req.categoria().permiteTamano(req.tamano())) {
             throw new TamanoInventarioNoValidoException();
         }
@@ -107,7 +101,7 @@ public class InventarioService {
                 .max().orElse(0) + 1;
 
         ArticuloInventario art = ArticuloInventario.builder()
-                .pena(penas.findBySlug(SLUG_PENA).orElseThrow())
+                .pena(pena.entidad())
                 .categoria(req.categoria())
                 .nombre(nombre)
                 .tamano(req.tamano())
@@ -119,9 +113,7 @@ public class InventarioService {
 
     @Transactional
     public ArticuloDto actualizar(Long usuarioId, Long articuloId, ActualizarArticuloRequest req) {
-        if (!permisos.puede(usuarioId, AreaProtegida.INVENTARIO)) {
-            throw new SinPermisoInventarioException();
-        }
+        permisos.exigir(usuarioId, AreaProtegida.INVENTARIO, SinPermisoInventarioException::new);
         ArticuloInventario art = articulos.findById(articuloId)
                 .filter(a -> a.getPena().getId().equals(penaId()))
                 .orElseThrow(ArticuloInventarioNoEncontradoException::new);
@@ -138,9 +130,7 @@ public class InventarioService {
 
     @Transactional
     public void borrar(Long usuarioId, Long articuloId) {
-        if (!permisos.puede(usuarioId, AreaProtegida.INVENTARIO)) {
-            throw new SinPermisoInventarioException();
-        }
+        permisos.exigir(usuarioId, AreaProtegida.INVENTARIO, SinPermisoInventarioException::new);
         ArticuloInventario art = articulos.findById(articuloId)
                 .filter(a -> a.getPena().getId().equals(penaId()))
                 .orElseThrow(ArticuloInventarioNoEncontradoException::new);
@@ -158,9 +148,7 @@ public class InventarioService {
     /** Mueve al evento toda la cantidad de la fila del inventario general (que queda a 0). */
     @Transactional
     public void enviar(Long usuarioId, Long articuloId, Long eventoId) {
-        if (!permisos.puede(usuarioId, AreaProtegida.INVENTARIO)) {
-            throw new SinPermisoInventarioException();
-        }
+        permisos.exigir(usuarioId, AreaProtegida.INVENTARIO, SinPermisoInventarioException::new);
         Evento evento = eventoAbierto(eventoId);
         ArticuloInventario art = articulos.findById(articuloId)
                 .filter(a -> a.getPena().getId().equals(penaId()))
@@ -174,9 +162,7 @@ public class InventarioService {
     /** "Enviar todo": mueve al evento todas las filas de la categoría con cantidad &gt; 0. */
     @Transactional
     public void enviarCategoria(Long usuarioId, CategoriaInventario categoria, Long eventoId) {
-        if (!permisos.puede(usuarioId, AreaProtegida.INVENTARIO)) {
-            throw new SinPermisoInventarioException();
-        }
+        permisos.exigir(usuarioId, AreaProtegida.INVENTARIO, SinPermisoInventarioException::new);
         Evento evento = eventoAbierto(eventoId);
         articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(penaId()).stream()
                 .filter(a -> a.getCategoria() == categoria && a.getCantidad().signum() > 0)
@@ -239,9 +225,7 @@ public class InventarioService {
     /** Devuelve la parte de stock de una fila del inventario de la fiesta al inventario general. */
     @Transactional
     public void devolver(Long usuarioId, Long eventoId, Long articuloEventoId) {
-        if (!permisos.puede(usuarioId, AreaProtegida.INVENTARIO)) {
-            throw new SinPermisoInventarioException();
-        }
+        permisos.exigir(usuarioId, AreaProtegida.INVENTARIO, SinPermisoInventarioException::new);
         ArticuloEvento fila = articulosEvento.findById(articuloEventoId)
                 .filter(f -> f.getEvento().getId().equals(eventoId))
                 .orElseThrow(ArticuloEventoNoEncontradoException::new);
@@ -261,9 +245,7 @@ public class InventarioService {
     /** Devuelve la parte comprada de una fila del inventario de la fiesta a la lista de la compra. */
     @Transactional
     public void devolverALista(Long usuarioId, Long eventoId, Long articuloEventoId) {
-        if (!permisos.puede(usuarioId, AreaProtegida.INVENTARIO)) {
-            throw new SinPermisoInventarioException();
-        }
+        permisos.exigir(usuarioId, AreaProtegida.INVENTARIO, SinPermisoInventarioException::new);
         ArticuloEvento fila = articulosEvento.findById(articuloEventoId)
                 .filter(f -> f.getEvento().getId().equals(eventoId))
                 .orElseThrow(ArticuloEventoNoEncontradoException::new);

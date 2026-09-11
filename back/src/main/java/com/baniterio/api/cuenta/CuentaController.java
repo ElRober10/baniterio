@@ -34,39 +34,41 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/v1/cuentas")
 public class CuentaController {
 
-    private final CuentaService cuentaService;
+    private final CuentaConsultaService consulta;
+    private final CuentaAdminService admin;
     private final AlmacenRecibos recibos;
 
-    public CuentaController(CuentaService cuentaService, AlmacenRecibos recibos) {
-        this.cuentaService = cuentaService;
+    public CuentaController(CuentaConsultaService consulta, CuentaAdminService admin, AlmacenRecibos recibos) {
+        this.consulta = consulta;
+        this.admin = admin;
         this.recibos = recibos;
     }
 
     /** Lista las cuentas de la peña (una por año contable). */
     @GetMapping
     public List<CuentaResumen> listar() {
-        return cuentaService.listar();
+        return consulta.listar();
     }
 
     /** La hoja completa de una cuenta: peñistas, libro de movimientos con saldo corriente y resumen de gastos. Con {@code anio} se consulta un año ya cerrado. */
     @GetMapping("/{id}")
     public CuentaDetalle detalle(@AuthenticationPrincipal UsuarioPrincipal principal, @PathVariable Long id,
             @RequestParam(required = false) Integer anio) {
-        return cuentaService.detalle(principal.id(), id, anio);
+        return consulta.detalle(principal.id(), id, anio);
     }
 
     /** Marca "he transferido mi saldo al banco de la peña": solo apaga el aviso, no mueve el saldo. */
     @PostMapping("/{id}/transferencia-a-pena")
     public CuentaDetalle marcarTransferido(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long id) {
-        return cuentaService.marcarTransferido(principal.id(), id);
+        return admin.marcarTransferido(principal.id(), id);
     }
 
     /** Cierra el año contable de la cuenta y abre el siguiente. Solo admin. */
     @PostMapping("/{id}/cerrar-anio")
     public CuentaDetalle cerrarAnio(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long id) {
-        return cuentaService.cerrarAnio(principal.id(), id);
+        return admin.cerrarAnio(principal.id(), id);
     }
 
     /** Da de alta un gasto o ingreso manual (multipart), con recibo opcional (PDF/foto). Solo admin. */
@@ -80,7 +82,7 @@ public class CuentaController {
             @RequestParam(required = false) String categoria,
             @RequestParam(required = false) Long adelantadoPorId,
             @RequestParam(required = false) MultipartFile recibo) {
-        return cuentaService.crearMovimiento(principal.id(), id,
+        return admin.crearMovimiento(principal.id(), id,
                 OrigenMovimiento.valueOf(tipo), concepto, importe,
                 fecha != null ? LocalDate.parse(fecha) : null,
                 categoria != null ? CategoriaMovimiento.valueOf(categoria) : null,
@@ -91,7 +93,7 @@ public class CuentaController {
     @DeleteMapping("/movimientos/{movId}")
     public CuentaDetalle borrarMovimiento(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long movId) {
-        return cuentaService.borrarMovimiento(principal.id(), movId);
+        return admin.borrarMovimiento(principal.id(), movId);
     }
 
     /** Marca la ropa (camiseta/sudadera: cantidad, talla, confirmada) de un asistente en el evento. Solo admin. */
@@ -99,7 +101,7 @@ public class CuentaController {
     public CuentaDetalle marcarRopa(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long id, @PathVariable Long asistenciaId,
             @org.springframework.web.bind.annotation.RequestBody MarcarRopaRequest req) {
-        return cuentaService.marcarRopa(principal.id(), id, asistenciaId,
+        return admin.marcarRopa(principal.id(), id, asistenciaId,
                 req.camisetaCantidad(), req.camisetaTalla(), req.camisetaConfirmada(),
                 req.sudaderaCantidad(), req.sudaderaTalla(), req.sudaderaConfirmada());
     }
@@ -113,7 +115,7 @@ public class CuentaController {
     @PostMapping(path = "/movimientos/{movId}/recibo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public void subirRecibo(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long movId, @RequestParam MultipartFile recibo) {
-        cuentaService.guardarRecibo(principal.id(), movId, guardarReciboSiHay(recibo));
+        admin.guardarRecibo(principal.id(), movId, guardarReciboSiHay(recibo));
     }
 
     private String guardarReciboSiHay(MultipartFile recibo) {

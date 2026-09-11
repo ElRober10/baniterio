@@ -38,7 +38,7 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
 
     /**
      * Eventos de la peña que aún no han pasado ({@code coalesce(fechaFin, fecha) >= limite}),
-     * con la cuenta cargada. Lo usa {@code CuentaService} para ordenar las cuentas por
+     * con la cuenta cargada. Lo usa {@code CuentaConsultaService} para ordenar las cuentas por
      * el evento futuro más próximo de cada una.
      */
     @Query("""
@@ -64,7 +64,7 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
     List<Evento> pendientesRespuesta(@Param("penaId") Long penaId,
             @Param("usuarioId") Long usuarioId, @Param("hoy") LocalDate hoy);
 
-    /** Todos los eventos de una cuenta (todos los años). Lo usa {@code CuentaService} para el precio de la ropa. */
+    /** Todos los eventos de una cuenta (todos los años). Lo usa {@code CuentaConsultaService} para el precio de la ropa. */
     List<Evento> findByCuentaId(Long cuentaId);
 
     /** Eventos ocultos ("borrados") de la peña, para poder recuperarlos. Más recientes primero. */

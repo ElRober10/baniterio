@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Escribe el libro de movimientos de una cuenta. Servicio fino: depende solo del
  * repositorio y del almacén de recibos, así que lo pueden inyectar
- * {@code AsistenciaService}, {@code PagoDeclaradoService} y {@code CuentaService}
+ * {@code AsistenciaService}, {@code PagoDeclaradoService} y {@code CuentaAdminService}
  * sin ciclos.
  */
 @Service

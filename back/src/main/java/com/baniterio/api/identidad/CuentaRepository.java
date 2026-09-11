@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 /** Acceso a BBDD para {@link Cuenta}. */
 public interface CuentaRepository extends JpaRepository<Cuenta, Long> {
 
-    /** Cuentas de la peña. El orden de la sección Cuentas lo pone {@code CuentaService}. */
+    /** Cuentas de la peña. El orden de la sección Cuentas lo pone {@code CuentaConsultaService}. */
     List<Cuenta> findByPenaId(Long penaId);
 
     Optional<Cuenta> findByPenaIdAndNombre(Long penaId, String nombre);

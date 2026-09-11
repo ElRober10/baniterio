@@ -14,7 +14,7 @@ import com.baniterio.api.identidad.Hijo;
 import com.baniterio.api.identidad.HijoRepository;
 import com.baniterio.api.identidad.Membresia;
 import com.baniterio.api.identidad.MembresiaRepository;
-import com.baniterio.api.identidad.PenaRepository;
+import com.baniterio.api.identidad.PenaPilotoService;
 import com.baniterio.api.identidad.Perfil;
 import com.baniterio.api.identidad.PerfilRepository;
 import com.baniterio.api.identidad.Usuario;
@@ -39,18 +39,15 @@ import org.springframework.util.StringUtils;
 @Service
 public class MiembrosService {
 
-    /** Peña piloto (alcance de una sola peña); se resuelve por slug, como en el resto del código. */
-    private static final String SLUG_PENA = "baniterio";
-
-    private final PenaRepository penas;
+    private final PenaPilotoService pena;
     private final MembresiaRepository membresias;
     private final PerfilRepository perfiles;
     private final VinculoParejaRepository vinculos;
     private final HijoRepository hijos;
 
-    public MiembrosService(PenaRepository penas, MembresiaRepository membresias,
+    public MiembrosService(PenaPilotoService pena, MembresiaRepository membresias,
             PerfilRepository perfiles, VinculoParejaRepository vinculos, HijoRepository hijos) {
-        this.penas = penas;
+        this.pena = pena;
         this.membresias = membresias;
         this.perfiles = perfiles;
         this.vinculos = vinculos;
@@ -59,9 +56,7 @@ public class MiembrosService {
 
     @Transactional(readOnly = true)
     public List<TarjetaMiembroResponse> tarjetas(Long usuarioId) {
-        Long penaId = penas.findBySlug(SLUG_PENA)
-                .orElseThrow(() -> new IllegalStateException("Falta la peña piloto '" + SLUG_PENA + "'"))
-                .getId();
+        Long penaId = pena.id();
 
         ContextoOrden ctx = new ContextoOrden(parejaUsuarioId(usuarioId), hijosRegistradosIds(usuarioId));
 

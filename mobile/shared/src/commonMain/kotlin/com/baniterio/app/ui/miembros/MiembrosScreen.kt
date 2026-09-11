@@ -40,14 +40,12 @@ import com.baniterio.app.data.urlMedia
 import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.theme.BaniterioWordmark
 import com.baniterio.app.ui.comun.CaraDeCarta
+import com.baniterio.app.ui.comun.EstadoCarga
+import com.baniterio.app.ui.comun.PantallaConEstado
 import com.baniterio.app.ui.comun.relieveDeCarta
 import kotlinx.coroutines.launch
 
-private sealed interface EstadoMiembros {
-    data object Cargando : EstadoMiembros
-    data class Cargada(val tarjetas: List<TarjetaMiembroResponse>, val pendiente: VinculoPendiente?) : EstadoMiembros
-    data class Error(val mensaje: String) : EstadoMiembros
-}
+private data class DatosMiembros(val tarjetas: List<TarjetaMiembroResponse>, val pendiente: VinculoPendiente?)
 
 /**
  * Sección Miembros: rejilla de tarjetas con forma de carta (mismas que el editor
@@ -62,20 +60,20 @@ fun MiembrosScreen(
     onEditar: () -> Unit,
     onVolver: () -> Unit,
 ) {
-    var estado by remember { mutableStateOf<EstadoMiembros>(EstadoMiembros.Cargando) }
+    var estado by remember { mutableStateOf<EstadoCarga<DatosMiembros>>(EstadoCarga.Cargando) }
     var procesando by remember { mutableStateOf(false) }
     var aviso by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     suspend fun cargar(mostrarCargando: Boolean = true) {
-        if (mostrarCargando) estado = EstadoMiembros.Cargando
+        if (mostrarCargando) estado = EstadoCarga.Cargando
         val tarjetas = perfilRepo.miembros()
         if (tarjetas is ResultadoPerfil.Error) {
-            estado = EstadoMiembros.Error(tarjetas.mensaje); return
+            estado = EstadoCarga.Error(tarjetas.mensaje); return
         }
         // El perfil solo se usa para el banner; si falla, se sigue sin él.
         val pendiente = (perfilRepo.miPerfil() as? ResultadoPerfil.Exito)?.dato?.vinculoPendiente
-        estado = EstadoMiembros.Cargada((tarjetas as ResultadoPerfil.Exito).dato, pendiente)
+        estado = EstadoCarga.Cargado(DatosMiembros((tarjetas as ResultadoPerfil.Exito).dato, pendiente))
     }
 
     LaunchedEffect(Unit) { cargar() }
@@ -120,19 +118,9 @@ fun MiembrosScreen(
             Spacer(Modifier.height(12.dp))
         }
 
-        when (val e = estado) {
-            is EstadoMiembros.Cargando -> Text("Cargando…", color = BaniterioColors.muted)
-            is EstadoMiembros.Error -> Column {
-                Text(e.mensaje, color = BaniterioColors.error)
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "Reintentar",
-                    color = BaniterioColors.brandBright,
-                    modifier = Modifier.clickable { scope.launch { cargar() } },
-                )
-            }
-            is EstadoMiembros.Cargada -> {
-                e.pendiente?.let { v ->
+        PantallaConEstado(estado, onReintentar = { scope.launch { cargar() } }) { datos ->
+            run {
+                datos.pendiente?.let { v ->
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -163,7 +151,7 @@ fun MiembrosScreen(
                 }
 
                 RejillaAlturaIgual(
-                    items = e.tarjetas,
+                    items = datos.tarjetas,
                     columnas = 2,
                     espacio = 16.dp,
                     modifier = Modifier.fillMaxWidth(),

@@ -6,7 +6,7 @@ import com.baniterio.api.identidad.EstadoVinculo;
 import com.baniterio.api.identidad.HijoRepository;
 import com.baniterio.api.identidad.MembresiaRepository;
 import com.baniterio.api.identidad.Pena;
-import com.baniterio.api.identidad.PenaRepository;
+import com.baniterio.api.identidad.PenaPilotoService;
 import com.baniterio.api.identidad.TelefonoAutorizado;
 import com.baniterio.api.identidad.TelefonoAutorizadoRepository;
 import com.baniterio.api.identidad.Usuario;
@@ -31,28 +31,25 @@ import org.springframework.util.StringUtils;
 @Service
 public class VinculoParejaService {
 
-    /** Peña piloto (alcance de una sola peña); se resuelve por slug, como en {@code AuthService}. */
-    private static final String SLUG_PENA = "baniterio";
-
     private static final String TITULO_PUSH = "Vínculo de pareja";
 
     private final VinculoParejaRepository vinculos;
     private final UsuarioRepository usuarios;
     private final MembresiaRepository membresias;
-    private final PenaRepository penas;
+    private final PenaPilotoService penaPiloto;
     private final TelefonoAutorizadoRepository telefonosAutorizados;
     private final HijoRepository hijos;
     private final HijosReconciliador hijosReconciliador;
     private final ApplicationEventPublisher eventos;
 
     public VinculoParejaService(VinculoParejaRepository vinculos, UsuarioRepository usuarios,
-            MembresiaRepository membresias, PenaRepository penas,
+            MembresiaRepository membresias, PenaPilotoService penaPiloto,
             TelefonoAutorizadoRepository telefonosAutorizados, HijoRepository hijos,
             HijosReconciliador hijosReconciliador, ApplicationEventPublisher eventos) {
         this.vinculos = vinculos;
         this.usuarios = usuarios;
         this.membresias = membresias;
-        this.penas = penas;
+        this.penaPiloto = penaPiloto;
         this.telefonosAutorizados = telefonosAutorizados;
         this.hijos = hijos;
         this.hijosReconciliador = hijosReconciliador;
@@ -368,6 +365,6 @@ public class VinculoParejaService {
     }
 
     private Pena pena() {
-        return penas.findBySlug(SLUG_PENA).orElseThrow();
+        return penaPiloto.entidad();
     }
 }

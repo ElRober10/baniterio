@@ -4,10 +4,11 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import com.baniterio.api.identidad.AreaProtegida;
 import com.baniterio.api.identidad.MembresiaRepository;
-import com.baniterio.api.identidad.PenaRepository;
+import com.baniterio.api.identidad.PenaPilotoService;
 import com.baniterio.api.identidad.PermisoAreaRepository;
 import com.baniterio.api.identidad.RolMembresia;
 import com.baniterio.api.identidad.Usuario;
@@ -32,18 +33,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ServicioPermisos {
 
-    private static final String SLUG_PENA = "baniterio";
-
     private final MembresiaRepository membresias;
     private final PermisoAreaRepository permisos;
-    private final PenaRepository penas;
+    private final PenaPilotoService pena;
     private final UsuarioRepository usuarios;
 
     public ServicioPermisos(MembresiaRepository membresias, PermisoAreaRepository permisos,
-                            PenaRepository penas, UsuarioRepository usuarios) {
+                            PenaPilotoService pena, UsuarioRepository usuarios) {
         this.membresias = membresias;
         this.permisos = permisos;
-        this.penas = penas;
+        this.pena = pena;
         this.usuarios = usuarios;
     }
 
@@ -96,11 +95,27 @@ public class ServicioPermisos {
         return Collections.unmodifiableSet(resultado);
     }
 
-    /** Id de la peña piloto. Si falta la siembra (V6), es un fallo de arranque legítimo (500). */
+    /**
+     * Exige que {@code usuarioId} tenga {@code area}, o lanza la excepción que dé
+     * {@code excepcion}. Centraliza el patrón repetido {@code if (!puede(...)) throw ...}
+     * sin tocar los tipos de excepción por módulo (los clientes pueden leer el código de error).
+     */
+    @Transactional(readOnly = true)
+    public void exigir(Long usuarioId, AreaProtegida area, Supplier<? extends RuntimeException> excepcion) {
+        if (!puede(usuarioId, area)) {
+            throw excepcion.get();
+        }
+    }
+
+    /** Igual que {@link #exigir}, pero para las operaciones que exigen ser administrador. */
+    @Transactional(readOnly = true)
+    public void exigirAdmin(Long usuarioId, Supplier<? extends RuntimeException> excepcion) {
+        if (!esAdministrador(usuarioId)) {
+            throw excepcion.get();
+        }
+    }
+
     private Long penaId() {
-        return penas.findBySlug(SLUG_PENA)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Falta la peña piloto '" + SLUG_PENA + "'"))
-                .getId();
+        return pena.id();
     }
 }

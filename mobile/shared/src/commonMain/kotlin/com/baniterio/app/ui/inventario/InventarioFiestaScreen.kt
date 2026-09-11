@@ -1,6 +1,5 @@
 package com.baniterio.app.ui.inventario
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,15 +30,13 @@ import com.baniterio.app.data.ResultadoInventario
 import com.baniterio.app.data.dto.ArticuloFiestaDto
 import com.baniterio.app.data.dto.CategoriaFiestaDto
 import com.baniterio.app.theme.BaniterioColors
-import com.baniterio.app.theme.BaniterioWordmark
+import com.baniterio.app.ui.comun.CabeceraPantalla
+import com.baniterio.app.ui.comun.EstadoCarga
+import com.baniterio.app.ui.comun.PantallaConEstado
 import com.baniterio.app.ui.comun.relieveDeCarta
 import kotlinx.coroutines.launch
 
-private sealed interface EstadoFiesta {
-    data object Cargando : EstadoFiesta
-    data class Cargada(val puedoEditar: Boolean, val categorias: List<CategoriaFiestaDto>) : EstadoFiesta
-    data class Error(val mensaje: String) : EstadoFiesta
-}
+private data class DatosFiesta(val puedoEditar: Boolean, val categorias: List<CategoriaFiestaDto>)
 
 /** Quita el ".0" de las cantidades enteras. */
 private fun fmtFiesta(d: Double): String =
@@ -56,7 +53,7 @@ fun InventarioFiestaScreen(
     eventoId: Long,
     onVolver: () -> Unit,
 ) {
-    var estado by remember { mutableStateOf<EstadoFiesta>(EstadoFiesta.Cargando) }
+    var estado by remember { mutableStateOf<EstadoCarga<DatosFiesta>>(EstadoCarga.Cargando) }
     var intento by remember { mutableStateOf(0) }
     var aviso by remember { mutableStateOf<String?>(null) }
     var confirmar by remember { mutableStateOf<ArticuloFiestaDto?>(null) }
@@ -64,10 +61,10 @@ fun InventarioFiestaScreen(
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(intento) {
-        estado = EstadoFiesta.Cargando
+        estado = EstadoCarga.Cargando
         estado = when (val r = inventarioRepo.inventarioFiesta(eventoId)) {
-            is ResultadoInventario.Exito -> EstadoFiesta.Cargada(r.dato.puedoEditar, r.dato.categorias)
-            is ResultadoInventario.Error -> EstadoFiesta.Error(r.mensaje)
+            is ResultadoInventario.Exito -> EstadoCarga.Cargado(DatosFiesta(r.dato.puedoEditar, r.dato.categorias))
+            is ResultadoInventario.Error -> EstadoCarga.Error(r.mensaje)
         }
     }
 
@@ -75,15 +72,7 @@ fun InventarioFiestaScreen(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BaniterioWordmark()
-            Text(
-                "Volver",
-                style = MaterialTheme.typography.bodyMedium,
-                color = BaniterioColors.brandBright,
-                modifier = Modifier.clickable { onVolver() },
-            )
-        }
+        CabeceraPantalla(onVolver)
         Text(
             "Inventario de la fiesta",
             style = MaterialTheme.typography.headlineMedium,
@@ -98,17 +87,11 @@ fun InventarioFiestaScreen(
 
         aviso?.let { Text(it, color = BaniterioColors.gold) }
 
-        when (val e = estado) {
-            is EstadoFiesta.Cargando -> Text("Cargando…", color = BaniterioColors.muted)
-            is EstadoFiesta.Error -> {
-                Text(e.mensaje, color = BaniterioColors.muted)
-                Button(onClick = { intento++ }) { Text("Reintentar") }
+        PantallaConEstado(estado, onReintentar = { intento++ }) { datos ->
+            if (datos.categorias.isEmpty()) {
+                Text("Todavía no se ha enviado nada a este evento.", color = BaniterioColors.muted)
             }
-            is EstadoFiesta.Cargada -> {
-                if (e.categorias.isEmpty()) {
-                    Text("Todavía no se ha enviado nada a este evento.", color = BaniterioColors.muted)
-                }
-                e.categorias.forEach { c ->
+            datos.categorias.forEach { c ->
                     Column(
                         modifier = Modifier.fillMaxWidth()
                             .relieveDeCarta(RoundedCornerShape(14.dp)).padding(16.dp),
@@ -138,7 +121,7 @@ fun InventarioFiestaScreen(
                                     color = MaterialTheme.colorScheme.onBackground,
                                 )
                             }
-                            if (e.puedoEditar) {
+                            if (datos.puedoEditar) {
                                 Row(
                                     Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -160,8 +143,6 @@ fun InventarioFiestaScreen(
                 }
             }
         }
-    }
-
     confirmar?.let { art ->
         AlertDialog(
             onDismissRequest = { confirmar = null },
