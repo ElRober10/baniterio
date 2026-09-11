@@ -37,7 +37,7 @@ import com.baniterio.app.data.ResultadoEvento
 import com.baniterio.app.data.dto.CuentaResumen
 import com.baniterio.app.data.dto.GuardarEventoRequest
 import com.baniterio.app.theme.BaniterioColors
-import com.baniterio.app.theme.BaniterioWordmark
+import com.baniterio.app.ui.comun.CabeceraPantalla
 import com.baniterio.app.ui.comun.relieveDeCarta
 import kotlinx.coroutines.launch
 
@@ -179,15 +179,7 @@ fun EditorEventoScreen(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp).imePadding(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BaniterioWordmark()
-            Text(
-                "Volver",
-                style = MaterialTheme.typography.bodyMedium,
-                color = BaniterioColors.brandBright,
-                modifier = Modifier.clickable { onVolver() },
-            )
-        }
+        CabeceraPantalla(onVolver)
         Text(
             if (editando) "Editar evento" else "Nuevo evento",
             style = MaterialTheme.typography.headlineMedium,

@@ -38,15 +38,11 @@ import com.baniterio.app.data.EventosRepository
 import com.baniterio.app.data.ResultadoEvento
 import com.baniterio.app.data.dto.EventoDetalle
 import com.baniterio.app.theme.BaniterioColors
-import com.baniterio.app.theme.BaniterioWordmark
+import com.baniterio.app.ui.comun.CabeceraPantalla
+import com.baniterio.app.ui.comun.EstadoCarga
+import com.baniterio.app.ui.comun.PantallaConEstado
 import com.baniterio.app.ui.comun.relieveDeCarta
 import kotlinx.coroutines.launch
-
-private sealed interface EstadoDetalle {
-    data object Cargando : EstadoDetalle
-    data class Cargado(val evento: EventoDetalle) : EstadoDetalle
-    data class Error(val mensaje: String) : EstadoDetalle
-}
 
 private fun metodoLegible(m: String?) = when (m) {
     "BIZUM" -> "Bizum"
@@ -78,16 +74,16 @@ fun EventoDetalleScreen(
     onListaCompra: () -> Unit,
     onVolver: () -> Unit,
 ) {
-    var estado by remember { mutableStateOf<EstadoDetalle>(EstadoDetalle.Cargando) }
+    var estado by remember { mutableStateOf<EstadoCarga<EventoDetalle>>(EstadoCarga.Cargando) }
     var aviso by remember { mutableStateOf<String?>(null) }
     var intento by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(eventoId, intento) {
-        estado = EstadoDetalle.Cargando
+        estado = EstadoCarga.Cargando
         estado = when (val r = eventosRepo.detalle(eventoId)) {
-            is ResultadoEvento.Exito -> EstadoDetalle.Cargado(r.dato)
-            is ResultadoEvento.Error -> EstadoDetalle.Error(r.mensaje)
+            is ResultadoEvento.Exito -> EstadoCarga.Cargado(r.dato)
+            is ResultadoEvento.Error -> EstadoCarga.Error(r.mensaje)
         }
     }
 
@@ -95,24 +91,10 @@ fun EventoDetalleScreen(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BaniterioWordmark()
-            Text(
-                "Volver",
-                style = MaterialTheme.typography.bodyMedium,
-                color = BaniterioColors.brandBright,
-                modifier = Modifier.clickable { onVolver() },
-            )
-        }
+        CabeceraPantalla(onVolver)
 
-        when (val e = estado) {
-            is EstadoDetalle.Cargando -> Text("Cargando…", color = BaniterioColors.muted)
-            is EstadoDetalle.Error -> {
-                Text(e.mensaje, color = BaniterioColors.muted)
-                Button(onClick = { intento++ }) { Text("Reintentar") }
-            }
-            is EstadoDetalle.Cargado -> {
-                val ev = e.evento
+        PantallaConEstado(estado, onReintentar = { intento++ }) { ev ->
+            run {
                 var verAsistentes by remember { mutableStateOf(false) }
                 var verPago by remember { mutableStateOf(false) }
                 var verPagoInfo by remember { mutableStateOf(false) }

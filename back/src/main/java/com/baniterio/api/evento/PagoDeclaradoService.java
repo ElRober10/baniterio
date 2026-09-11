@@ -289,9 +289,7 @@ public class PagoDeclaradoService {
     }
 
     private void exigirAdmin(Long usuarioId) {
-        if (!permisos.esAdministrador(usuarioId)) {
-            throw new SinPermisoException();
-        }
+        permisos.exigirAdmin(usuarioId, SinPermisoException::new);
     }
 
     private static void exigirPendiente(PagoDeclarado p) {

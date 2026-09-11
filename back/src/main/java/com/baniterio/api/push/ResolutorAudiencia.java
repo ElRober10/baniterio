@@ -7,7 +7,7 @@ import java.util.stream.Stream;
 import com.baniterio.api.identidad.AsistenciaEventoRepository;
 import com.baniterio.api.identidad.Membresia;
 import com.baniterio.api.identidad.MembresiaRepository;
-import com.baniterio.api.identidad.PenaRepository;
+import com.baniterio.api.identidad.PenaPilotoService;
 import com.baniterio.api.identidad.RolMembresia;
 import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
@@ -22,18 +22,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ResolutorAudiencia {
 
-    private static final String SLUG_PENA = "baniterio";
-
     private final MembresiaRepository membresias;
     private final UsuarioRepository usuarios;
-    private final PenaRepository penas;
+    private final PenaPilotoService pena;
     private final AsistenciaEventoRepository asistencias;
 
     public ResolutorAudiencia(MembresiaRepository membresias, UsuarioRepository usuarios,
-                              PenaRepository penas, AsistenciaEventoRepository asistencias) {
+                              PenaPilotoService pena, AsistenciaEventoRepository asistencias) {
         this.membresias = membresias;
         this.usuarios = usuarios;
-        this.penas = penas;
+        this.pena = pena;
         this.asistencias = asistencias;
     }
 
@@ -76,9 +74,6 @@ public class ResolutorAudiencia {
     }
 
     private Stream<Membresia> activas() {
-        Long penaId = penas.findBySlug(SLUG_PENA)
-                .orElseThrow(() -> new IllegalStateException("Falta la peña piloto '" + SLUG_PENA + "'"))
-                .getId();
-        return membresias.findByPenaIdAndActivaTrue(penaId).stream();
+        return membresias.findByPenaIdAndActivaTrue(pena.id()).stream();
     }
 }

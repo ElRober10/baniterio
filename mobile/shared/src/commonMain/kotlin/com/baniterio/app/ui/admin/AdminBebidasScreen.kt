@@ -1,6 +1,5 @@
 package com.baniterio.app.ui.admin
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,15 +28,11 @@ import com.baniterio.app.data.BebidaRepository
 import com.baniterio.app.data.ResultadoBebida
 import com.baniterio.app.data.dto.BebidaPendienteDto
 import com.baniterio.app.theme.BaniterioColors
-import com.baniterio.app.theme.BaniterioWordmark
+import com.baniterio.app.ui.comun.CabeceraPantalla
+import com.baniterio.app.ui.comun.EstadoCarga
+import com.baniterio.app.ui.comun.PantallaConEstado
 import com.baniterio.app.ui.comun.relieveDeCarta
 import kotlinx.coroutines.launch
-
-private sealed interface EstadoBebidas {
-    data object Cargando : EstadoBebidas
-    data class Lista(val pendientes: List<BebidaPendienteDto>) : EstadoBebidas
-    data class Error(val mensaje: String) : EstadoBebidas
-}
 
 /**
  * Pantalla de admin: acepta o rechaza las bebidas que la gente propone con
@@ -49,16 +44,16 @@ fun AdminBebidasScreen(
     bebidaRepo: BebidaRepository,
     onVolver: () -> Unit,
 ) {
-    var estado by remember { mutableStateOf<EstadoBebidas>(EstadoBebidas.Cargando) }
+    var estado by remember { mutableStateOf<EstadoCarga<List<BebidaPendienteDto>>>(EstadoCarga.Cargando) }
     var aviso by remember { mutableStateOf<String?>(null) }
     var intento by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
 
     androidx.compose.runtime.LaunchedEffect(intento) {
-        estado = EstadoBebidas.Cargando
+        estado = EstadoCarga.Cargando
         estado = when (val r = bebidaRepo.pendientes()) {
-            is ResultadoBebida.Exito -> EstadoBebidas.Lista(r.dato)
-            is ResultadoBebida.Error -> EstadoBebidas.Error(r.mensaje)
+            is ResultadoBebida.Exito -> EstadoCarga.Cargado(r.dato)
+            is ResultadoBebida.Error -> EstadoCarga.Error(r.mensaje)
         }
     }
 
@@ -66,27 +61,17 @@ fun AdminBebidasScreen(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BaniterioWordmark()
-            Text("Volver", color = BaniterioColors.brandBright,
-                modifier = Modifier.clickable { onVolver() })
-        }
+        CabeceraPantalla(onVolver)
         Text("Bebidas propuestas", style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
         aviso?.let { Text(it, color = BaniterioColors.gold) }
 
-        when (val e = estado) {
-            is EstadoBebidas.Cargando -> Text("Cargando…", color = BaniterioColors.muted)
-            is EstadoBebidas.Error -> {
-                Text(e.mensaje, color = BaniterioColors.muted)
-                Button(onClick = { intento++ }) { Text("Reintentar") }
+        PantallaConEstado(estado, onReintentar = { intento++ }) { pendientes ->
+            if (pendientes.isEmpty()) {
+                Text("No hay bebidas pendientes de revisar.", color = BaniterioColors.muted)
             }
-            is EstadoBebidas.Lista -> {
-                if (e.pendientes.isEmpty()) {
-                    Text("No hay bebidas pendientes de revisar.", color = BaniterioColors.muted)
-                }
-                e.pendientes.forEach { b ->
-                    Column(
+            pendientes.forEach { b ->
+                Column(
                         modifier = Modifier.fillMaxWidth()
                             .relieveDeCarta(RoundedCornerShape(14.dp))
                             .padding(16.dp),
@@ -129,4 +114,4 @@ fun AdminBebidasScreen(
             }
         }
     }
-}
+

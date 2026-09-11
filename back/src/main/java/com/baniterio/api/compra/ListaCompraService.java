@@ -32,7 +32,7 @@ import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
 import com.baniterio.api.identidad.FichaBebida;
 import com.baniterio.api.identidad.FichaBebidaRepository;
-import com.baniterio.api.identidad.PenaRepository;
+import com.baniterio.api.identidad.PenaPilotoService;
 import com.baniterio.api.inventario.ArticuloEvento;
 import com.baniterio.api.inventario.ArticuloEventoRepository;
 import com.baniterio.api.inventario.CategoriaInventario;
@@ -51,8 +51,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ListaCompraService {
 
-    private static final String SLUG_PENA = "baniterio";
-
     private final ReglaCompraRepository plantilla;
     private final ReglaCompraEventoRepository reglasEvento;
     private final LineaCompraEventoRepository lineas;
@@ -60,13 +58,13 @@ public class ListaCompraService {
     private final EventoRepository eventos;
     private final AsistenciaEventoRepository asistencias;
     private final FichaBebidaRepository fichas;
-    private final PenaRepository penas;
+    private final PenaPilotoService pena;
     private final ServicioPermisos permisos;
 
     public ListaCompraService(ReglaCompraRepository plantilla, ReglaCompraEventoRepository reglasEvento,
                               LineaCompraEventoRepository lineas, ArticuloEventoRepository articulosEvento,
                               EventoRepository eventos, AsistenciaEventoRepository asistencias,
-                              FichaBebidaRepository fichas, PenaRepository penas, ServicioPermisos permisos) {
+                              FichaBebidaRepository fichas, PenaPilotoService pena, ServicioPermisos permisos) {
         this.plantilla = plantilla;
         this.reglasEvento = reglasEvento;
         this.lineas = lineas;
@@ -74,7 +72,7 @@ public class ListaCompraService {
         this.eventos = eventos;
         this.asistencias = asistencias;
         this.fichas = fichas;
-        this.penas = penas;
+        this.pena = pena;
         this.permisos = permisos;
     }
 
@@ -85,9 +83,7 @@ public class ListaCompraService {
     }
 
     private Long penaId() {
-        return penas.findBySlug(SLUG_PENA)
-                .orElseThrow(() -> new IllegalStateException("Falta la peña piloto '" + SLUG_PENA + "'"))
-                .getId();
+        return pena.id();
     }
 
     private Evento eventoAbierto(Long eventoId) {
@@ -97,9 +93,7 @@ public class ListaCompraService {
     }
 
     private void exigirArea(Long usuarioId) {
-        if (!permisos.puede(usuarioId, AreaProtegida.INVENTARIO)) {
-            throw new SinPermisoInventarioException();
-        }
+        permisos.exigir(usuarioId, AreaProtegida.INVENTARIO, SinPermisoInventarioException::new);
     }
 
     /** Copia la plantilla al evento si aún no tiene reglas propias. */

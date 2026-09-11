@@ -27,14 +27,10 @@ import com.baniterio.app.data.CuentasRepository
 import com.baniterio.app.data.ResultadoCuenta
 import com.baniterio.app.data.dto.CuentaResumen
 import com.baniterio.app.theme.BaniterioColors
-import com.baniterio.app.theme.BaniterioWordmark
+import com.baniterio.app.ui.comun.CabeceraPantalla
+import com.baniterio.app.ui.comun.EstadoCarga
+import com.baniterio.app.ui.comun.PantallaConEstado
 import com.baniterio.app.ui.comun.relieveDeCarta
-
-private sealed interface EstadoCuentas {
-    data object Cargando : EstadoCuentas
-    data class Cargada(val cuentas: List<CuentaResumen>) : EstadoCuentas
-    data class Error(val mensaje: String) : EstadoCuentas
-}
 
 @Composable
 fun CuentasScreen(
@@ -42,14 +38,14 @@ fun CuentasScreen(
     onAbrirCuenta: (Long) -> Unit,
     onVolver: () -> Unit,
 ) {
-    var estado by remember { mutableStateOf<EstadoCuentas>(EstadoCuentas.Cargando) }
+    var estado by remember { mutableStateOf<EstadoCarga<List<CuentaResumen>>>(EstadoCarga.Cargando) }
     var intento by remember { mutableStateOf(0) }
 
     LaunchedEffect(intento) {
-        estado = EstadoCuentas.Cargando
+        estado = EstadoCarga.Cargando
         estado = when (val r = cuentasRepo.listar()) {
-            is ResultadoCuenta.Exito -> EstadoCuentas.Cargada(r.dato)
-            is ResultadoCuenta.Error -> EstadoCuentas.Error(r.mensaje)
+            is ResultadoCuenta.Exito -> EstadoCarga.Cargado(r.dato)
+            is ResultadoCuenta.Error -> EstadoCarga.Error(r.mensaje)
         }
     }
 
@@ -57,15 +53,7 @@ fun CuentasScreen(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BaniterioWordmark()
-            Text(
-                "Volver",
-                style = MaterialTheme.typography.bodyMedium,
-                color = BaniterioColors.brandBright,
-                modifier = Modifier.clickable { onVolver() },
-            )
-        }
+        CabeceraPantalla(onVolver)
         Text(
             "Cuentas",
             style = MaterialTheme.typography.headlineMedium,
@@ -78,17 +66,10 @@ fun CuentasScreen(
             color = BaniterioColors.muted,
         )
 
-        when (val e = estado) {
-            is EstadoCuentas.Cargando -> Text("Cargando…", color = BaniterioColors.muted)
-            is EstadoCuentas.Error -> {
-                Text(e.mensaje, color = BaniterioColors.muted)
-                Button(onClick = { intento++ }) { Text("Reintentar") }
-            }
-            is EstadoCuentas.Cargada -> {
-                e.cuentas.forEach { c -> TarjetaCuenta(c) { onAbrirCuenta(c.id) } }
-                if (e.cuentas.isEmpty()) {
-                    Text("Todavía no hay cuentas.", color = BaniterioColors.muted)
-                }
+        PantallaConEstado(estado, onReintentar = { intento++ }) { cuentas ->
+            cuentas.forEach { c -> TarjetaCuenta(c) { onAbrirCuenta(c.id) } }
+            if (cuentas.isEmpty()) {
+                Text("Todavía no hay cuentas.", color = BaniterioColors.muted)
             }
         }
     }

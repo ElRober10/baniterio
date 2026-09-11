@@ -35,7 +35,7 @@ import com.baniterio.api.identidad.FichaBebidaRepository;
 import com.baniterio.api.identidad.MetodoPago;
 import com.baniterio.api.identidad.NotificacionEvento;
 import com.baniterio.api.identidad.NotificacionEventoRepository;
-import com.baniterio.api.identidad.PenaRepository;
+import com.baniterio.api.identidad.PenaPilotoService;
 import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
 import com.baniterio.api.identidad.VinculoFamiliarService;
@@ -58,7 +58,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class AsistenciaService {
 
     private static final String TITULO_PUSH = "Eventos";
-    private static final String SLUG_PENA = "baniterio";
     /** Horas que hay que esperar entre un envío de notificación y el siguiente. */
     private static final int HORAS_ENTRE_ENVIOS = 48;
 
@@ -66,7 +65,7 @@ public class AsistenciaService {
     private final NotificacionEventoRepository notificaciones;
     private final EventoRepository eventos;
     private final UsuarioRepository usuarios;
-    private final PenaRepository penas;
+    private final PenaPilotoService pena;
     private final ServicioPermisos permisos;
     private final ApplicationEventPublisher publisher;
     private final ResolutorAudiencia resolutor;
@@ -79,7 +78,7 @@ public class AsistenciaService {
 
     public AsistenciaService(AsistenciaEventoRepository asistencias,
                              NotificacionEventoRepository notificaciones, EventoRepository eventos,
-                             UsuarioRepository usuarios, PenaRepository penas, ServicioPermisos permisos,
+                             UsuarioRepository usuarios, PenaPilotoService pena, ServicioPermisos permisos,
                              ApplicationEventPublisher publisher, ResolutorAudiencia resolutor,
                              FichaBebidaService fichaBebida, VinculoFamiliarService vinculoFamiliar,
                              FichaBebidaRepository fichas, VinculoParejaRepository vinculosPareja,
@@ -89,7 +88,7 @@ public class AsistenciaService {
         this.notificaciones = notificaciones;
         this.eventos = eventos;
         this.usuarios = usuarios;
-        this.penas = penas;
+        this.pena = pena;
         this.permisos = permisos;
         this.publisher = publisher;
         this.resolutor = resolutor;
@@ -442,9 +441,7 @@ public class AsistenciaService {
      */
     @Transactional(readOnly = true)
     public List<PendienteRespuesta> pendientesRespuesta(Long usuarioId) {
-        Long penaId = penas.findBySlug(SLUG_PENA)
-                .orElseThrow(() -> new IllegalStateException("Falta la peña piloto '" + SLUG_PENA + "'"))
-                .getId();
+        Long penaId = pena.id();
         LocalDate hoy = LocalDate.now();
         List<PendienteRespuesta> resultado = new ArrayList<>();
         for (VinculoFamiliarService.Persona persona : vinculoFamiliar.personasQuePuedoResponder(usuarioId)) {

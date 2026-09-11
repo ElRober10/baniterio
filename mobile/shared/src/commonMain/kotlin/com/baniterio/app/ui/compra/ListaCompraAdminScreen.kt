@@ -29,13 +29,9 @@ import com.baniterio.app.data.ListaCompraRepository
 import com.baniterio.app.data.ResultadoListaCompra
 import com.baniterio.app.data.dto.EventoListaCompraDto
 import com.baniterio.app.theme.BaniterioColors
-import com.baniterio.app.theme.BaniterioWordmark
-
-private sealed interface EstadoEventos {
-    data object Cargando : EstadoEventos
-    data class Cargada(val eventos: List<EventoListaCompraDto>) : EstadoEventos
-    data class Error(val mensaje: String) : EstadoEventos
-}
+import com.baniterio.app.ui.comun.CabeceraPantalla
+import com.baniterio.app.ui.comun.EstadoCarga
+import com.baniterio.app.ui.comun.PantallaConEstado
 
 /** "Cantidades para eventos": lista de eventos para ajustar su lista de la compra. Área INVENTARIO. */
 @Composable
@@ -44,22 +40,21 @@ fun ListaCompraAdminScreen(
     onAbrirEvento: (Long) -> Unit,
     onVolver: () -> Unit,
 ) {
-    var estado by remember { mutableStateOf<EstadoEventos>(EstadoEventos.Cargando) }
+    var estado by remember { mutableStateOf<EstadoCarga<List<EventoListaCompraDto>>>(EstadoCarga.Cargando) }
+    var intento by remember { mutableStateOf(0) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(intento) {
+        estado = EstadoCarga.Cargando
         estado = when (val r = listaCompraRepo.adminEventos()) {
-            is ResultadoListaCompra.Exito -> EstadoEventos.Cargada(r.dato)
-            is ResultadoListaCompra.Error -> EstadoEventos.Error(r.mensaje)
+            is ResultadoListaCompra.Exito -> EstadoCarga.Cargado(r.dato)
+            is ResultadoListaCompra.Error -> EstadoCarga.Error(r.mensaje)
         }
     }
 
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BaniterioWordmark()
-            Text("Volver", color = BaniterioColors.brandBright, modifier = Modifier.clickable { onVolver() })
-        }
+        CabeceraPantalla(onVolver)
         Spacer(Modifier.height(16.dp))
         Text(
             "Cantidades para eventos",
@@ -68,36 +63,32 @@ fun ListaCompraAdminScreen(
         )
         Spacer(Modifier.height(16.dp))
 
-        when (val e = estado) {
-            is EstadoEventos.Cargando -> Text("Cargando…", color = BaniterioColors.muted)
-            is EstadoEventos.Error -> Text(e.mensaje, color = BaniterioColors.muted)
-            is EstadoEventos.Cargada -> {
-                if (e.eventos.isEmpty()) {
-                    Text("No hay eventos.", color = BaniterioColors.muted)
+        PantallaConEstado(estado, onReintentar = { intento++ }) { eventos ->
+            if (eventos.isEmpty()) {
+                Text("No hay eventos.", color = BaniterioColors.muted)
+            }
+            eventos.forEach { ev ->
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(BaniterioColors.panel)
+                        .clickable { onAbrirEvento(ev.id) }
+                        .padding(20.dp),
+                ) {
+                    Text(
+                        ev.nombre,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        ev.fecha + (ev.fechaFin?.let { " – $it" } ?: ""),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = BaniterioColors.muted,
+                    )
                 }
-                e.eventos.forEach { ev ->
-                    Column(
-                        modifier = Modifier.fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(BaniterioColors.panel)
-                            .clickable { onAbrirEvento(ev.id) }
-                            .padding(20.dp),
-                    ) {
-                        Text(
-                            ev.nombre,
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            ev.fecha + (ev.fechaFin?.let { " – $it" } ?: ""),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = BaniterioColors.muted,
-                        )
-                    }
-                    Spacer(Modifier.height(16.dp))
-                }
+                Spacer(Modifier.height(16.dp))
             }
         }
     }
