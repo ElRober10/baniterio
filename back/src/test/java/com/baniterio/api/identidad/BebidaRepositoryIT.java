@@ -54,7 +54,7 @@ class BebidaRepositoryIT extends IntegrationTest {
         var alcohol = bebidas.findByTipoAndEstadoOrderByNombreAsc(TipoBebida.ALCOHOL, EstadoBebida.ACEPTADA);
         var refresco = bebidas.findByTipoAndEstadoOrderByNombreAsc(TipoBebida.REFRESCO, EstadoBebida.ACEPTADA);
         assertThat(alcohol).hasSize(18);
-        assertThat(refresco).hasSize(12);
+        assertThat(refresco).hasSize(13);
         assertThat(alcohol.get(0).getNombre()).isEqualTo("Absolut");
     }
 
