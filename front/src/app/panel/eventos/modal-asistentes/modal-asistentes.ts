@@ -8,9 +8,10 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { AsistenteFila, ListadoAsistentes, MetodoPago } from '../eventos.types';
+import { AsistenteFila, AsistenciaResumen, ListadoAsistentes, MetodoPago } from '../eventos.types';
 import { ESTADO_PAGO_TEXTO, EstadoPagoCuota } from '../../cuentas/cuentas.types';
 import { EventosService } from '../eventos.service';
+import { ModalAnadirAsistente } from '../modal-anadir-asistente/modal-anadir-asistente';
 
 const METODOS: { valor: MetodoPago; texto: string }[] = [
   { valor: 'BIZUM', texto: 'Bizum' },
@@ -51,13 +52,19 @@ const MAX_COLUMNAS = 3;
  */
 @Component({
   selector: 'app-modal-asistentes',
+  imports: [ModalAnadirAsistente],
   templateUrl: './modal-asistentes.html',
 })
 export class ModalAsistentes implements OnInit {
   private readonly eventosService = inject(EventosService);
 
   readonly eventoId = input.required<number>();
+  readonly puedoEditar = input(false);
+  readonly llevaFicha = input(false);
+  readonly diasEvento = input<string[]>([]);
   readonly cerrar = output<void>();
+
+  protected readonly modalAnadir = signal(false);
 
   protected readonly estado = signal<'cargando' | 'listo' | 'error'>('cargando');
   protected readonly datos = signal<ListadoAsistentes | null>(null);
@@ -83,6 +90,10 @@ export class ModalAsistentes implements OnInit {
   private readonly lista = viewChild<ElementRef<HTMLElement>>('lista');
 
   ngOnInit(): void {
+    this.cargar();
+  }
+
+  private cargar(): void {
     this.eventosService.asistentesEvento(this.eventoId()).subscribe({
       next: (d) => {
         this.datos.set(d);
@@ -91,6 +102,11 @@ export class ModalAsistentes implements OnInit {
       },
       error: () => this.estado.set('error'),
     });
+  }
+
+  protected onAsistenteAnadido(_: AsistenciaResumen): void {
+    this.modalAnadir.set(false);
+    this.cargar();
   }
 
   /** Sube columnas de una en una mientras la lista se desborde (hasta MAX_COLUMNAS). */

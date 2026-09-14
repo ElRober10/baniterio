@@ -147,7 +147,7 @@ export class AsistenciaEventoComponent implements OnInit {
       return;
     }
     this.aviso.set('');
-    this.eventosService.anadirAsistente(this.id, nombre, this.estadoManual(), ficha).subscribe({
+    this.eventosService.anadirAsistente(this.id, nombre, this.estadoManual(), undefined, ficha).subscribe({
       next: (r) => {
         this.nombreManual.set('');
         this.estadoManual.set('APUNTADO');
