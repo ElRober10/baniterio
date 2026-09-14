@@ -122,8 +122,6 @@ public class BebidaService {
     }
 
     private void exigirAdmin(Long usuarioId) {
-        if (!permisos.esAdministrador(usuarioId)) {
-            throw new SinPermisoException();
-        }
+        permisos.exigirAdmin(usuarioId, SinPermisoException::new);
     }
 }

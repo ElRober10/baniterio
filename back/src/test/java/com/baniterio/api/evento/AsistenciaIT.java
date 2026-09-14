@@ -287,10 +287,11 @@ class AsistenciaIT extends IntegrationTest {
 
         http.post().uri("/api/v1/eventos/" + e.getId() + "/asistencias")
                 .header(AUTHORIZATION, "Bearer " + admin.token())
-                .body(Map.of("nombre", "Primo de Juan", "estado", "APUNTADO"))
+                .body(Map.of("nombre", "Primo de Juan", "telefono", "612345678", "estado", "APUNTADO"))
                 .exchange().expectStatus().isCreated()
                 .expectBody()
                 .jsonPath("$.nombre").isEqualTo("Primo de Juan")
+                .jsonPath("$.telefono").isEqualTo("612345678")
                 .jsonPath("$.esManual").isEqualTo(true)
                 .jsonPath("$.estado").isEqualTo("APUNTADO");
 
@@ -300,6 +301,7 @@ class AsistenciaIT extends IntegrationTest {
                     assertThat(a.getUsuario()).isNull();
                     assertThat(a.getRegistradoPor()).isNotNull();
                     assertThat(a.getNombre()).isEqualTo("Primo de Juan");
+                    assertThat(a.getTelefono()).isEqualTo("612345678");
                 });
     }
 

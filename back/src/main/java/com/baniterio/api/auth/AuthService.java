@@ -10,7 +10,7 @@ import com.baniterio.api.identidad.EstadoSolicitud;
 import com.baniterio.api.identidad.Membresia;
 import com.baniterio.api.identidad.MembresiaRepository;
 import com.baniterio.api.identidad.Pena;
-import com.baniterio.api.identidad.PenaRepository;
+import com.baniterio.api.identidad.PenaPilotoService;
 import com.baniterio.api.identidad.RolMembresia;
 import com.baniterio.api.identidad.SolicitudIngreso;
 import com.baniterio.api.identidad.SolicitudIngresoRepository;
@@ -53,17 +53,14 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final SolicitudIngresoRepository solicitudes;
-    private final PenaRepository penas;
+    private final PenaPilotoService pena;
     private final ServicioPermisos servicioPermisos;
     private final ApplicationEventPublisher eventos;
     private final String telefonoFundador;
 
-    /** Peña piloto. Con el alcance de una sola peña, se resuelve por slug. */
-    private static final String SLUG_PENA = "baniterio";
-
     public AuthService(TelefonoAutorizadoRepository telefonosAutorizados, UsuarioRepository usuarios,
                        MembresiaRepository membresias, PasswordEncoder passwordEncoder, AppProperties props,
-                       JwtService jwtService, SolicitudIngresoRepository solicitudes, PenaRepository penas,
+                       JwtService jwtService, SolicitudIngresoRepository solicitudes, PenaPilotoService pena,
                        ServicioPermisos servicioPermisos, ApplicationEventPublisher eventos) {
         this.telefonosAutorizados = telefonosAutorizados;
         this.usuarios = usuarios;
@@ -71,7 +68,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.solicitudes = solicitudes;
-        this.penas = penas;
+        this.pena = pena;
         this.servicioPermisos = servicioPermisos;
         this.eventos = eventos;
         this.telefonoFundador = props.identidad().telefonoFundador();
@@ -143,10 +140,10 @@ public class AuthService {
             throw new SolicitudYaPendienteException();
         }
 
-        Pena pena = penas.findBySlug(SLUG_PENA).orElseThrow();
+        Pena penaSolicitud = pena.entidad();
 
         SolicitudIngreso solicitud = SolicitudIngreso.builder()
-                .pena(pena)
+                .pena(penaSolicitud)
                 .telefono(req.telefono())
                 .email(req.email())
                 .nombre(req.nombre())

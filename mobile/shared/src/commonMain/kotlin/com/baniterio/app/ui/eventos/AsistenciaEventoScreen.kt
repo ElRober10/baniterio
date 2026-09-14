@@ -201,7 +201,7 @@ fun AsistenciaEventoScreen(
                     return
                 }
                 scope.launch {
-                    when (val r = asistenciaRepo.anadir(eventoId, nombre, estadoManual, ficha)) {
+                    when (val r = asistenciaRepo.anadir(eventoId, nombre, estadoManual, ficha = ficha)) {
                         is ResultadoAsistencia.Exito -> {
                             nombreManual = ""
                             estadoManual = "APUNTADO"

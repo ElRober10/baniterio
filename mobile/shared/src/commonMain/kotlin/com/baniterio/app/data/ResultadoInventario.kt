@@ -12,6 +12,7 @@ enum class CodigoErrorInventario {
     TAMANO_NO_VALIDO,
     NADA_QUE_ENVIAR,
     ARTICULO_EVENTO_NO_ENCONTRADO,
+    NADA_QUE_DEVOLVER,
     EVENTO_NO_ENCONTRADO,
     SIN_CONEXION,
     DESCONOCIDO;
@@ -23,6 +24,7 @@ enum class CodigoErrorInventario {
             "TAMANO_INVENTARIO_NO_VALIDO" -> TAMANO_NO_VALIDO
             "NADA_QUE_ENVIAR" -> NADA_QUE_ENVIAR
             "ARTICULO_EVENTO_NO_ENCONTRADO" -> ARTICULO_EVENTO_NO_ENCONTRADO
+            "NADA_QUE_DEVOLVER" -> NADA_QUE_DEVOLVER
             "EVENTO_NO_ENCONTRADO" -> EVENTO_NO_ENCONTRADO
             else -> DESCONOCIDO
         }
@@ -35,6 +37,7 @@ enum class CodigoErrorInventario {
             TAMANO_NO_VALIDO -> "Ese tamaño no vale para esta categoría."
             NADA_QUE_ENVIAR -> "No queda nada de ese artículo para enviar."
             ARTICULO_EVENTO_NO_ENCONTRADO -> "Ese artículo ya no está en la fiesta."
+            NADA_QUE_DEVOLVER -> "No hay nada comprado que devolver."
             EVENTO_NO_ENCONTRADO -> "Ese evento ya no existe."
             SIN_CONEXION -> "No se pudo conectar con el servidor."
             DESCONOCIDO -> "Algo ha ido mal. Inténtalo de nuevo."

@@ -96,4 +96,12 @@ public class InventarioController {
             @PathVariable Long eventoId, @PathVariable Long articuloEventoId) {
         service.devolver(principal.id(), eventoId, articuloEventoId);
     }
+
+    /** Devuelve la parte comprada de una fila del inventario de la fiesta a la lista de la compra. Área {@code INVENTARIO}. */
+    @PostMapping("/evento/{eventoId}/{articuloEventoId}/devolver-a-lista")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void devolverALista(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long eventoId, @PathVariable Long articuloEventoId) {
+        service.devolverALista(principal.id(), eventoId, articuloEventoId);
+    }
 }

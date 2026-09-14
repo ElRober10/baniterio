@@ -201,6 +201,11 @@ public class ApiExceptionHandler {
         return error(HttpStatus.CONFLICT, "ASISTENCIA_NO_MANUAL");
     }
 
+    @ExceptionHandler(com.baniterio.api.evento.AsistenciaYaExisteException.class)
+    ResponseEntity<Map<String, Object>> asistenciaYaExiste() {
+        return error(HttpStatus.CONFLICT, "ASISTENCIA_YA_EXISTE");
+    }
+
     @ExceptionHandler(com.baniterio.api.evento.BebidaNoEncontradaException.class)
     ResponseEntity<Map<String, Object>> bebidaNoEncontrada() {
         return error(HttpStatus.NOT_FOUND, "BEBIDA_NO_ENCONTRADA");
@@ -289,6 +294,46 @@ public class ApiExceptionHandler {
     @ExceptionHandler(com.baniterio.api.inventario.ArticuloEventoNoEncontradoException.class)
     ResponseEntity<Map<String, Object>> articuloEventoNoEncontrado() {
         return error(HttpStatus.NOT_FOUND, "ARTICULO_EVENTO_NO_ENCONTRADO");
+    }
+
+    @ExceptionHandler(com.baniterio.api.compra.ReglaCompraNoEncontradaException.class)
+    ResponseEntity<Map<String, Object>> reglaCompraNoEncontrada() {
+        return error(HttpStatus.NOT_FOUND, "REGLA_COMPRA_NO_ENCONTRADA");
+    }
+
+    @ExceptionHandler(com.baniterio.api.compra.ReglaCompraNoBorrableException.class)
+    ResponseEntity<Map<String, Object>> reglaCompraNoBorrable() {
+        return error(HttpStatus.CONFLICT, "REGLA_COMPRA_NO_BORRABLE");
+    }
+
+    @ExceptionHandler(com.baniterio.api.compra.ReglaCompraDuplicadaException.class)
+    ResponseEntity<Map<String, Object>> reglaCompraDuplicada() {
+        return error(HttpStatus.CONFLICT, "REGLA_COMPRA_DUPLICADA");
+    }
+
+    @ExceptionHandler(com.baniterio.api.compra.AjusteNoAplicaException.class)
+    ResponseEntity<Map<String, Object>> ajusteNoAplica() {
+        return error(HttpStatus.BAD_REQUEST, "AJUSTE_NO_APLICA");
+    }
+
+    @ExceptionHandler(com.baniterio.api.compra.PorCadaNoAplicaException.class)
+    ResponseEntity<Map<String, Object>> porCadaNoAplica() {
+        return error(HttpStatus.BAD_REQUEST, "POR_CADA_NO_APLICA");
+    }
+
+    @ExceptionHandler(com.baniterio.api.compra.FormulaNoCreableException.class)
+    ResponseEntity<Map<String, Object>> formulaNoCreable() {
+        return error(HttpStatus.BAD_REQUEST, "FORMULA_NO_CREABLE");
+    }
+
+    @ExceptionHandler(com.baniterio.api.compra.LineaCompraNoEncontradaException.class)
+    ResponseEntity<Map<String, Object>> lineaCompraNoEncontrada() {
+        return error(HttpStatus.NOT_FOUND, "LINEA_COMPRA_NO_ENCONTRADA");
+    }
+
+    @ExceptionHandler(com.baniterio.api.inventario.NadaQueDevolverException.class)
+    ResponseEntity<Map<String, Object>> nadaQueDevolver() {
+        return error(HttpStatus.BAD_REQUEST, "NADA_QUE_DEVOLVER");
     }
 
     @ExceptionHandler(com.baniterio.api.evento.SinPermisoEventoException.class)

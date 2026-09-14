@@ -32,14 +32,10 @@ import com.baniterio.app.data.dto.EventoDetalle
 import com.baniterio.app.data.dto.PendienteRespuestaDto
 import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.theme.BaniterioWordmark
+import com.baniterio.app.ui.comun.EstadoCarga
+import com.baniterio.app.ui.comun.PantallaConEstado
 import com.baniterio.app.ui.comun.relieveDeCarta
 import kotlinx.coroutines.launch
-
-private sealed interface EstadoResponder {
-    data object Cargando : EstadoResponder
-    data class Lista(val pendientes: List<PendienteRespuestaDto>) : EstadoResponder
-    data class Error(val mensaje: String) : EstadoResponder
-}
 
 /**
  * Pantalla bloqueante: mientras haya convocatorias sin contestar muestra la
@@ -56,7 +52,7 @@ fun ResponderEventoScreen(
     miUsuarioId: Long?,
     onTerminado: () -> Unit,
 ) {
-    var estado by remember { mutableStateOf<EstadoResponder>(EstadoResponder.Cargando) }
+    var estado by remember { mutableStateOf<EstadoCarga<List<PendienteRespuestaDto>>>(EstadoCarga.Cargando) }
     var enviando by remember { mutableStateOf(false) }
     var aviso by remember { mutableStateOf<String?>(null) }
     // Cuando la respuesta de un evento de San Miguel pide ficha, se guarda aquí
@@ -68,8 +64,8 @@ fun ResponderEventoScreen(
         ficha = null
         when (val r = asistenciaRepo.pendientes()) {
             is ResultadoAsistencia.Exito ->
-                if (r.dato.isEmpty()) onTerminado() else estado = EstadoResponder.Lista(r.dato)
-            is ResultadoAsistencia.Error -> estado = EstadoResponder.Error(r.mensaje)
+                if (r.dato.isEmpty()) onTerminado() else estado = EstadoCarga.Cargado(r.dato)
+            is ResultadoAsistencia.Error -> estado = EstadoCarga.Error(r.mensaje)
         }
     }
     LaunchedEffect(Unit) { cargar() }
@@ -82,14 +78,9 @@ fun ResponderEventoScreen(
     ) {
         BaniterioWordmark()
 
-        when (val e = estado) {
-            is EstadoResponder.Cargando -> Text("Cargando…", color = BaniterioColors.muted)
-            is EstadoResponder.Error -> {
-                Text(e.mensaje, color = BaniterioColors.muted)
-                Button(onClick = { scope.launch { cargar() } }) { Text("Reintentar") }
-            }
-            is EstadoResponder.Lista -> {
-                val actual = e.pendientes.first()
+        PantallaConEstado(estado, onReintentar = { scope.launch { cargar() } }) { pendientes ->
+            run {
+                val actual = pendientes.first()
                 val ev = actual.evento
                 val objetivoId = actual.paraUsuario.id
                 Column(
@@ -178,8 +169,8 @@ fun ResponderEventoScreen(
                         }
                     }
 
-                    if (e.pendientes.size > 1) {
-                        Text("Te quedan ${e.pendientes.size} convocatorias por contestar.",
+                    if (pendientes.size > 1) {
+                        Text("Te quedan ${pendientes.size} convocatorias por contestar.",
                             color = BaniterioColors.muted, style = MaterialTheme.typography.bodySmall)
                     }
                     aviso?.let { Text(it, color = BaniterioColors.gold) }

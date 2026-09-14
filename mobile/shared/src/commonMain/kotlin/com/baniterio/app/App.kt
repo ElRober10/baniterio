@@ -45,6 +45,9 @@ import com.baniterio.app.ui.inventario.CategoriaInventario
 import com.baniterio.app.ui.inventario.InventarioCategoriaScreen
 import com.baniterio.app.ui.inventario.InventarioFiestaScreen
 import com.baniterio.app.ui.inventario.InventarioScreen
+import com.baniterio.app.ui.compra.ListaCompraAdminEventoScreen
+import com.baniterio.app.ui.compra.ListaCompraAdminScreen
+import com.baniterio.app.ui.compra.ListaCompraScreen
 import com.baniterio.app.ui.auth.desbloqueo.DesbloqueoScreen
 import com.baniterio.app.ui.auth.login.LoginScreen
 import com.baniterio.app.ui.miembros.CargandoSesionScreen
@@ -73,6 +76,9 @@ private const val CLAVE_CUENTA_DETALLE = "CuentaDetalle"
 private const val CLAVE_INVENTARIO = "Inventario"
 private const val CLAVE_INVENTARIO_CATEGORIA = "InventarioCategoria"
 private const val CLAVE_INVENTARIO_FIESTA = "InventarioFiesta"
+private const val CLAVE_LISTA_COMPRA = "ListaCompra"
+private const val CLAVE_LISTA_COMPRA_ADMIN = "ListaCompraAdmin"
+private const val CLAVE_LISTA_COMPRA_ADMIN_EVENTO = "ListaCompraAdminEvento"
 private const val CLAVE_ADMIN_INDEX = "AdminIndex"
 private const val CLAVE_ADMIN_SOLICITUDES = "AdminSolicitudes"
 private const val CLAVE_ADMIN_PERMISOS = "AdminPermisos"
@@ -99,6 +105,9 @@ private fun Screen.aClave(): String = when (this) {
     Screen.Inventario -> CLAVE_INVENTARIO
     Screen.InventarioCategoria -> CLAVE_INVENTARIO_CATEGORIA
     Screen.InventarioFiesta -> CLAVE_INVENTARIO_FIESTA
+    Screen.ListaCompra -> CLAVE_LISTA_COMPRA
+    Screen.ListaCompraAdmin -> CLAVE_LISTA_COMPRA_ADMIN
+    Screen.ListaCompraAdminEvento -> CLAVE_LISTA_COMPRA_ADMIN_EVENTO
     Screen.AdminIndex -> CLAVE_ADMIN_INDEX
     Screen.AdminSolicitudes -> CLAVE_ADMIN_SOLICITUDES
     Screen.AdminPermisos -> CLAVE_ADMIN_PERMISOS
@@ -125,6 +134,9 @@ private fun claveAScreen(clave: String): Screen = when (clave) {
     CLAVE_INVENTARIO -> Screen.Inventario
     CLAVE_INVENTARIO_CATEGORIA -> Screen.InventarioCategoria
     CLAVE_INVENTARIO_FIESTA -> Screen.InventarioFiesta
+    CLAVE_LISTA_COMPRA -> Screen.ListaCompra
+    CLAVE_LISTA_COMPRA_ADMIN -> Screen.ListaCompraAdmin
+    CLAVE_LISTA_COMPRA_ADMIN_EVENTO -> Screen.ListaCompraAdminEvento
     CLAVE_ADMIN_INDEX -> Screen.AdminIndex
     CLAVE_ADMIN_SOLICITUDES -> Screen.AdminSolicitudes
     CLAVE_ADMIN_PERMISOS -> Screen.AdminPermisos
@@ -162,6 +174,8 @@ fun App(
                 screen == Screen.Cuentas || screen == Screen.CuentaDetalle ||
                 screen == Screen.Inventario || screen == Screen.InventarioCategoria ||
                 screen == Screen.InventarioFiesta ||
+                screen == Screen.ListaCompra || screen == Screen.ListaCompraAdmin ||
+                screen == Screen.ListaCompraAdminEvento ||
                 screen == Screen.AdminIndex || screen == Screen.AdminSolicitudes ||
                 screen == Screen.AdminPermisos || screen == Screen.AdminBebidas ||
                 screen == Screen.AdminPagos)
@@ -199,6 +213,9 @@ fun App(
 
     // Inventario de la fiesta: el evento cuyo inventario enviado se está viendo.
     var inventarioFiestaEventoId by rememberSaveable { mutableStateOf<Long?>(null) }
+
+    // Lista de la compra: el evento cuya lista (lectura o editor de admin) se está viendo.
+    var listaCompraEventoId by rememberSaveable { mutableStateOf<Long?>(null) }
 
     fun ir(destino: Screen) {
         screenKey = destino.aClave()
@@ -350,12 +367,18 @@ fun App(
                     } else {
                         EventoDetalleScreen(
                             eventosRepo = deps.eventosRepo,
+                            asistenciaRepo = deps.asistenciaRepo,
+                            bebidaRepo = deps.bebidaRepo,
                             eventoId = id,
                             onEditar = { editorEventoId = id; ir(Screen.EditorEvento) },
                             onBorrado = { ir(Screen.Eventos) },
                             onInventarioFiesta = {
                                 inventarioFiestaEventoId = id
                                 ir(Screen.InventarioFiesta)
+                            },
+                            onListaCompra = {
+                                listaCompraEventoId = id
+                                ir(Screen.ListaCompra)
                             },
                             onVolver = { ir(Screen.Eventos) },
                         )
@@ -429,6 +452,43 @@ fun App(
                             inventarioRepo = deps.inventarioRepo,
                             eventoId = id,
                             onVolver = { ir(Screen.EventoDetalle) },
+                        )
+                    }
+                }
+                is Screen.ListaCompra -> {
+                    BackHandler { ir(Screen.EventoDetalle) }
+                    val id = listaCompraEventoId
+                    if (id == null) {
+                        LaunchedEffect(Unit) { ir(Screen.Eventos) }
+                    } else {
+                        ListaCompraScreen(
+                            listaCompraRepo = deps.listaCompraRepo,
+                            eventoId = id,
+                            onVolver = { ir(Screen.EventoDetalle) },
+                        )
+                    }
+                }
+                is Screen.ListaCompraAdmin -> {
+                    BackHandler { ir(Screen.AdminIndex) }
+                    ListaCompraAdminScreen(
+                        listaCompraRepo = deps.listaCompraRepo,
+                        onAbrirEvento = { evId ->
+                            listaCompraEventoId = evId
+                            ir(Screen.ListaCompraAdminEvento)
+                        },
+                        onVolver = { ir(Screen.AdminIndex) },
+                    )
+                }
+                is Screen.ListaCompraAdminEvento -> {
+                    BackHandler { ir(Screen.ListaCompraAdmin) }
+                    val id = listaCompraEventoId
+                    if (id == null) {
+                        LaunchedEffect(Unit) { ir(Screen.ListaCompraAdmin) }
+                    } else {
+                        ListaCompraAdminEventoScreen(
+                            listaCompraRepo = deps.listaCompraRepo,
+                            eventoId = id,
+                            onVolver = { ir(Screen.ListaCompraAdmin) },
                         )
                     }
                 }

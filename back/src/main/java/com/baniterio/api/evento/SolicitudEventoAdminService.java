@@ -9,7 +9,7 @@ import com.baniterio.api.evento.dto.SolicitudEventoResumen;
 import com.baniterio.api.identidad.EstadoSolicitud;
 import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
-import com.baniterio.api.identidad.PenaRepository;
+import com.baniterio.api.identidad.PenaPilotoService;
 import com.baniterio.api.identidad.SolicitudEvento;
 import com.baniterio.api.identidad.SolicitudEventoRepository;
 import com.baniterio.api.identidad.TipoSolicitudEvento;
@@ -31,7 +31,6 @@ import org.springframework.util.StringUtils;
 @Service
 public class SolicitudEventoAdminService {
 
-    private static final String SLUG_PENA = "baniterio";
     private static final String TITULO_PUSH = "Eventos";
     static final String MOTIVO_RECHAZO_POR_DEFECTO =
             "Tu solicitud de evento no se ha aprobado. Si tienes dudas, habla con la organización.";
@@ -39,17 +38,17 @@ public class SolicitudEventoAdminService {
     private final SolicitudEventoRepository solicitudes;
     private final EventoRepository eventos;
     private final UsuarioRepository usuarios;
-    private final PenaRepository penas;
+    private final PenaPilotoService pena;
     private final ServicioPermisos permisos;
     private final ApplicationEventPublisher publisher;
 
     public SolicitudEventoAdminService(SolicitudEventoRepository solicitudes, EventoRepository eventos,
-            UsuarioRepository usuarios, PenaRepository penas, ServicioPermisos permisos,
+            UsuarioRepository usuarios, PenaPilotoService pena, ServicioPermisos permisos,
             ApplicationEventPublisher publisher) {
         this.solicitudes = solicitudes;
         this.eventos = eventos;
         this.usuarios = usuarios;
-        this.penas = penas;
+        this.pena = pena;
         this.permisos = permisos;
         this.publisher = publisher;
     }
@@ -61,8 +60,7 @@ public class SolicitudEventoAdminService {
     }
 
     private Long penaId() {
-        return penas.findBySlug(SLUG_PENA).orElseThrow(
-                () -> new IllegalStateException("Falta la peña piloto '" + SLUG_PENA + "'")).getId();
+        return pena.id();
     }
 
     @Transactional(readOnly = true)

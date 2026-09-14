@@ -36,7 +36,7 @@ class ArticuloEventoRepositoryIT extends IntegrationTest {
     void guarda_y_busca_por_evento_y_articulo_de_origen() {
         Evento ev = algunEvento();
         ArticuloInventario origen = articulos
-                .findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(penaId()).get(0);
+                .findByPenaIdOrderByCategoriaAscNombreAsc(penaId()).get(0);
 
         ArticuloEvento fila = articulosEvento.save(ArticuloEvento.builder()
                 .evento(ev)
@@ -45,12 +45,13 @@ class ArticuloEventoRepositoryIT extends IntegrationTest {
                 .nombre(origen.getNombre())
                 .tamano(origen.getTamano())
                 .cantidad(new BigDecimal("2.00"))
+                .cantidadComprada(BigDecimal.ZERO)
                 .orden(1)
                 .build());
 
         assertThat(articulosEvento.findByEventoIdAndArticuloInventarioId(ev.getId(), origen.getId()))
                 .get().extracting(ArticuloEvento::getId).isEqualTo(fila.getId());
-        assertThat(articulosEvento.findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(ev.getId()))
+        assertThat(articulosEvento.findByEventoIdOrderByCategoriaAscNombreAsc(ev.getId()))
                 .extracting(ArticuloEvento::getNombre).contains(origen.getNombre());
     }
 }

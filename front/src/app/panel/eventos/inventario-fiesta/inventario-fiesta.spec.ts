@@ -11,7 +11,9 @@ const RESPUESTA = (puedoEditar: boolean) => ({
     {
       categoria: 'ALCOHOL',
       etiqueta: 'Alcohol',
-      articulos: [{ id: 5, nombre: 'Tanqueray', tamano: '70 cl', cantidad: 1.5 }],
+      articulos: [
+        { id: 5, nombre: 'Tanqueray', tamano: '70 cl', cantidad: 1.5, cantidadComprada: 0 },
+      ],
     },
   ],
 });
@@ -35,8 +37,14 @@ function montar(): { fixture: ComponentFixture<InventarioFiesta>; httpMock: Http
 describe('InventarioFiesta', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it('pinta lo enviado y, con permiso, "Devolver a inventario" hace el POST', () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+  /** Pulsa el botón cuyo texto coincide exactamente. */
+  function pulsar(el: HTMLElement, texto: string): void {
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === texto)!
+      .dispatchEvent(new Event('click'));
+  }
+
+  it('pinta lo enviado y, con permiso, "Devolver a inventario" abre el modal y confirma el POST', () => {
     const { fixture, httpMock } = montar();
     fixture.detectChanges();
     httpMock.expectOne(`${environment.apiBaseUrl}/inventario/evento/7`).flush(RESPUESTA(true));
@@ -45,11 +53,62 @@ describe('InventarioFiesta', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.textContent).toContain('Tanqueray');
 
-    Array.from(el.querySelectorAll('button'))
-      .find((b) => b.textContent?.trim() === 'Devolver a inventario')!
-      .dispatchEvent(new Event('click'));
+    pulsar(el, 'Devolver 1.5 al inventario general');
+    fixture.detectChanges();
+    expect(el.querySelector('[role="dialog"]')?.textContent).toContain('inventario general');
 
+    pulsar(el, 'Devolver');
     const post = httpMock.expectOne(`${environment.apiBaseUrl}/inventario/evento/7/5/devolver`);
+    expect(post.request.method).toBe('POST');
+    post.flush(null);
+    httpMock.expectOne(`${environment.apiBaseUrl}/inventario/evento/7`).flush(RESPUESTA(true));
+    httpMock.verify();
+  });
+
+  it('Cancelar cierra el modal sin llamar al backend', () => {
+    const { fixture, httpMock } = montar();
+    fixture.detectChanges();
+    httpMock.expectOne(`${environment.apiBaseUrl}/inventario/evento/7`).flush(RESPUESTA(true));
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    pulsar(el, 'Devolver 1.5 al inventario general');
+    fixture.detectChanges();
+    pulsar(el, 'Cancelar');
+    fixture.detectChanges();
+    expect(el.querySelector('[role="dialog"]')).toBeNull();
+    httpMock.verify();
+  });
+
+  it('muestra "Devolver ... a la lista de la compra" cuando cantidadComprada > 0 y oculta el de stock', () => {
+    const { fixture, httpMock } = montar();
+    fixture.detectChanges();
+    httpMock.expectOne(`${environment.apiBaseUrl}/inventario/evento/7`).flush({
+      puedoEditar: true,
+      categorias: [
+        {
+          categoria: 'LIMPIEZA',
+          etiqueta: 'Limpieza y utensilios',
+          articulos: [
+            { id: 9, nombre: 'Platos', tamano: 'unidad', cantidad: 12, cantidadComprada: 12 },
+          ],
+        },
+      ],
+    });
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    const botones = Array.from(el.querySelectorAll('button')).map((b) => b.textContent?.trim());
+    expect(botones).toContain('Devolver 12 a la lista de la compra');
+    expect(botones.some((b) => b?.includes('inventario general'))).toBe(false);
+
+    pulsar(el, 'Devolver 12 a la lista de la compra');
+    fixture.detectChanges();
+    expect(el.querySelector('[role="dialog"]')?.textContent).toContain('lista de la compra');
+    pulsar(el, 'Devolver');
+    const post = httpMock.expectOne(
+      `${environment.apiBaseUrl}/inventario/evento/7/9/devolver-a-lista`,
+    );
     expect(post.request.method).toBe('POST');
     post.flush(null);
     httpMock.expectOne(`${environment.apiBaseUrl}/inventario/evento/7`).flush(RESPUESTA(true));
@@ -61,7 +120,7 @@ describe('InventarioFiesta', () => {
     fixture.detectChanges();
     httpMock.expectOne(`${environment.apiBaseUrl}/inventario/evento/7`).flush(RESPUESTA(false));
     fixture.detectChanges();
-    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Devolver a inventario');
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Devolver');
     httpMock.verify();
   });
 });

@@ -32,12 +32,17 @@ import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
 import com.baniterio.api.identidad.FichaBebida;
 import com.baniterio.api.identidad.FichaBebidaRepository;
+import com.baniterio.api.identidad.Membresia;
+import com.baniterio.api.identidad.MembresiaRepository;
 import com.baniterio.api.identidad.MetodoPago;
 import com.baniterio.api.identidad.NotificacionEvento;
 import com.baniterio.api.identidad.NotificacionEventoRepository;
-import com.baniterio.api.identidad.PenaRepository;
+import com.baniterio.api.identidad.PenaPilotoService;
+import com.baniterio.api.identidad.TelefonoAutorizado;
+import com.baniterio.api.identidad.TelefonoAutorizadoRepository;
 import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
+import java.util.Optional;
 import com.baniterio.api.identidad.VinculoFamiliarService;
 import com.baniterio.api.identidad.VinculoPareja;
 import com.baniterio.api.identidad.VinculoParejaRepository;
@@ -58,7 +63,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class AsistenciaService {
 
     private static final String TITULO_PUSH = "Eventos";
-    private static final String SLUG_PENA = "baniterio";
     /** Horas que hay que esperar entre un envío de notificación y el siguiente. */
     private static final int HORAS_ENTRE_ENVIOS = 48;
 
@@ -66,7 +70,7 @@ public class AsistenciaService {
     private final NotificacionEventoRepository notificaciones;
     private final EventoRepository eventos;
     private final UsuarioRepository usuarios;
-    private final PenaRepository penas;
+    private final PenaPilotoService pena;
     private final ServicioPermisos permisos;
     private final ApplicationEventPublisher publisher;
     private final ResolutorAudiencia resolutor;
@@ -76,20 +80,23 @@ public class AsistenciaService {
     private final VinculoParejaRepository vinculosPareja;
     private final PagoDeclaradoService pagoDeclarado;
     private final com.baniterio.api.cuenta.MovimientoCuentaService movimientoCuenta;
+    private final MembresiaRepository membresias;
+    private final TelefonoAutorizadoRepository telefonosAutorizados;
 
     public AsistenciaService(AsistenciaEventoRepository asistencias,
                              NotificacionEventoRepository notificaciones, EventoRepository eventos,
-                             UsuarioRepository usuarios, PenaRepository penas, ServicioPermisos permisos,
+                             UsuarioRepository usuarios, PenaPilotoService pena, ServicioPermisos permisos,
                              ApplicationEventPublisher publisher, ResolutorAudiencia resolutor,
                              FichaBebidaService fichaBebida, VinculoFamiliarService vinculoFamiliar,
                              FichaBebidaRepository fichas, VinculoParejaRepository vinculosPareja,
                              PagoDeclaradoService pagoDeclarado,
-                             com.baniterio.api.cuenta.MovimientoCuentaService movimientoCuenta) {
+                             com.baniterio.api.cuenta.MovimientoCuentaService movimientoCuenta,
+                             MembresiaRepository membresias, TelefonoAutorizadoRepository telefonosAutorizados) {
         this.asistencias = asistencias;
         this.notificaciones = notificaciones;
         this.eventos = eventos;
         this.usuarios = usuarios;
-        this.penas = penas;
+        this.pena = pena;
         this.permisos = permisos;
         this.publisher = publisher;
         this.resolutor = resolutor;
@@ -99,6 +106,8 @@ public class AsistenciaService {
         this.vinculosPareja = vinculosPareja;
         this.pagoDeclarado = pagoDeclarado;
         this.movimientoCuenta = movimientoCuenta;
+        this.membresias = membresias;
+        this.telefonosAutorizados = telefonosAutorizados;
     }
 
     /** Un administrador de verdad, o quien organiza (creó) el evento. */
@@ -200,20 +209,39 @@ public class AsistenciaService {
 
     /**
      * Añade a mano a alguien sin app (invitado, persona sin cuenta). Solo un
-     * administrador o quien organiza el evento. La fila queda sin {@code usuario}
-     * y con {@code registradoPor} = quien la creó.
+     * administrador o quien organiza el evento. Si el teléfono ya es de un
+     * miembro activo de la peña, la fila se asocia directo a su cuenta (como si
+     * hubiera respondido él mismo); si no, y el teléfono no está autorizado
+     * todavía, se autoriza automáticamente para que pueda registrarse (mismo
+     * patrón que {@code VinculoParejaService}/{@code HijosReconciliador}).
      */
     @Transactional
-    public AsistenciaResumen anadirAMano(Long usuarioId, Long eventoId, String nombre,
+    public AsistenciaResumen anadirAMano(Long usuarioId, Long eventoId, String nombre, String telefono,
                                          EstadoAsistencia estado, FichaBebidaRequest ficha) {
         Evento e = cargar(eventoId);
         if (!puedeGestionar(usuarioId, e)) {
             throw new SinPermisoEventoException();
         }
         Usuario registrador = usuarios.findById(usuarioId).orElseThrow();
+        String telLimpio = telefono == null || telefono.isBlank() ? null : telefono.trim();
+
+        Usuario vinculado = null;
+        if (telLimpio != null) {
+            vinculado = miembroConTelefono(telLimpio).orElse(null);
+            if (vinculado != null) {
+                if (asistencias.findByEventoIdAndUsuarioId(eventoId, vinculado.getId()).isPresent()) {
+                    throw new AsistenciaYaExisteException();
+                }
+            } else {
+                altaTelefonoAutorizado(telLimpio, registrador);
+            }
+        }
+
         AsistenciaEvento a = asistencias.save(AsistenciaEvento.builder()
                 .evento(e)
+                .usuario(vinculado)
                 .nombre(nombre.trim())
+                .telefono(telLimpio)
                 .estado(estado)
                 .registradoPor(registrador)
                 .build());
@@ -224,8 +252,53 @@ public class AsistenciaService {
         if (llevaFicha && ficha != null) {
             fr = fichaBebida.guardarAMano(usuarioId, eventoId, a, ficha);
         }
-        return new AsistenciaResumen(a.getId(), nombre.trim(), a.getEstado(), true,
+        return new AsistenciaResumen(a.getId(), nombre.trim(), telLimpio, a.getEstado(), vinculado == null,
                 fr != null ? fr.cuota() : null, fr != null ? fr.modalidad() : null);
+    }
+
+    /**
+     * Enlaza a {@code usuario} las asistencias que se le añadieron a mano antes
+     * de tener cuenta (filas con su teléfono y sin {@code usuario}), para que
+     * vea su historial de eventos. Se llama en el primer {@code GET /perfil},
+     * igual que {@code VinculoParejaService#reconciliarAlEntrar} y
+     * {@code HijosReconciliador#enlazarSiEsHijo}. Si para algún evento ya tuviera
+     * una fila propia (raro), esa en concreto se deja como está.
+     */
+    @Transactional
+    public void enlazarPorTelefono(Usuario usuario) {
+        String tel = usuario.getTelefono();
+        if (tel == null || tel.isBlank()) {
+            return;
+        }
+        for (AsistenciaEvento a : asistencias.findByTelefonoAndUsuarioIsNull(tel)) {
+            if (asistencias.existsByEventoIdAndUsuarioId(a.getEvento().getId(), usuario.getId())) {
+                continue;
+            }
+            a.setUsuario(usuario);
+            asistencias.save(a);
+        }
+    }
+
+    /** Usuario activo con membresía activa en la peña y ese teléfono. */
+    private Optional<Usuario> miembroConTelefono(String tel) {
+        return usuarios.findByTelefono(tel)
+                .filter(Usuario::isActivo)
+                .filter(u -> membresias.findByUsuarioIdAndPenaId(u.getId(), pena.id())
+                        .map(Membresia::isActiva)
+                        .orElse(false));
+    }
+
+    /** Da de alta el teléfono en la lista de autorizados si todavía no lo está. */
+    private void altaTelefonoAutorizado(String tel, Usuario autorizadoPor) {
+        if (telefonosAutorizados.findByTelefono(tel).isPresent()) {
+            return;
+        }
+        telefonosAutorizados.save(TelefonoAutorizado.builder()
+                .telefono(tel)
+                .pena(pena.entidad())
+                .usado(false)
+                .autorizadoPor(autorizadoPor)
+                .build());
     }
 
     /**
@@ -355,8 +428,17 @@ public class AsistenciaService {
                 .comparingInt((AsistenciaEvento a) -> a.getEstado() == EstadoAsistencia.APUNTADO ? 0 : 1)
                 .thenComparing(a -> nombreDe(a).toLowerCase());
 
+        java.util.Set<String> telefonosDeInvitados = filas.stream()
+                .filter(a -> a.getUsuario() == null && a.getTelefono() != null)
+                .map(AsistenciaEvento::getTelefono)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Set<String> telefonosYaAutorizados = telefonosDeInvitados.isEmpty() ? java.util.Set.of()
+                : telefonosAutorizados.findByTelefonoIn(telefonosDeInvitados).stream()
+                        .map(TelefonoAutorizado::getTelefono)
+                        .collect(java.util.stream.Collectors.toSet());
+
         List<AsistenteFila> asistentes = filas.stream().sorted(orden)
-                .map(a -> aFila(a, fichaPorAsistencia.get(a.getId())))
+                .map(a -> aFila(a, fichaPorAsistencia.get(a.getId()), telefonosYaAutorizados))
                 .toList();
 
         BigDecimal totalCuotas = asistentes.stream()
@@ -382,7 +464,7 @@ public class AsistenciaService {
         return a.getUsuario() != null ? a.getUsuario().getNombre() : a.getNombre();
     }
 
-    private static AsistenteFila aFila(AsistenciaEvento a, FichaBebida f) {
+    private static AsistenteFila aFila(AsistenciaEvento a, FichaBebida f, java.util.Set<String> telefonosAutorizados) {
         BebidaFila bebida = f == null ? null : new BebidaFila(
                 f.getAlcohol() != null ? f.getAlcohol().getNombre() : null,
                 f.getRefresco().getNombre(),
@@ -390,7 +472,12 @@ public class AsistenciaService {
                 f.getModalidad().name());
         EstadoPagoCuota estado = f == null ? null : f.getEstadoPago();
         boolean confirmado = estado != null && estado.confirmado();
-        return new AsistenteFila(nombreDe(a), a.getEstado().name(), a.getUsuario() == null,
+        // "Invitado" solo si no hay usuario y, además, no tiene teléfono o ese
+        // teléfono todavía no está autorizado (si lo está, es un peñista conocido
+        // que aún no se ha registrado, no un invitado externo).
+        boolean invitado = a.getUsuario() == null
+                && (a.getTelefono() == null || !telefonosAutorizados.contains(a.getTelefono()));
+        return new AsistenteFila(nombreDe(a), a.getTelefono(), a.getEstado().name(), invitado,
                 bebida, f == null ? null : f.getCuota(),
                 estado == null ? null : estado.name(), a.getId(),
                 confirmado && f.getMetodoPago() != null ? f.getMetodoPago().name() : null,
@@ -442,9 +529,7 @@ public class AsistenciaService {
      */
     @Transactional(readOnly = true)
     public List<PendienteRespuesta> pendientesRespuesta(Long usuarioId) {
-        Long penaId = penas.findBySlug(SLUG_PENA)
-                .orElseThrow(() -> new IllegalStateException("Falta la peña piloto '" + SLUG_PENA + "'"))
-                .getId();
+        Long penaId = pena.id();
         LocalDate hoy = LocalDate.now();
         List<PendienteRespuesta> resultado = new ArrayList<>();
         for (VinculoFamiliarService.Persona persona : vinculoFamiliar.personasQuePuedoResponder(usuarioId)) {

@@ -123,7 +123,7 @@ describe('EventoDetalleComponent', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Listado de asistentes');
   });
 
-  it('"Lista de la compra" (placeholder) e "Inventario de la fiesta" (enlace)', () => {
+  it('"Lista de la compra" e "Inventario de la fiesta" son enlaces', () => {
     crear();
     fixture.detectChanges();
     responder({
@@ -134,7 +134,11 @@ describe('EventoDetalleComponent', () => {
     });
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.textContent).toContain('Lista de la compra');
+
+    const listaCompra = Array.from(el.querySelectorAll('a')).find(
+      (a) => a.textContent?.trim() === 'Lista de la compra',
+    );
+    expect(listaCompra?.getAttribute('href')).toContain('/lista-compra');
 
     const enlace = Array.from(el.querySelectorAll('a')).find(
       (a) => a.textContent?.trim() === 'Inventario de la fiesta',

@@ -6,7 +6,8 @@ import { Volver } from '../../../shared/volver/volver';
 import { FichaBebida } from '../ficha-bebida/ficha-bebida';
 import { ModalAsistentes } from '../modal-asistentes/modal-asistentes';
 import { ModalHePagado, PagoDeclarado } from '../modal-he-pagado/modal-he-pagado';
-import { CatalogoBebidas, EventoDetalle, FichaBebidaBody, MetodoPago } from '../eventos.types';
+import { ModalAnadirAsistente } from '../modal-anadir-asistente/modal-anadir-asistente';
+import { AsistenciaResumen, CatalogoBebidas, EventoDetalle, FichaBebidaBody, MetodoPago } from '../eventos.types';
 import { EventosService } from '../eventos.service';
 
 const METODO_PAGO_TEXTO: Record<MetodoPago, string> = {
@@ -26,7 +27,7 @@ const METODO_PAGO_TEXTO: Record<MetodoPago, string> = {
  */
 @Component({
   selector: 'app-evento-detalle',
-  imports: [Volver, RouterLink, DatePipe, FichaBebida, ModalAsistentes, ModalHePagado],
+  imports: [Volver, RouterLink, DatePipe, FichaBebida, ModalAsistentes, ModalHePagado, ModalAnadirAsistente],
   templateUrl: './evento-detalle.html',
   styleUrl: './evento-detalle.css',
 })
@@ -42,6 +43,7 @@ export class EventoDetalleComponent implements OnInit {
   protected readonly modalPago = signal(false);
   protected readonly modalPagoInfo = signal(false);
   protected readonly modalPagoDeclarado = signal(false);
+  protected readonly modalAnadirAsistente = signal(false);
   private readonly id = Number(this.route.snapshot.paramMap.get('id'));
 
   private readonly estadoPago = computed(
@@ -134,6 +136,12 @@ export class EventoDetalleComponent implements OnInit {
     });
   }
 
+  protected onAsistenteAnadido(r: AsistenciaResumen): void {
+    this.modalAnadirAsistente.set(false);
+    this.aviso.set(`«${r.nombre}» añadido.`);
+    this.cargar();
+  }
+
   protected editar(): void {
     this.router.navigate(['/panel/eventos', this.id, 'editar']);
   }
@@ -191,11 +199,6 @@ export class EventoDetalleComponent implements OnInit {
 
   protected cerrarEditorFicha(): void {
     this.editandoFicha.set(false);
-  }
-
-  /** Placeholder: "Lista de la compra" e "Inventario de la fiesta" llegan más adelante. */
-  protected proximamente(que: string): void {
-    this.aviso.set(`«${que}» todavía no está disponible.`);
   }
 
   protected guardarFicha(body: FichaBebidaBody): void {

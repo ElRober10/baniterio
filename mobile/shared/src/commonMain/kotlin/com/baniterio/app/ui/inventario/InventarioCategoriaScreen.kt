@@ -4,7 +4,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -43,7 +42,8 @@ import com.baniterio.app.data.dto.ArticuloInventarioDto
 import com.baniterio.app.data.dto.CategoriaInventarioDto
 import com.baniterio.app.data.dto.EventoAbiertoDto
 import com.baniterio.app.theme.BaniterioColors
-import com.baniterio.app.theme.BaniterioWordmark
+import com.baniterio.app.ui.comun.CabeceraPantalla
+import com.baniterio.app.ui.comun.CajaSelect
 import com.baniterio.app.ui.comun.relieveDeCarta
 import kotlinx.coroutines.launch
 
@@ -72,8 +72,8 @@ private fun fmt(d: Double): String =
  * Listado de UNA categoría del inventario. Pide el inventario entero
  * (`GET /api/v1/inventario`) y se queda con su categoría. Si el backend dice
  * `puedoEditar`, aparecen "Editar cantidades" y "Añadir artículo"; "Guardar"
- * manda un PUT por cada fila cambiada. Los botones "Enviar a evento" son
- * placeholders sin función todavía.
+ * manda un PUT por cada fila cambiada. "Enviar a evento" (uno o toda la
+ * categoría) abre un diálogo con los eventos abiertos y envía al elegido.
  */
 @Composable
 fun InventarioCategoriaScreen(
@@ -120,15 +120,7 @@ fun InventarioCategoriaScreen(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BaniterioWordmark()
-            Text(
-                "Volver",
-                style = MaterialTheme.typography.bodyMedium,
-                color = BaniterioColors.brandBright,
-                modifier = Modifier.clickable { onVolver() },
-            )
-        }
+        CabeceraPantalla(onVolver)
         Text(
             categoria.etiqueta,
             style = MaterialTheme.typography.headlineMedium,
@@ -476,40 +468,4 @@ private fun ModalAnadir(
             }
         },
     )
-}
-
-/**
- * Caja con aspecto de "select": etiqueta encima, botón a lo ancho con el valor y
- * un ▾ a la derecha, y un [DropdownMenu] al pulsarlo.
- */
-@Composable
-private fun CajaSelect(
-    etiqueta: String,
-    texto: String,
-    esPlaceholder: Boolean,
-    menu: @Composable ColumnScope.(cerrar: () -> Unit) -> Unit,
-) {
-    var abierto by remember { mutableStateOf(false) }
-    Column {
-        Text(etiqueta, color = BaniterioColors.muted, style = MaterialTheme.typography.bodySmall)
-        Box {
-            OutlinedButton(onClick = { abierto = true }, modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        texto,
-                        color = if (esPlaceholder) BaniterioColors.muted
-                        else MaterialTheme.colorScheme.onBackground,
-                    )
-                    Text("▾", color = BaniterioColors.muted)
-                }
-            }
-            DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
-                menu { abierto = false }
-            }
-        }
-    }
 }

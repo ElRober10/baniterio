@@ -5,6 +5,8 @@ import { AdminPagos } from './admin/pagos/pagos';
 import { AdminIndice } from './admin/indice/indice';
 import { AdminPermisos } from './admin/permisos/permisos';
 import { AdminSolicitudes } from './admin/solicitudes/solicitudes';
+import { ListaCompraAdmin } from './admin/lista-compra/lista-compra-admin';
+import { ListaCompraAdminEvento } from './admin/lista-compra/lista-compra-admin-evento';
 import { authGuard, invitadoGuard } from './auth/auth.guard';
 import { Home } from './home/home';
 import { Login } from './auth/login/login';
@@ -20,6 +22,7 @@ import { EventosOcultos } from './panel/eventos/eventos-ocultos/eventos-ocultos'
 import { Inventario } from './panel/inventario/inventario';
 import { InventarioCategoria } from './panel/inventario/inventario-categoria';
 import { InventarioFiesta } from './panel/eventos/inventario-fiesta/inventario-fiesta';
+import { ListaCompra } from './panel/eventos/lista-compra/lista-compra';
 import { Miembros } from './panel/miembros/miembros';
 import { perfilCompletoGuard } from './panel/miembros/perfil-completo.guard';
 import { Registro } from './auth/registro/registro';
@@ -48,6 +51,7 @@ export const routes: Routes = [
       { path: 'eventos/ocultos', component: EventosOcultos, canActivate: [perfilCompletoGuard] },
       { path: 'eventos/:id/editar', component: EditorEvento, canActivate: [perfilCompletoGuard] },
       { path: 'eventos/:id/inventario', component: InventarioFiesta, canActivate: [perfilCompletoGuard] },
+      { path: 'eventos/:id/lista-compra', component: ListaCompra, canActivate: [perfilCompletoGuard] },
       { path: 'eventos/:id', component: EventoDetalleComponent, canActivate: [perfilCompletoGuard] },
       { path: 'cuentas', component: Cuentas, canActivate: [perfilCompletoGuard] },
       { path: 'cuentas/:id', component: CuentaDetalleComponent, canActivate: [perfilCompletoGuard] },
@@ -72,6 +76,16 @@ export const routes: Routes = [
         path: 'administracion/permisos',
         component: AdminPermisos,
         canActivate: [perfilCompletoGuard, areaGuard('ADMIN_PERMISOS')],
+      },
+      {
+        path: 'administracion/lista-compra',
+        component: ListaCompraAdmin,
+        canActivate: [perfilCompletoGuard, areaGuard('INVENTARIO')],
+      },
+      {
+        path: 'administracion/lista-compra/:id',
+        component: ListaCompraAdminEvento,
+        canActivate: [perfilCompletoGuard, areaGuard('INVENTARIO')],
       },
       // Bebidas propuestas: cualquier admin/superadmin (no un área); el propio
       // componente rebota a /panel si no lo eres.

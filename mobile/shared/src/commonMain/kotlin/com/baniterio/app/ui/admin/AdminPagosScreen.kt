@@ -1,6 +1,5 @@
 package com.baniterio.app.ui.admin
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,16 +28,12 @@ import com.baniterio.app.data.EventosRepository
 import com.baniterio.app.data.ResultadoEvento
 import com.baniterio.app.data.dto.PagoDeclaradoPendienteDto
 import com.baniterio.app.theme.BaniterioColors
-import com.baniterio.app.theme.BaniterioWordmark
+import com.baniterio.app.ui.comun.CabeceraPantalla
+import com.baniterio.app.ui.comun.EstadoCarga
+import com.baniterio.app.ui.comun.PantallaConEstado
 import com.baniterio.app.ui.comun.relieveDeCarta
 import com.baniterio.app.ui.eventos.formatoImporte
 import kotlinx.coroutines.launch
-
-private sealed interface EstadoPagos {
-    data object Cargando : EstadoPagos
-    data class Lista(val pendientes: List<PagoDeclaradoPendienteDto>) : EstadoPagos
-    data class Error(val mensaje: String) : EstadoPagos
-}
 
 private fun metodoLegible(m: String) = when (m) {
     "BIZUM" -> "Bizum"
@@ -58,16 +53,16 @@ fun AdminPagosScreen(
     eventosRepo: EventosRepository,
     onVolver: () -> Unit,
 ) {
-    var estado by remember { mutableStateOf<EstadoPagos>(EstadoPagos.Cargando) }
+    var estado by remember { mutableStateOf<EstadoCarga<List<PagoDeclaradoPendienteDto>>>(EstadoCarga.Cargando) }
     var aviso by remember { mutableStateOf<String?>(null) }
     var intento by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(intento) {
-        estado = EstadoPagos.Cargando
+        estado = EstadoCarga.Cargando
         estado = when (val r = eventosRepo.pagosDeclaradosPendientes()) {
-            is ResultadoEvento.Exito -> EstadoPagos.Lista(r.dato)
-            is ResultadoEvento.Error -> EstadoPagos.Error(r.mensaje)
+            is ResultadoEvento.Exito -> EstadoCarga.Cargado(r.dato)
+            is ResultadoEvento.Error -> EstadoCarga.Error(r.mensaje)
         }
     }
 
@@ -75,26 +70,16 @@ fun AdminPagosScreen(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BaniterioWordmark()
-            Text("Volver", color = BaniterioColors.brandBright,
-                modifier = Modifier.clickable { onVolver() })
-        }
+        CabeceraPantalla(onVolver)
         Text("Confirmar pagos", style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
         aviso?.let { Text(it, color = BaniterioColors.gold) }
 
-        when (val e = estado) {
-            is EstadoPagos.Cargando -> Text("Cargando…", color = BaniterioColors.muted)
-            is EstadoPagos.Error -> {
-                Text(e.mensaje, color = BaniterioColors.muted)
-                Button(onClick = { intento++ }) { Text("Reintentar") }
+        PantallaConEstado(estado, onReintentar = { intento++ }) { pendientes ->
+            if (pendientes.isEmpty()) {
+                Text("No hay pagos pendientes de confirmar.", color = BaniterioColors.muted)
             }
-            is EstadoPagos.Lista -> {
-                if (e.pendientes.isEmpty()) {
-                    Text("No hay pagos pendientes de confirmar.", color = BaniterioColors.muted)
-                }
-                e.pendientes.forEach { p ->
+            pendientes.forEach { p ->
                     Column(
                         modifier = Modifier.fillMaxWidth()
                             .relieveDeCarta(RoundedCornerShape(14.dp))
@@ -146,4 +131,3 @@ fun AdminPagosScreen(
             }
         }
     }
-}
