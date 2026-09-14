@@ -218,6 +218,15 @@
                   Mandar notificación
                 </button>
               }
+              @if (e.puedoEditar) {
+                <button
+                  type="button"
+                  (click)="modalAnadirAsistente.set(true)"
+                  class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-brand-bright/60"
+                >
+                  Añadir asistente
+                </button>
+              }
               @if (e.puedoBorrar && !e.oculto) {
                 <button
                   type="button"
@@ -307,7 +316,22 @@
         </article>
 
         @if (modalAsistentes()) {
-          <app-modal-asistentes [eventoId]="e.id" (cerrar)="modalAsistentes.set(false)" />
+          <app-modal-asistentes
+            [eventoId]="e.id"
+            [puedoEditar]="e.puedoEditar"
+            [llevaFicha]="e.asistencia.ficha.llevaFicha"
+            [diasEvento]="e.asistencia.ficha.diasEvento"
+            (cerrar)="modalAsistentes.set(false)"
+          />
+        }
+        @if (modalAnadirAsistente()) {
+          <app-modal-anadir-asistente
+            [eventoId]="e.id"
+            [llevaFicha]="e.asistencia.ficha.llevaFicha"
+            [diasEvento]="e.asistencia.ficha.diasEvento"
+            (cerrar)="modalAnadirAsistente.set(false)"
+            (anadido)="onAsistenteAnadido($event)"
+          />
         }
         @if (modalPago()) {
           <app-modal-he-pagado

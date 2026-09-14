@@ -149,8 +149,8 @@ describe('EventosService', () => {
     service.anadirAsistente(5, 'Primo de Juan', 'APUNTADO').subscribe();
     const req = httpMock.expectOne(`${base}/eventos/5/asistencias`);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ nombre: 'Primo de Juan', estado: 'APUNTADO' });
-    req.flush({ id: 1, nombre: 'Primo de Juan', estado: 'APUNTADO', esManual: true });
+    expect(req.request.body).toEqual({ nombre: 'Primo de Juan', telefono: null, estado: 'APUNTADO' });
+    req.flush({ id: 1, nombre: 'Primo de Juan', telefono: null, estado: 'APUNTADO', esManual: true });
   });
 
   it('quitarAsistente() hace DELETE a /eventos/:id/asistencias/:asistenciaId', () => {
@@ -207,10 +207,18 @@ describe('EventosService', () => {
       asisteDia1: true,
       asisteDia2: true,
     };
-    service.anadirAsistente(5, 'Primo', 'APUNTADO', ficha).subscribe();
+    service.anadirAsistente(5, 'Primo', 'APUNTADO', '612345678', ficha).subscribe();
     const req = httpMock.expectOne(`${base}/eventos/5/asistencias`);
-    expect(req.request.body).toEqual({ nombre: 'Primo', estado: 'APUNTADO', ficha });
-    req.flush({ id: 1, nombre: 'Primo', estado: 'APUNTADO', esManual: true, cuota: 26, modalidad: 'COMPLETA' });
+    expect(req.request.body).toEqual({ nombre: 'Primo', telefono: '612345678', estado: 'APUNTADO', ficha });
+    req.flush({
+      id: 1,
+      nombre: 'Primo',
+      telefono: '612345678',
+      estado: 'APUNTADO',
+      esManual: true,
+      cuota: 26,
+      modalidad: 'COMPLETA',
+    });
   });
 
   it('bebidasPendientes() hace GET a /bebidas con estado=PENDIENTE', () => {

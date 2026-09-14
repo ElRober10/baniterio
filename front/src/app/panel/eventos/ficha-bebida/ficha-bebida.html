@@ -15,93 +15,95 @@
     Estoy embarazada (solo refresco)
   </label>
 
-  @if (!embarazada()) {
+  <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    @if (!embarazada()) {
+      <div>
+        <label class="text-xs text-muted" for="fb-alcohol">Bebida alcohólica</label>
+        <select
+          id="fb-alcohol"
+          (change)="set(alcoholSel, $event)"
+          class="mt-1 w-full rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
+        >
+          <option value="" [selected]="alcoholSel() === ''">No bebo alcohol</option>
+          @for (b of catalogo.alcohol; track b.id) {
+            <option [value]="b.id" [selected]="esId(alcoholSel(), b.id)">{{ b.nombre }}</option>
+          }
+          <option [value]="OTRA" [selected]="alcoholSel() === OTRA">Otra…</option>
+        </select>
+        @if (alcoholSel() === OTRA) {
+          <input
+            type="text"
+            [value]="alcoholOtra()"
+            (input)="set(alcoholOtra, $event)"
+            placeholder="¿Cuál? (la revisa un admin)"
+            class="mt-2 w-full rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
+          />
+        }
+      </div>
+
+      <div>
+        <label class="text-xs text-muted" for="fb-alt">Para alternar</label>
+        <select
+          id="fb-alt"
+          [value]="alternativa()"
+          (change)="setAlternativa($event)"
+          class="mt-1 w-full rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
+        >
+          <option value="NADA">Nada</option>
+          <option value="CERVEZA">Cerveza</option>
+          <option value="TINTO_VERANO">Tinto de verano</option>
+          <option value="CERVEZA_ESPECIAL">Cerveza especial</option>
+        </select>
+        @if (alternativa() === 'CERVEZA_ESPECIAL') {
+          <input
+            type="text"
+            [value]="cervezaEspecial()"
+            (input)="set(cervezaEspecial, $event)"
+            placeholder="¿Cuál?"
+            class="mt-2 w-full rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
+          />
+        }
+      </div>
+    }
+
     <div>
-      <label class="text-xs text-muted" for="fb-alcohol">Bebida alcohólica</label>
+      <label class="text-xs text-muted" for="fb-refresco">Refresco</label>
       <select
-        id="fb-alcohol"
-        (change)="set(alcoholSel, $event)"
+        id="fb-refresco"
+        (change)="set(refrescoSel, $event)"
         class="mt-1 w-full rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
       >
-        <option value="" [selected]="alcoholSel() === ''">No bebo alcohol</option>
-        @for (b of catalogo.alcohol; track b.id) {
-          <option [value]="b.id" [selected]="esId(alcoholSel(), b.id)">{{ b.nombre }}</option>
+        <option value="" disabled [selected]="refrescoSel() === ''">Elige…</option>
+        @for (b of catalogo.refresco; track b.id) {
+          <option [value]="b.id" [selected]="esId(refrescoSel(), b.id)">{{ b.nombre }}</option>
         }
-        <option [value]="OTRA" [selected]="alcoholSel() === OTRA">Otra…</option>
+        <option [value]="OTRA" [selected]="refrescoSel() === OTRA">Otra…</option>
       </select>
-      @if (alcoholSel() === OTRA) {
+      @if (refrescoSel() === OTRA) {
         <input
           type="text"
-          [value]="alcoholOtra()"
-          (input)="set(alcoholOtra, $event)"
+          [value]="refrescoOtra()"
+          (input)="set(refrescoOtra, $event)"
           placeholder="¿Cuál? (la revisa un admin)"
           class="mt-2 w-full rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
         />
       }
     </div>
 
-    <div>
-      <label class="text-xs text-muted" for="fb-alt">Para alternar</label>
-      <select
-        id="fb-alt"
-        [value]="alternativa()"
-        (change)="setAlternativa($event)"
-        class="mt-1 w-full rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
-      >
-        <option value="NADA">Nada</option>
-        <option value="CERVEZA">Cerveza</option>
-        <option value="TINTO_VERANO">Tinto de verano</option>
-        <option value="CERVEZA_ESPECIAL">Cerveza especial</option>
-      </select>
-      @if (alternativa() === 'CERVEZA_ESPECIAL') {
-        <input
-          type="text"
-          [value]="cervezaEspecial()"
-          (input)="set(cervezaEspecial, $event)"
-          placeholder="¿Cuál?"
-          class="mt-2 w-full rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
-        />
-      }
-    </div>
-  }
-
-  <div>
-    <label class="text-xs text-muted" for="fb-refresco">Refresco</label>
-    <select
-      id="fb-refresco"
-      (change)="set(refrescoSel, $event)"
-      class="mt-1 w-full rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
-    >
-      <option value="" disabled [selected]="refrescoSel() === ''">Elige…</option>
-      @for (b of catalogo.refresco; track b.id) {
-        <option [value]="b.id" [selected]="esId(refrescoSel(), b.id)">{{ b.nombre }}</option>
-      }
-      <option [value]="OTRA" [selected]="refrescoSel() === OTRA">Otra…</option>
-    </select>
-    @if (refrescoSel() === OTRA) {
-      <input
-        type="text"
-        [value]="refrescoOtra()"
-        (input)="set(refrescoOtra, $event)"
-        placeholder="¿Cuál? (la revisa un admin)"
-        class="mt-2 w-full rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
-      />
+    @if (dosDias()) {
+      <div>
+        <p class="text-xs text-muted">¿Qué días vas?</p>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" [checked]="dia1()" (change)="toggleDia(1, $event)" />
+          {{ dias[0] }}
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" [checked]="dia2()" (change)="toggleDia(2, $event)" />
+          {{ dias[1] }}
+        </label>
+      </div>
     }
   </div>
-
-  @if (dosDias()) {
-    <div>
-      <p class="text-xs text-muted">¿Qué días vas?</p>
-      <label class="flex items-center gap-2 text-sm">
-        <input type="checkbox" [checked]="dia1()" (change)="toggleDia(1, $event)" />
-        {{ dias[0] }}
-      </label>
-      <label class="flex items-center gap-2 text-sm">
-        <input type="checkbox" [checked]="dia2()" (change)="toggleDia(2, $event)" />
-        {{ dias[1] }}
-      </label>
-    </div>
-  }
 
   @if (error()) {
     <p role="alert" class="text-sm text-red-300">{{ error() }}</p>
