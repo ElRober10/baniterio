@@ -9,10 +9,13 @@ import java.time.Instant;
  * son {@code null} si la asistencia no tiene ficha. {@code estadoPago} es uno de
  * {@code EstadoPagoCuota} ({@code null} si no hay ficha). Si el pago está
  * confirmado, van rellenos {@code metodoPago}, {@code pagadoPor} (nombre de quien
- * lo confirmó) y {@code pagadoAt}.
+ * lo confirmó) y {@code pagadoAt}. {@code esManual} ("invitado" en la UI) es
+ * {@code true} solo si no tiene usuario y, además, no tiene teléfono o ese
+ * teléfono todavía no está en la lista de autorizados.
  */
 public record AsistenteFila(
         String nombre,
+        String telefono,
         String estado,
         boolean esManual,
         BebidaFila bebida,

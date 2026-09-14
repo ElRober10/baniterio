@@ -20,4 +20,7 @@ public interface TelefonoAutorizadoRepository extends JpaRepository<TelefonoAuto
     List<TelefonoAutorizado> findByPenaId(Long penaId);
 
     boolean existsByTelefonoAndUsadoFalse(String telefono);
+
+    /** Para marcar en bloque qué teléfonos de un listado ya están autorizados. */
+    List<TelefonoAutorizado> findByTelefonoIn(java.util.Collection<String> telefonos);
 }

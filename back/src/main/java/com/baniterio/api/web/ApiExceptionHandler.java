@@ -201,6 +201,11 @@ public class ApiExceptionHandler {
         return error(HttpStatus.CONFLICT, "ASISTENCIA_NO_MANUAL");
     }
 
+    @ExceptionHandler(com.baniterio.api.evento.AsistenciaYaExisteException.class)
+    ResponseEntity<Map<String, Object>> asistenciaYaExiste() {
+        return error(HttpStatus.CONFLICT, "ASISTENCIA_YA_EXISTE");
+    }
+
     @ExceptionHandler(com.baniterio.api.evento.BebidaNoEncontradaException.class)
     ResponseEntity<Map<String, Object>> bebidaNoEncontrada() {
         return error(HttpStatus.NOT_FOUND, "BEBIDA_NO_ENCONTRADA");

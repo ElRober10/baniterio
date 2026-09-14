@@ -14,6 +14,7 @@ import jakarta.validation.constraints.Size;
  * no se usa (manda el de fuera), pero debe pasar la validación igualmente.
  */
 public record AnadirAsistenteRequest(@NotBlank @Size(max = 120) String nombre,
+                                     @Size(max = 20) String telefono,
                                      @NotNull EstadoAsistencia estado,
                                      @Valid FichaBebidaRequest ficha) {
 }
