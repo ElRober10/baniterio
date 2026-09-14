@@ -45,8 +45,15 @@ import org.springframework.transaction.annotation.Transactional;
  * Lista de la compra por evento: montar la lista calculada (cualquier peñista) y
  * el editor de "Cantidades para eventos" (área INVENTARIO). Las reglas de cada
  * evento se materializan copiando la plantilla global la primera vez que se pide
- * la lista. Bloque 1: cálculo bruto con redondeo hacia arriba; el descuento del
- * inventario de la fiesta es el bloque 2.
+ * la lista. Bloque 1: cálculo bruto con redondeo hacia arriba. Bloque 2: se resta
+ * lo que ya está en el inventario de la fiesta de ESE evento ({@link #stockCubierto}
+ * — el inventario general de la peña no cuenta aquí, solo lo enviado a este evento)
+ * — se recalcula cada vez que se abre la lista, así que cualquier "enviar"/"devolver"
+ * en el inventario de la fiesta se refleja solo. Si la cantidad queda a 0 la línea
+ * no se muestra (salvo el placeholder de "necesita ficha de bebida"). Una vez
+ * marcada {@code comprada}, la línea queda congelada y ya no se recalcula (ni al
+ * bajar ni al subir el stock disponible); lo mismo pasa con toda la lista mientras
+ * esté {@code listaCompraBloqueada}.
  */
 @Service
 public class ListaCompraService {
@@ -155,7 +162,12 @@ public class ListaCompraService {
         for (CategoriaInventario cat : CategoriaInventario.values()) {
             porCategoria.put(cat, new ArrayList<>());
         }
-        for (LineaCompraEvento l : lineas.findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(eventoId)) {
+        for (LineaCompraEvento l : lineas.findByEventoIdOrderByCategoriaAscNombreAsc(eventoId)) {
+            // Si no hace falta comprar nada (cantidad 0), no se muestra; salvo la línea
+            // placeholder de "necesita ficha de bebida", que siempre se ve a 0.
+            if (l.getCantidad().signum() == 0 && !l.isNecesitaFicha()) {
+                continue;
+            }
             porCategoria.get(l.getCategoria()).add(new LineaCompraDto(
                     l.getId(), l.getNombre(), l.getTamano(), l.getCantidad(), BigDecimal.ZERO,
                     l.isAjustada(), l.isDinamica(), l.isNecesitaFicha(), l.isComprada()));
@@ -171,18 +183,83 @@ public class ListaCompraService {
                 datos.apuntados(), datos.diasFiesta(), categorias);
     }
 
-    /** Todas las líneas que el cálculo produce ahora mismo para el evento. */
+    /** Stock ya cubierto: por clave exacta, por categoría entera y por marca (sin tamaño). */
+    private record StockCubierto(Map<String, BigDecimal> porClave, Map<CategoriaInventario, BigDecimal> porCategoria,
+                                  Map<String, BigDecimal> porNombre) {
+    }
+
+    private static final BigDecimal LITRO = BigDecimal.ONE;
+    private static final BigDecimal SETENTA_CL = new BigDecimal("0.7");
+
+    private static String claveNombre(CategoriaInventario cat, String nombre) {
+        return cat.name() + " " + nombre;
+    }
+
+    /**
+     * Stock ya cubierto de un producto: solo lo que ya está en el inventario de la
+     * fiesta (enviado + comprado para ella). El inventario general de la peña NO
+     * cuenta aquí: solo lo que se ha enviado a ESTE evento reduce su lista.
+     * {@code CERVEZA} es la categoría rara: la plantilla tiene una única línea
+     * genérica "Cerveza" pero el inventario guarda una fila por marca (Mahou
+     * Clásica, Coronita...), así que ahí se descuenta por categoría entera en vez
+     * de por nombre exacto. {@code porNombre} suma por marca sin mirar el tamaño
+     * (botella de 1L o de 70cl): lo usa la regla de la botella del alcohol.
+     */
+    private StockCubierto stockCubierto(Long eventoId) {
+        Map<String, BigDecimal> porClave = new LinkedHashMap<>();
+        Map<CategoriaInventario, BigDecimal> porCategoria = new LinkedHashMap<>();
+        Map<String, BigDecimal> porNombre = new LinkedHashMap<>();
+        for (ArticuloEvento a : articulosEvento.findByEventoIdOrderByCategoriaAscNombreAsc(eventoId)) {
+            BigDecimal total = a.getCantidad().add(a.getCantidadComprada());
+            porClave.merge(clave(a.getCategoria(), a.getNombre(), a.getTamano()), total, BigDecimal::add);
+            porCategoria.merge(a.getCategoria(), total, BigDecimal::add);
+            porNombre.merge(claveNombre(a.getCategoria(), a.getNombre()), total, BigDecimal::add);
+        }
+        return new StockCubierto(porClave, porCategoria, porNombre);
+    }
+
+    /**
+     * Todas las líneas que el cálculo produce ahora mismo para el evento (bloque 2:
+     * resta el stock ya cubierto). Lo que sobra tras restar se redondea siempre
+     * hacia arriba a una unidad entera (no se compran fracciones de rollo, litro o
+     * botella); si no sobra nada, la línea no se compra (cantidad 0).
+     */
     private List<LineaCalc> calcular(Long eventoId, DatosEvento datos) {
         List<ReglaCompraEvento> activas = reglasEvento
                 .findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(eventoId).stream()
                 .filter(ReglaCompraEvento::isActiva).toList();
+        StockCubierto stock = stockCubierto(eventoId);
         List<LineaCalc> out = new ArrayList<>();
         for (ReglaCompraEvento r : activas) {
             for (LineaCalculada lc : CalculadoraListaCompra.lineasDe(r, datos)) {
-                BigDecimal calculada = CalculadoraListaCompra.ceil(lc.bruto());
                 boolean ajustada = !r.getTipoFormula().esDinamica() && r.getCantidadAjustada() != null;
-                BigDecimal cantidad = ajustada ? r.getCantidadAjustada() : calculada;
-                out.add(new LineaCalc(r.getCategoria(), lc.nombre(), lc.tamano(), cantidad,
+                String tamano = lc.tamano();
+                BigDecimal cantidad;
+                if (ajustada) {
+                    cantidad = r.getCantidadAjustada();
+                } else if (r.getCategoria() == CategoriaInventario.ALCOHOL && lc.dinamica() && "1 L".equals(tamano)) {
+                    // Una sola persona bebiendo esa marca: hace falta al menos 1 L en total
+                    // entre lo que ya hay y lo que se compre. Si con una botella de 70cl ya
+                    // se llega al litro, se compra esa (más barata); si no, la de 1 L.
+                    BigDecimal stockMarca = stock.porNombre()
+                            .getOrDefault(claveNombre(r.getCategoria(), lc.nombre()), BigDecimal.ZERO);
+                    if (stockMarca.compareTo(LITRO) >= 0) {
+                        cantidad = BigDecimal.ZERO;
+                    } else if (stockMarca.add(SETENTA_CL).compareTo(LITRO) >= 0) {
+                        tamano = "70 cl";
+                        cantidad = BigDecimal.ONE;
+                    } else {
+                        cantidad = BigDecimal.ONE;
+                    }
+                } else {
+                    BigDecimal cubierto = r.getCategoria() == CategoriaInventario.CERVEZA
+                            ? stock.porCategoria().getOrDefault(CategoriaInventario.CERVEZA, BigDecimal.ZERO)
+                            : stock.porClave().getOrDefault(
+                                    clave(r.getCategoria(), lc.nombre(), lc.tamano()), BigDecimal.ZERO);
+                    BigDecimal restante = lc.bruto().subtract(cubierto).max(BigDecimal.ZERO);
+                    cantidad = restante.signum() > 0 ? CalculadoraListaCompra.ceil(restante) : BigDecimal.ZERO;
+                }
+                out.add(new LineaCalc(r.getCategoria(), lc.nombre(), tamano, cantidad,
                         r.getOrden(), lc.dinamica(), lc.necesitaFicha(), ajustada));
             }
         }
@@ -193,7 +270,7 @@ public class ListaCompraService {
     private void sincronizar(Evento e, DatosEvento datos) {
         List<LineaCalc> calculadas = calcular(e.getId(), datos);
         Map<String, LineaCompraEvento> existentes = new LinkedHashMap<>();
-        for (LineaCompraEvento l : lineas.findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(e.getId())) {
+        for (LineaCompraEvento l : lineas.findByEventoIdOrderByCategoriaAscNombreAsc(e.getId())) {
             existentes.put(clave(l.getCategoria(), l.getNombre(), l.getTamano()), l);
         }
         Set<String> vistas = new HashSet<>();
@@ -242,7 +319,7 @@ public class ListaCompraService {
                         eventoId, linea.getCategoria(), linea.getNombre(), linea.getTamano())
                 .orElse(null);
         if (fila == null) {
-            int orden = articulosEvento.findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(eventoId).stream()
+            int orden = articulosEvento.findByEventoIdOrderByCategoriaAscNombreAsc(eventoId).stream()
                     .filter(f -> f.getCategoria() == linea.getCategoria())
                     .mapToInt(ArticuloEvento::getOrden).max().orElse(0) + 1;
             fila = ArticuloEvento.builder()
@@ -319,9 +396,34 @@ public class ListaCompraService {
         if (r.getTipoFormula().esDinamica() && req.cantidadAjustada() != null) {
             throw new AjusteNoAplicaException();
         }
+        exigirPorCadaValido(r.getTipoFormula(), req.porCada());
+
         r.setCantidadAjustada(r.getTipoFormula().esDinamica() ? null : req.cantidadAjustada());
         r.setActiva(req.activa());
+        r.setFactor(req.factor());
+        r.setPorCada(req.porCada());
         reglasEvento.save(r);
+
+        // La regla de este evento viene de la plantilla: se actualiza también ahí
+        // para que los próximos eventos nazcan ya con la fórmula nueva.
+        if (r.getOrigen() == OrigenReglaCompra.PLANTILLA) {
+            plantilla.findByPenaIdAndCategoriaAndNombreAndTipoFormula(
+                    penaId(), r.getCategoria(), r.getNombre(), r.getTipoFormula())
+                    .ifPresent(p -> {
+                        p.setFactor(req.factor());
+                        p.setPorCada(req.porCada());
+                        plantilla.save(p);
+                    });
+        }
+    }
+
+    /** Fórmulas "por cada N" exigen porCada > 0; el resto lo exige a null. */
+    private static void exigirPorCadaValido(TipoFormulaCompra tipo, Integer porCada) {
+        boolean esPorCada = tipo == TipoFormulaCompra.POR_CADA_N_PENISTAS
+                || tipo == TipoFormulaCompra.POR_CADA_N_PENISTAS_DIA;
+        if (esPorCada == (porCada == null) || (porCada != null && porCada <= 0)) {
+            throw new PorCadaNoAplicaException();
+        }
     }
 
     @Transactional
@@ -332,16 +434,13 @@ public class ListaCompraService {
         if (req.tipoFormula().esDinamica()) {
             throw new FormulaNoCreableException();
         }
-        boolean esPorCada = req.tipoFormula() == TipoFormulaCompra.POR_CADA_N_PENISTAS;
-        if (esPorCada == (req.porCada() == null) || (req.porCada() != null && req.porCada() <= 0)) {
-            throw new PorCadaNoAplicaException();
-        }
+        exigirPorCadaValido(req.tipoFormula(), req.porCada());
         int orden = reglasEvento.findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(eventoId).stream()
                 .filter(x -> x.getCategoria() == req.categoria())
                 .mapToInt(ReglaCompraEvento::getOrden).max().orElse(0) + 1;
         ReglaCompraEvento r = ReglaCompraEvento.builder()
                 .evento(e).categoria(req.categoria()).nombre(req.nombre().trim()).tamano(req.tamano().trim())
-                .tipoFormula(req.tipoFormula()).factor(req.factor()).porCada(esPorCada ? req.porCada() : null)
+                .tipoFormula(req.tipoFormula()).factor(req.factor()).porCada(req.porCada())
                 .orden(orden).origen(OrigenReglaCompra.MANUAL).cantidadAjustada(null).activa(true).build();
         try {
             r = reglasEvento.saveAndFlush(r);

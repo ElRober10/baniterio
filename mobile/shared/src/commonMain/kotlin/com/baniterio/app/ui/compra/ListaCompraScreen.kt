@@ -1,11 +1,13 @@
 package com.baniterio.app.ui.compra
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -21,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -127,6 +130,7 @@ fun ListaCompraScreen(
                         Row(
                             Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(Modifier.weight(1f)) {
                                 Text(l.nombre, color = MaterialTheme.colorScheme.onBackground)
@@ -141,30 +145,39 @@ fun ListaCompraScreen(
                                     color = BaniterioColors.muted,
                                 )
                             }
-                            Text(
-                                fmt(l.cantidad),
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground,
-                            )
-                            if (datos.puedoEditar) {
-                                if (l.comprada) {
-                                    Text(
-                                        "✓ Comprada",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = BaniterioColors.gold,
-                                    )
-                                } else if (l.cantidad > 0.0) {
-                                    OutlinedButton(
-                                        enabled = !ocupado,
-                                        onClick = {
-                                            ocupado = true
-                                            scope.launch {
-                                                listaCompraRepo.marcarComprada(eventoId, l.id)
-                                                ocupado = false
-                                                intento++
-                                            }
-                                        },
-                                    ) { Text("Comprado") }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    fmt(l.cantidad),
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                    modifier = Modifier.width(24.dp),
+                                )
+                                if (datos.puedoEditar) {
+                                    Box(
+                                        modifier = Modifier.width(132.dp).padding(start = 12.dp),
+                                        contentAlignment = Alignment.CenterStart,
+                                    ) {
+                                        if (l.comprada) {
+                                            Text(
+                                                "✓ Comprada",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = BaniterioColors.gold,
+                                            )
+                                        } else if (l.cantidad > 0.0) {
+                                            OutlinedButton(
+                                                enabled = !ocupado,
+                                                onClick = {
+                                                    ocupado = true
+                                                    scope.launch {
+                                                        listaCompraRepo.marcarComprada(eventoId, l.id)
+                                                        ocupado = false
+                                                        intento++
+                                                    }
+                                                },
+                                            ) { Text("Comprado", maxLines = 1, softWrap = false) }
+                                        }
+                                    }
                                 }
                             }
                         }

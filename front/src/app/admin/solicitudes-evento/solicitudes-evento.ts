@@ -22,6 +22,7 @@ export class SolicitudesEvento implements OnInit {
   protected readonly mensaje = signal('');
   protected readonly rechazandoId = signal<number | null>(null);
   protected readonly motivo = signal('');
+  protected readonly confirmandoBorrarId = signal<number | null>(null);
 
   ngOnInit(): void {
     this.cargar();
@@ -39,6 +40,23 @@ export class SolicitudesEvento implements OnInit {
   }
 
   protected aprobar(s: SolicitudEventoResumen): void {
+    if (s.tipo === 'BORRAR') {
+      this.confirmandoBorrarId.set(s.id);
+      return;
+    }
+    this.ejecutarAprobacion(s);
+  }
+
+  protected cancelarConfirmacionBorrar(): void {
+    this.confirmandoBorrarId.set(null);
+  }
+
+  protected confirmarAprobarBorrado(s: SolicitudEventoResumen): void {
+    this.confirmandoBorrarId.set(null);
+    this.ejecutarAprobacion(s);
+  }
+
+  private ejecutarAprobacion(s: SolicitudEventoResumen): void {
     this.adminService.aprobarSolicitudEvento(s.id).subscribe({
       next: () => {
         this.mensaje.set(s.tipo === 'CREAR' ? 'Crédito concedido.' : 'Evento borrado.');

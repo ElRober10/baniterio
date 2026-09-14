@@ -56,6 +56,11 @@ public final class CalculadoraListaCompra {
                 int grupos = (int) Math.ceil((double) d.apuntados() / r.getPorCada());
                 yield uno(r, f.multiply(BigDecimal.valueOf(grupos)), false);
             }
+            case POR_CADA_N_PENISTAS_DIA -> {
+                int personasDia = sumaDias(d.personas(), p -> true);
+                int grupos = (int) Math.ceil((double) personasDia / r.getPorCada());
+                yield uno(r, f.multiply(BigDecimal.valueOf(grupos)), false);
+            }
             case CERVEZA_ALTERNATIVA -> reglaBebida(r, d, f.multiply(BigDecimal.valueOf(
                     sumaDias(d.personas(), p -> p.tieneFicha() && p.alternativa() == Alternativa.CERVEZA))));
             case TINTO_ALTERNATIVA -> reglaBebida(r, d, f.multiply(BigDecimal.valueOf(

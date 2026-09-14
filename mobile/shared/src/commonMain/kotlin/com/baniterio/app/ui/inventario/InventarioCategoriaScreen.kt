@@ -72,8 +72,8 @@ private fun fmt(d: Double): String =
  * Listado de UNA categoría del inventario. Pide el inventario entero
  * (`GET /api/v1/inventario`) y se queda con su categoría. Si el backend dice
  * `puedoEditar`, aparecen "Editar cantidades" y "Añadir artículo"; "Guardar"
- * manda un PUT por cada fila cambiada. Los botones "Enviar a evento" son
- * placeholders sin función todavía.
+ * manda un PUT por cada fila cambiada. "Enviar a evento" (uno o toda la
+ * categoría) abre un diálogo con los eventos abiertos y envía al elegido.
  */
 @Composable
 fun InventarioCategoriaScreen(

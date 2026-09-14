@@ -73,6 +73,16 @@ class CalculadoraListaCompraTest {
     }
 
     @Test
+    void por_cada_n_penistas_dia_usa_la_suma_de_dias_que_va() {
+        var d = sanMiguel(List.of(p(2, true, null, "Fanta", Alternativa.NADA),
+                p(1, true, null, "Fanta", Alternativa.NADA)));
+        var r = regla(TipoFormulaCompra.POR_CADA_N_PENISTAS_DIA, 1, 7,
+                CategoriaInventario.COMIDA, "Tortilla de patatas", "unidad");
+        // 2 + 1 = 3 persona-días, ceil(3/7) = 1 grupo
+        assertThat(CalculadoraListaCompra.lineasDe(r, d).get(0).bruto()).isEqualByComparingTo("1");
+    }
+
+    @Test
     void cerveza_alternativa_solo_cuenta_a_quien_bebe_cerveza() {
         var d = sanMiguel(List.of(p(2, true, null, "Fanta", Alternativa.CERVEZA),
                 p(1, true, null, "Fanta", Alternativa.CERVEZA),

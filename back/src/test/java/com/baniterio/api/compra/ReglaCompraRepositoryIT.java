@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** La plantilla de reglas de compra (V38) se siembra con las 24 fórmulas de la peña. */
+/** La plantilla de reglas de compra (V38 + V40 + V42) se siembra con las 28 fórmulas de la peña. */
 class ReglaCompraRepositoryIT extends IntegrationTest {
 
     @Autowired
@@ -23,13 +23,23 @@ class ReglaCompraRepositoryIT extends IntegrationTest {
     }
 
     @Test
-    void la_plantilla_se_siembra_con_las_24_reglas() {
+    void la_plantilla_se_siembra_con_las_28_reglas() {
         List<ReglaCompra> todas = reglas.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(penaId());
 
-        assertThat(todas).hasSize(24);
+        assertThat(todas).hasSize(28);
         assertThat(todas).anyMatch(r -> r.getTipoFormula() == TipoFormulaCompra.ALCOHOL_SELECCIONADO);
         assertThat(todas).anyMatch(r -> r.getNombre().equals("Bayetas")
                 && r.getPorCada() == 30
                 && r.getTipoFormula() == TipoFormulaCompra.POR_CADA_N_PENISTAS);
+        assertThat(todas).anyMatch(r -> r.getNombre().equals("Tortilla de patatas")
+                && r.getPorCada() == 7
+                && r.getTipoFormula() == TipoFormulaCompra.POR_CADA_N_PENISTAS_DIA);
+        assertThat(todas).anyMatch(r -> r.getNombre().equals("Revueltos grande")
+                && r.getTipoFormula() == TipoFormulaCompra.POR_EVENTO);
+        assertThat(todas).anyMatch(r -> r.getNombre().equals("Gominolas")
+                && r.getTipoFormula() == TipoFormulaCompra.POR_DIA);
+        assertThat(todas).anyMatch(r -> r.getNombre().equals("Empanadas")
+                && r.getPorCada() == 7
+                && r.getTipoFormula() == TipoFormulaCompra.POR_CADA_N_PENISTAS_DIA);
     }
 }

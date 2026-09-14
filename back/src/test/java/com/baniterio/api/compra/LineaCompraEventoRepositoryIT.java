@@ -36,7 +36,7 @@ class LineaCompraEventoRepositoryIT extends IntegrationTest {
                 .evento(e).categoria(CategoriaInventario.COMIDA).nombre("Picos").tamano("paquete")
                 .cantidad(new BigDecimal("4.00")).orden(1).build());
 
-        var guardadas = lineas.findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(e.getId());
+        var guardadas = lineas.findByEventoIdOrderByCategoriaAscNombreAsc(e.getId());
         assertThat(guardadas).singleElement()
                 .satisfies(l -> {
                     assertThat(l.getNombre()).isEqualTo("Picos");

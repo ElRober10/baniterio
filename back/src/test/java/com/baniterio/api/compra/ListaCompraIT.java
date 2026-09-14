@@ -43,6 +43,7 @@ class ListaCompraIT extends IntegrationTest {
     @Autowired CuentaRepository cuentas;
     @Autowired EventoRepository eventos;
     @Autowired PasswordEncoder passwordEncoder;
+    @Autowired ReglaCompraRepository reglaCompraPlantilla;
 
     RestTestClient http;
 
@@ -162,7 +163,7 @@ class ListaCompraIT extends IntegrationTest {
 
         http.put().uri("/api/v1/admin/lista-compra/eventos/" + eventoId + "/reglas/" + platosId)
                 .header(AUTHORIZATION, "Bearer " + admin)
-                .body(Map.of("cantidadAjustada", 99, "activa", true))
+                .body(Map.of("cantidadAjustada", 99, "activa", true, "factor", 3))
                 .exchange().expectStatus().isNoContent();
 
         assertThat(cantidadLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
@@ -170,7 +171,7 @@ class ListaCompraIT extends IntegrationTest {
 
         http.put().uri("/api/v1/admin/lista-compra/eventos/" + eventoId + "/reglas/" + platosId)
                 .header(AUTHORIZATION, "Bearer " + admin)
-                .body(Map.of("activa", false))
+                .body(Map.of("activa", false, "factor", 3))
                 .exchange().expectStatus().isNoContent();
 
         assertThat(cantidadLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
@@ -184,7 +185,7 @@ class ListaCompraIT extends IntegrationTest {
         long alcoholId = idDeReglaPorFormula(reglasAdmin(eventoId, admin), "ALCOHOL_SELECCIONADO");
         http.put().uri("/api/v1/admin/lista-compra/eventos/" + eventoId + "/reglas/" + alcoholId)
                 .header(AUTHORIZATION, "Bearer " + admin)
-                .body(Map.of("cantidadAjustada", 5, "activa", true))
+                .body(Map.of("cantidadAjustada", 5, "activa", true, "factor", 0.5))
                 .exchange().expectStatus().isBadRequest()
                 .expectBody().jsonPath("$.codigo").isEqualTo("AJUSTE_NO_APLICA");
     }
@@ -209,6 +210,36 @@ class ListaCompraIT extends IntegrationTest {
 
         http.delete().uri("/api/v1/admin/lista-compra/eventos/" + eventoId + "/reglas/" + nuevaId)
                 .header(AUTHORIZATION, "Bearer " + admin)
+                .exchange().expectStatus().isNoContent();
+    }
+
+    @Test
+    void ajustar_el_factor_de_una_regla_de_plantilla_actualiza_tambien_la_plantilla() {
+        long eventoId = crearEventoDeUnDia("Lista compra IT factor plantilla");
+        String admin = token(RolMembresia.ADMIN, false);
+        long platosId = idDeRegla(reglasAdmin(eventoId, admin), "Platos");
+
+        http.put().uri("/api/v1/admin/lista-compra/eventos/" + eventoId + "/reglas/" + platosId)
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("activa", true, "factor", 4))
+                .exchange().expectStatus().isNoContent();
+
+        Map<String, Object> platosTrasAjuste = reglasAdmin(eventoId, admin).stream()
+                .filter(r -> "Platos".equals(r.get("nombre"))).findFirst().orElseThrow();
+        assertThat(((Number) platosTrasAjuste.get("factor")).doubleValue()).isEqualTo(4.0);
+
+        ReglaCompra dePlantilla = reglaCompraPlantilla
+                .findByPenaIdAndCategoriaAndNombreAndTipoFormula(
+                        pena().getId(), com.baniterio.api.inventario.CategoriaInventario.LIMPIEZA,
+                        "Platos", TipoFormulaCompra.POR_PENISTA)
+                .orElseThrow();
+        assertThat(dePlantilla.getFactor()).isEqualByComparingTo("4");
+
+        // La plantilla es global y compartida con el resto de los tests (misma BBDD,
+        // sin rollback entre *IT): se deja como estaba para no contaminarlos.
+        http.put().uri("/api/v1/admin/lista-compra/eventos/" + eventoId + "/reglas/" + platosId)
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("activa", true, "factor", 3))
                 .exchange().expectStatus().isNoContent();
     }
 

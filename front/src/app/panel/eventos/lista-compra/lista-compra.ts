@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Volver } from '../../../shared/volver/volver';
 import { ListaCompraService } from './lista-compra.service';
 import { CategoriaListaCompra, LineaCompra } from './lista-compra.types';
@@ -11,7 +11,7 @@ import { CategoriaListaCompra, LineaCompra } from './lista-compra.types';
  */
 @Component({
   selector: 'app-lista-compra',
-  imports: [Volver],
+  imports: [Volver, RouterLink],
   templateUrl: './lista-compra.html',
   styleUrl: './lista-compra.css',
 })

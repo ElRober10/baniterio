@@ -53,7 +53,7 @@ describe('InventarioFiesta', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.textContent).toContain('Tanqueray');
 
-    pulsar(el, 'Devolver a inventario');
+    pulsar(el, 'Devolver 1.5 al inventario general');
     fixture.detectChanges();
     expect(el.querySelector('[role="dialog"]')?.textContent).toContain('inventario general');
 
@@ -72,7 +72,7 @@ describe('InventarioFiesta', () => {
     fixture.detectChanges();
 
     const el = fixture.nativeElement as HTMLElement;
-    pulsar(el, 'Devolver a inventario');
+    pulsar(el, 'Devolver 1.5 al inventario general');
     fixture.detectChanges();
     pulsar(el, 'Cancelar');
     fixture.detectChanges();
@@ -80,7 +80,7 @@ describe('InventarioFiesta', () => {
     httpMock.verify();
   });
 
-  it('muestra "Devolver a la lista" cuando cantidadComprada > 0 y oculta el de stock', () => {
+  it('muestra "Devolver ... a la lista de la compra" cuando cantidadComprada > 0 y oculta el de stock', () => {
     const { fixture, httpMock } = montar();
     fixture.detectChanges();
     httpMock.expectOne(`${environment.apiBaseUrl}/inventario/evento/7`).flush({
@@ -99,10 +99,10 @@ describe('InventarioFiesta', () => {
 
     const el = fixture.nativeElement as HTMLElement;
     const botones = Array.from(el.querySelectorAll('button')).map((b) => b.textContent?.trim());
-    expect(botones).toContain('Devolver a la lista');
-    expect(botones).not.toContain('Devolver a inventario');
+    expect(botones).toContain('Devolver 12 a la lista de la compra');
+    expect(botones.some((b) => b?.includes('inventario general'))).toBe(false);
 
-    pulsar(el, 'Devolver a la lista');
+    pulsar(el, 'Devolver 12 a la lista de la compra');
     fixture.detectChanges();
     expect(el.querySelector('[role="dialog"]')?.textContent).toContain('lista de la compra');
     pulsar(el, 'Devolver');
@@ -120,7 +120,7 @@ describe('InventarioFiesta', () => {
     fixture.detectChanges();
     httpMock.expectOne(`${environment.apiBaseUrl}/inventario/evento/7`).flush(RESPUESTA(false));
     fixture.detectChanges();
-    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Devolver a inventario');
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Devolver');
     httpMock.verify();
   });
 });

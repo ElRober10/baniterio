@@ -12,6 +12,7 @@ export type TipoFormula =
   | 'POR_DIA'
   | 'POR_EVENTO'
   | 'POR_CADA_N_PENISTAS'
+  | 'POR_CADA_N_PENISTAS_DIA'
   | 'CERVEZA_ALTERNATIVA'
   | 'TINTO_ALTERNATIVA'
   | 'ALCOHOL_SELECCIONADO'
@@ -78,6 +79,8 @@ export interface ListaCompraAdminResponse {
 export interface AjustarRegla {
   cantidadAjustada: number | null;
   activa: boolean;
+  factor: number;
+  porCada: number | null;
 }
 
 export interface CrearRegla {
