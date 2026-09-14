@@ -57,6 +57,10 @@ export class CuentaDetalleComponent implements OnInit {
   protected readonly modalCerrarAnio = signal(false);
   protected readonly cerrandoAnio = signal(false);
 
+  // Confirmación de "borrar movimiento".
+  protected readonly movABorrar = signal<number | null>(null);
+  protected readonly borrandoMov = signal(false);
+
   // Selector de año.
   private readonly anioSel = signal<number | null>(null);
   protected readonly mostrarAniosViejos = signal(false);
@@ -177,10 +181,21 @@ export class CuentaDetalleComponent implements OnInit {
     });
   }
 
-  protected borrarMovimiento(movId: number): void {
+  protected pedirBorrarMovimiento(movId: number): void {
+    this.movABorrar.set(movId);
+  }
+
+  protected confirmarBorrarMovimiento(): void {
+    const movId = this.movABorrar();
+    if (movId == null) return;
+    this.borrandoMov.set(true);
     this.cuentasService.borrarMovimiento(movId).subscribe({
       next: (c) => this.trasCambio(c, 'Movimiento borrado.'),
       error: () => this.aviso.set('No se ha podido borrar.'),
+      complete: () => {
+        this.borrandoMov.set(false);
+        this.movABorrar.set(null);
+      },
     });
   }
 

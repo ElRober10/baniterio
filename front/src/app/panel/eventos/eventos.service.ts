@@ -146,10 +146,12 @@ export class EventosService {
     id: number,
     nombre: string,
     estado: EstadoAsistencia,
+    telefono?: string,
     ficha?: FichaBebidaBody,
   ): Observable<AsistenciaResumen> {
     return this.http.post<AsistenciaResumen>(`${this.base}/eventos/${id}/asistencias`, {
       nombre,
+      telefono: telefono || null,
       estado,
       ...(ficha ? { ficha } : {}),
     });

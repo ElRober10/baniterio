@@ -25,7 +25,7 @@ class ArticuloInventarioRepositoryIT extends IntegrationTest {
     @Test
     void la_siembra_incluye_las_cuatro_categorias_con_datos() {
         List<ArticuloInventario> lista =
-                articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(penaId());
+                articulos.findByPenaIdOrderByCategoriaAscNombreAsc(penaId());
 
         assertThat(lista).extracting(ArticuloInventario::getCategoria)
                 .contains(CategoriaInventario.ALCOHOL, CategoriaInventario.CERVEZA,
@@ -39,7 +39,7 @@ class ArticuloInventarioRepositoryIT extends IntegrationTest {
     @Test
     void cada_articulo_tiene_un_tamano_valido_para_su_categoria() {
         List<ArticuloInventario> lista =
-                articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(penaId());
+                articulos.findByPenaIdOrderByCategoriaAscNombreAsc(penaId());
 
         assertThat(lista).isNotEmpty();
         assertThat(lista).allMatch(a -> a.getCategoria().permiteTamano(a.getTamano()));

@@ -78,7 +78,7 @@ class InventarioIT extends IntegrationTest {
     }
 
     Long idDe(String categoria, String nombre) {
-        return articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(pena().getId()).stream()
+        return articulos.findByPenaIdOrderByCategoriaAscNombreAsc(pena().getId()).stream()
                 .filter(a -> a.getCategoria().name().equals(categoria) && a.getNombre().equals(nombre))
                 .findFirst().orElseThrow().getId();
     }
@@ -165,7 +165,7 @@ class InventarioIT extends IntegrationTest {
                         "tamano", "70 cl", "cantidad", 2))
                 .exchange().expectStatus().isCreated();
 
-        assertThat(articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(pena().getId()))
+        assertThat(articulos.findByPenaIdOrderByCategoriaAscNombreAsc(pena().getId()))
                 .anyMatch(a -> a.getNombre().equals("Ron Barceló Añejo")
                         && a.getCategoria().name().equals("ALCOHOL"));
     }
@@ -313,7 +313,7 @@ class InventarioIT extends IntegrationTest {
                 .body(Map.of("categoria", "REFRESCOS", "eventoId", eventoId))
                 .exchange().expectStatus().isNoContent();
 
-        assertThat(articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(pena().getId()))
+        assertThat(articulos.findByPenaIdOrderByCategoriaAscNombreAsc(pena().getId()))
                 .filteredOn(a -> a.getCategoria().name().equals("REFRESCOS"))
                 .allMatch(a -> a.getCantidad().signum() == 0);
     }
@@ -321,16 +321,16 @@ class InventarioIT extends IntegrationTest {
     @Test
     void crear_con_nombre_y_tamano_ya_existentes_actualiza_la_fila() {
         String token = token(RolMembresia.MIEMBRO, true);
-        long antes = articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(pena().getId()).size();
+        long antes = articulos.findByPenaIdOrderByCategoriaAscNombreAsc(pena().getId()).size();
 
         http.post().uri("/api/v1/inventario")
                 .header(AUTHORIZATION, "Bearer " + token)
                 .body(Map.of("categoria", "ALCOHOL", "nombre", "Tanqueray", "tamano", "70 cl", "cantidad", 4))
                 .exchange().expectStatus().isCreated();
 
-        long despues = articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(pena().getId()).size();
+        long despues = articulos.findByPenaIdOrderByCategoriaAscNombreAsc(pena().getId()).size();
         assertThat(despues).isEqualTo(antes);
-        assertThat(articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(pena().getId()).stream()
+        assertThat(articulos.findByPenaIdOrderByCategoriaAscNombreAsc(pena().getId()).stream()
                 .filter(a -> a.getNombre().equals("Tanqueray") && a.getTamano().equals("70 cl"))
                 .findFirst().orElseThrow().getCantidad().intValue()).isEqualTo(4);
     }

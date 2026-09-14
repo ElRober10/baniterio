@@ -182,8 +182,8 @@ describe('AsistenciaEventoComponent', () => {
     anadir?.dispatchEvent(new Event('click'));
 
     const post = httpMock.expectOne(`${base}/eventos/5/asistencias`);
-    expect(post.request.body).toEqual({ nombre: 'Primo de Juan', estado: 'APUNTADO' });
-    post.flush({ id: 1, nombre: 'Primo de Juan', estado: 'APUNTADO', esManual: true });
+    expect(post.request.body).toEqual({ nombre: 'Primo de Juan', telefono: null, estado: 'APUNTADO' });
+    post.flush({ id: 1, nombre: 'Primo de Juan', telefono: null, estado: 'APUNTADO', esManual: true });
     responder({ puedoEditar: true });
     fixture.detectChanges();
   });

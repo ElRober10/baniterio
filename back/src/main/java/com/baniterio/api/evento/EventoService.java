@@ -17,7 +17,7 @@ import com.baniterio.api.identidad.EstadoSolicitud;
 import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
 import com.baniterio.api.identidad.Pena;
-import com.baniterio.api.identidad.PenaRepository;
+import com.baniterio.api.identidad.PenaPilotoService;
 import com.baniterio.api.identidad.SolicitudEvento;
 import com.baniterio.api.identidad.SolicitudEventoRepository;
 import com.baniterio.api.identidad.TipoSolicitudEvento;
@@ -40,7 +40,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class EventoService {
 
     static final int PAGINA = 8;
-    private static final String SLUG_PENA = "baniterio";
     private static final String TITULO_PUSH = "Eventos";
     /** Un evento se considera "pasado" cuando han transcurrido estos días desde su fecha (o fecha_fin). */
     private static final int DIAS_PARA_PASADO = 3;
@@ -49,21 +48,21 @@ public class EventoService {
     private final SolicitudEventoRepository solicitudes;
     private final CuentaRepository cuentas;
     private final ServicioPermisos permisos;
-    private final PenaRepository penas;
+    private final PenaPilotoService pena;
     private final UsuarioRepository usuarios;
     private final ApplicationEventPublisher publisher;
     private final AsistenciaService asistencias;
     private final FichaBebidaService fichaBebida;
 
     public EventoService(EventoRepository eventos, SolicitudEventoRepository solicitudes,
-                         CuentaRepository cuentas, ServicioPermisos permisos, PenaRepository penas,
+                         CuentaRepository cuentas, ServicioPermisos permisos, PenaPilotoService pena,
                          UsuarioRepository usuarios, ApplicationEventPublisher publisher,
                          AsistenciaService asistencias, FichaBebidaService fichaBebida) {
         this.eventos = eventos;
         this.solicitudes = solicitudes;
         this.cuentas = cuentas;
         this.permisos = permisos;
-        this.penas = penas;
+        this.pena = pena;
         this.usuarios = usuarios;
         this.publisher = publisher;
         this.asistencias = asistencias;
@@ -83,9 +82,7 @@ public class EventoService {
     }
 
     Long penaId() {
-        return penas.findBySlug(SLUG_PENA)
-                .orElseThrow(() -> new IllegalStateException("Falta la peña piloto '" + SLUG_PENA + "'"))
-                .getId();
+        return pena.id();
     }
 
     /** Fecha mínima para que un evento siga contando como "futuro": {@code hoy - DIAS_PARA_PASADO}. */
@@ -109,12 +106,12 @@ public class EventoService {
      */
     private Cuenta resolverCuenta(GuardarEventoRequest req) {
         if (req.quiereCuentaNueva()) {
-            Pena pena = penas.findBySlug(SLUG_PENA).orElseThrow();
+            Pena penaEntidad = pena.entidad();
             String nombre = req.nombre().trim();
-            if (cuentas.existsByPenaIdAndNombreIgnoreCase(pena.getId(), nombre)) {
+            if (cuentas.existsByPenaIdAndNombreIgnoreCase(penaEntidad.getId(), nombre)) {
                 throw new CuentaConflictoException();
             }
-            return cuentas.save(Cuenta.builder().pena(pena).nombre(nombre).build());
+            return cuentas.save(Cuenta.builder().pena(penaEntidad).nombre(nombre).build());
         }
         return cuentas.findById(req.cuentaId())
                 .filter(c -> c.getPena().getId().equals(penaId()))
@@ -191,7 +188,7 @@ public class EventoService {
         // Solo cubatas es el precio que se pone; las otras 4 se derivan.
         CalculadoraCuota.Cuotas cuotas = CalculadoraCuota.derivar(admin ? req.cuotaCubatas() : null);
         Evento e = eventos.save(Evento.builder()
-                .pena(penas.findBySlug(SLUG_PENA).orElseThrow())
+                .pena(pena.entidad())
                 .cuenta(resolverCuenta(req))
                 .nombre(req.nombre().trim())
                 .descripcion(vacioANull(req.descripcion()))
@@ -290,9 +287,7 @@ public class EventoService {
     /** Eventos ocultos ("borrados") de la peña, para poder recuperarlos. Solo admin/superadmin. */
     @Transactional(readOnly = true)
     public List<EventoResumen> listarOcultos(Long usuarioId) {
-        if (!permisos.esAdministrador(usuarioId)) {
-            throw new SinPermisoEventoException();
-        }
+        permisos.exigirAdmin(usuarioId, SinPermisoEventoException::new);
         return eventos.ocultos(penaId()).stream().map(EventoService::aResumen).toList();
     }
 
@@ -318,7 +313,7 @@ public class EventoService {
         }
         Usuario u = usuarios.findById(usuarioId).orElseThrow();
         SolicitudEvento sol = solicitudes.save(SolicitudEvento.builder()
-                .pena(penas.findBySlug(SLUG_PENA).orElseThrow())
+                .pena(pena.entidad())
                 .solicitante(u)
                 .tipo(TipoSolicitudEvento.CREAR)
                 .mensaje(vacioANull(mensaje))

@@ -29,15 +29,11 @@ import com.baniterio.app.data.EventosRepository
 import com.baniterio.app.data.ResultadoEvento
 import com.baniterio.app.data.dto.EventoResumen
 import com.baniterio.app.theme.BaniterioColors
-import com.baniterio.app.theme.BaniterioWordmark
+import com.baniterio.app.ui.comun.CabeceraPantalla
+import com.baniterio.app.ui.comun.EstadoCarga
+import com.baniterio.app.ui.comun.PantallaConEstado
 import com.baniterio.app.ui.comun.relieveDeCarta
 import kotlinx.coroutines.launch
-
-private sealed interface EstadoEventosOcultos {
-    data object Cargando : EstadoEventosOcultos
-    data class Cargada(val eventos: List<EventoResumen>) : EstadoEventosOcultos
-    data class Error(val mensaje: String) : EstadoEventosOcultos
-}
 
 /**
  * Eventos "borrados" (ocultos, recuperables): solo llega quien tiene el enlace,
@@ -50,15 +46,15 @@ fun EventosOcultosScreen(
     onAbrirEvento: (Long) -> Unit,
     onVolver: () -> Unit,
 ) {
-    var estado by remember { mutableStateOf<EstadoEventosOcultos>(EstadoEventosOcultos.Cargando) }
+    var estado by remember { mutableStateOf<EstadoCarga<List<EventoResumen>>>(EstadoCarga.Cargando) }
     var aviso by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     suspend fun cargar() {
-        estado = EstadoEventosOcultos.Cargando
+        estado = EstadoCarga.Cargando
         estado = when (val r = eventosRepo.listarOcultos()) {
-            is ResultadoEvento.Exito -> EstadoEventosOcultos.Cargada(r.dato)
-            is ResultadoEvento.Error -> EstadoEventosOcultos.Error(r.mensaje)
+            is ResultadoEvento.Exito -> EstadoCarga.Cargado(r.dato)
+            is ResultadoEvento.Error -> EstadoCarga.Error(r.mensaje)
         }
     }
     LaunchedEffect(Unit) { cargar() }
@@ -67,15 +63,7 @@ fun EventosOcultosScreen(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BaniterioWordmark()
-            Text(
-                "Volver",
-                style = MaterialTheme.typography.bodyMedium,
-                color = BaniterioColors.brandBright,
-                modifier = Modifier.clickable { onVolver() },
-            )
-        }
+        CabeceraPantalla(onVolver)
         Text(
             "Eventos ocultos",
             style = MaterialTheme.typography.headlineMedium,
@@ -86,17 +74,11 @@ fun EventosOcultosScreen(
 
         aviso?.let { Text(it, color = BaniterioColors.gold) }
 
-        when (val e = estado) {
-            is EstadoEventosOcultos.Cargando -> Text("Cargando…", color = BaniterioColors.muted)
-            is EstadoEventosOcultos.Error -> {
-                Text(e.mensaje, color = BaniterioColors.muted)
-                Button(onClick = { scope.launch { cargar() } }) { Text("Reintentar") }
+        PantallaConEstado(estado, onReintentar = { scope.launch { cargar() } }) { eventos ->
+            if (eventos.isEmpty()) {
+                Text("No hay ningún evento oculto.", color = BaniterioColors.muted)
             }
-            is EstadoEventosOcultos.Cargada -> {
-                if (e.eventos.isEmpty()) {
-                    Text("No hay ningún evento oculto.", color = BaniterioColors.muted)
-                }
-                e.eventos.forEach { ev ->
+            eventos.forEach { ev ->
                     Row(
                         modifier = Modifier.fillMaxWidth()
                             .relieveDeCarta(RoundedCornerShape(16.dp))
@@ -135,4 +117,3 @@ fun EventosOcultosScreen(
             }
         }
     }
-}

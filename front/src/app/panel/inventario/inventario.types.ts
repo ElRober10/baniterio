@@ -47,12 +47,16 @@ export interface EventoAbierto {
   fecha: string;
 }
 
-/** Un artículo del inventario de un evento ("inventario de la fiesta"). */
+/**
+ * Un artículo del inventario de un evento ("inventario de la fiesta").
+ * `cantidad` es el total; `cantidadComprada` la parte venida de la lista de la compra.
+ */
 export interface ArticuloFiesta {
   id: number;
   nombre: string;
   tamano: string;
   cantidad: number;
+  cantidadComprada: number;
 }
 
 export interface CategoriaFiesta {

@@ -172,4 +172,24 @@ class InventarioRepositoryImplTest {
         assertIs<ResultadoInventario.Error>(res)
         assertEquals(CodigoErrorInventario.ARTICULO_EVENTO_NO_ENCONTRADO, res.codigo)
     }
+
+    @Test
+    fun devolver_a_lista_hace_post() = runTest {
+        val (r, vistas) = repo(status = HttpStatusCode.NoContent)
+        val res = r.devolverALista(7, 4)
+        assertIs<ResultadoInventario.Exito<*>>(res)
+        assertEquals("POST", vistas[0].metodo)
+        assertEquals("/api/v1/inventario/evento/7/4/devolver-a-lista", vistas[0].path)
+    }
+
+    @Test
+    fun devolver_a_lista_sin_parte_comprada_error_tipado() = runTest {
+        val (r, _) = repo(
+            status = HttpStatusCode.BadRequest,
+            cuerpoRespuesta = """{"codigo":"NADA_QUE_DEVOLVER"}""",
+        )
+        val res = r.devolverALista(7, 4)
+        assertIs<ResultadoInventario.Error>(res)
+        assertEquals(CodigoErrorInventario.NADA_QUE_DEVOLVER, res.codigo)
+    }
 }

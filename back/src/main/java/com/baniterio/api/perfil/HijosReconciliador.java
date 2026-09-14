@@ -13,7 +13,7 @@ import com.baniterio.api.identidad.EstadoVinculo;
 import com.baniterio.api.identidad.Hijo;
 import com.baniterio.api.identidad.HijoRepository;
 import com.baniterio.api.identidad.Pena;
-import com.baniterio.api.identidad.PenaRepository;
+import com.baniterio.api.identidad.PenaPilotoService;
 import com.baniterio.api.identidad.TelefonoAutorizado;
 import com.baniterio.api.identidad.TelefonoAutorizadoRepository;
 import com.baniterio.api.identidad.Usuario;
@@ -55,26 +55,23 @@ import org.springframework.util.StringUtils;
 @Service
 public class HijosReconciliador {
 
-    /** Peña piloto (alcance de una sola peña); se resuelve por slug, como en {@link VinculoParejaService}. */
-    private static final String SLUG_PENA = "baniterio";
-
     private static final String TITULO_PUSH_HIJO_REGISTRADO = "Tu hijo se ha registrado";
 
     private final HijoRepository hijos;
     private final VinculoParejaRepository vinculos;
     private final UsuarioRepository usuarios;
     private final TelefonoAutorizadoRepository telefonosAutorizados;
-    private final PenaRepository penas;
+    private final PenaPilotoService penaPiloto;
     private final ApplicationEventPublisher eventos;
 
     public HijosReconciliador(HijoRepository hijos, VinculoParejaRepository vinculos,
             UsuarioRepository usuarios, TelefonoAutorizadoRepository telefonosAutorizados,
-            PenaRepository penas, ApplicationEventPublisher eventos) {
+            PenaPilotoService penaPiloto, ApplicationEventPublisher eventos) {
         this.hijos = hijos;
         this.vinculos = vinculos;
         this.usuarios = usuarios;
         this.telefonosAutorizados = telefonosAutorizados;
-        this.penas = penas;
+        this.penaPiloto = penaPiloto;
         this.eventos = eventos;
     }
 
@@ -306,6 +303,6 @@ public class HijosReconciliador {
     }
 
     private Pena pena() {
-        return penas.findBySlug(SLUG_PENA).orElseThrow();
+        return penaPiloto.entidad();
     }
 }

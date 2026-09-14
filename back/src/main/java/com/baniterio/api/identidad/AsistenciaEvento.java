@@ -53,6 +53,9 @@ public class AsistenciaEvento {
     @Column(length = 120)
     private String nombre;
 
+    @Column(length = 20)
+    private String telefono;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private EstadoAsistencia estado;

@@ -58,10 +58,18 @@ export class InventarioService {
     return this.http.get<InventarioFiestaResponse>(`${this.base}/inventario/evento/${eventoId}`);
   }
 
-  /** Devuelve una línea entera del inventario de la fiesta al inventario general. */
+  /** Devuelve la parte de stock de una línea del inventario de la fiesta al inventario general. */
   devolverAInventario(eventoId: number, articuloEventoId: number): Observable<void> {
     return this.http.post<void>(
       `${this.base}/inventario/evento/${eventoId}/${articuloEventoId}/devolver`,
+      {},
+    );
+  }
+
+  /** Devuelve la parte comprada de una línea del inventario de la fiesta a la lista de la compra. */
+  devolverALista(eventoId: number, articuloEventoId: number): Observable<void> {
+    return this.http.post<void>(
+      `${this.base}/inventario/evento/${eventoId}/${articuloEventoId}/devolver-a-lista`,
       {},
     );
   }

@@ -1,0 +1,195 @@
+<section class="mx-auto w-full max-w-5xl">
+  <div class="mb-4"><app-volver destino="/panel/administracion/lista-compra" etiqueta="Eventos" /></div>
+
+  <h1 class="font-display text-2xl font-extrabold leading-tight">
+    Cantidades — {{ nombre() }}
+  </h1>
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <p class="mt-4 text-sm text-muted">Cargando…</p>
+    }
+    @case ('error') {
+      <p class="mt-4 text-sm text-red-300">No se ha podido cargar el evento.</p>
+      <button
+        type="button"
+        (click)="cargar()"
+        class="mt-2 rounded-lg border border-outline px-3 py-1 text-sm"
+      >
+        Reintentar
+      </button>
+    }
+    @case ('listo') {
+      @if (aviso()) {
+        <p role="status" class="mt-3 rounded-xl border border-brand-bright/30 bg-brand/15 px-4 py-2 text-sm text-gold-soft">
+          {{ aviso() }}
+        </p>
+      }
+
+      <div class="mt-4 space-y-2">
+        @for (r of reglas(); track r.id) {
+          <article
+            class="carta-relieve rounded-xl p-4"
+            [class.opacity-60]="!r.activa"
+          >
+            <div>
+              <span class="font-semibold">{{ r.nombre || r.etiqueta }}</span>
+              <span class="text-sm text-muted"> · {{ r.tamano }} · {{ r.etiqueta }}</span>
+            </div>
+            <p class="mt-1 text-sm text-gold-soft">Fórmula: {{ formulaLegible(r) }}</p>
+            @if (r.origen === 'PLANTILLA') {
+              <p class="text-xs text-muted">
+                Si cambias la cantidad por unidad de fórmula o el "por cada", se guarda para este evento
+                y para los que se abran a partir de ahora.
+              </p>
+            }
+
+            <div class="mt-3 flex flex-wrap items-end gap-3">
+              <label class="text-sm">
+                <span class="block text-xs text-muted">Cantidad por unidad de fórmula</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  [(ngModel)]="r.factor"
+                  data-testid="factor"
+                  class="mt-1 w-24 rounded-lg border border-outline bg-transparent px-2 py-1 text-sm"
+                />
+              </label>
+
+              @if (tienePorCada(r)) {
+                <label class="text-sm">
+                  <span class="block text-xs text-muted">Por cada (peñistas)</span>
+                  <input
+                    type="number"
+                    min="1"
+                    [(ngModel)]="r.porCada"
+                    data-testid="por-cada"
+                    class="mt-1 w-24 rounded-lg border border-outline bg-transparent px-2 py-1 text-sm"
+                  />
+                </label>
+              }
+
+              <label class="flex items-center gap-1 text-sm">
+                <input type="checkbox" [(ngModel)]="r.activa" />
+                Activa
+              </label>
+
+              <button
+                type="button"
+                (click)="guardar(r)"
+                [disabled]="guardando()"
+                class="rounded-lg bg-brand px-3 py-1 text-sm font-bold text-gold transition hover:bg-brand-dark disabled:opacity-50"
+              >
+                Guardar
+              </button>
+
+              @if (r.origen === 'MANUAL') {
+                <button
+                  type="button"
+                  (click)="quitar(r)"
+                  class="rounded-lg border border-outline px-3 py-1 text-sm hover:border-red-400 hover:text-red-300"
+                >
+                  Quitar
+                </button>
+              }
+            </div>
+          </article>
+        }
+      </div>
+
+      <div class="mt-6">
+        @if (!formAbierto()) {
+          <button
+            type="button"
+            (click)="formAbierto.set(true)"
+            class="rounded-xl border border-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand/20"
+          >
+            Añadir artículo
+          </button>
+        } @else {
+          <div class="carta-relieve rounded-xl p-4">
+            <h2 class="font-display text-lg font-bold">Nuevo artículo</h2>
+            <div class="mt-3 grid gap-3 sm:grid-cols-2">
+              <label class="text-sm">
+                Categoría
+                <select
+                  [(ngModel)]="nueva.categoria"
+                  class="mt-1 w-full rounded-lg border border-outline bg-transparent px-2 py-1 text-sm"
+                >
+                  @for (c of categorias; track c.clave) {
+                    <option [ngValue]="c.clave">{{ c.etiqueta }}</option>
+                  }
+                </select>
+              </label>
+              <label class="text-sm">
+                Fórmula
+                <select
+                  [(ngModel)]="nueva.tipoFormula"
+                  class="mt-1 w-full rounded-lg border border-outline bg-transparent px-2 py-1 text-sm"
+                >
+                  @for (f of formulas; track f.clave) {
+                    <option [ngValue]="f.clave">{{ f.etiqueta }}</option>
+                  }
+                </select>
+              </label>
+              <label class="text-sm">
+                Nombre
+                <input
+                  [(ngModel)]="nueva.nombre"
+                  class="mt-1 w-full rounded-lg border border-outline bg-transparent px-2 py-1 text-sm"
+                />
+              </label>
+              <label class="text-sm">
+                Tamaño
+                <input
+                  [(ngModel)]="nueva.tamano"
+                  placeholder="unidad, paquete, botella…"
+                  class="mt-1 w-full rounded-lg border border-outline bg-transparent px-2 py-1 text-sm"
+                />
+              </label>
+              <label class="text-sm">
+                Factor
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  [(ngModel)]="nueva.factor"
+                  class="mt-1 w-full rounded-lg border border-outline bg-transparent px-2 py-1 text-sm"
+                />
+              </label>
+              @if (nueva.tipoFormula === 'POR_CADA_N_PENISTAS') {
+                <label class="text-sm">
+                  Por cada (peñistas)
+                  <input
+                    type="number"
+                    min="1"
+                    [(ngModel)]="nueva.porCada"
+                    class="mt-1 w-full rounded-lg border border-outline bg-transparent px-2 py-1 text-sm"
+                  />
+                </label>
+              }
+            </div>
+            <div class="mt-3 flex gap-2">
+              <button
+                type="button"
+                (click)="anadir()"
+                [disabled]="guardando() || !nueva.nombre || !nueva.tamano"
+                class="rounded-lg bg-brand px-4 py-1 text-sm font-bold text-gold transition hover:bg-brand-dark disabled:opacity-50"
+              >
+                Añadir
+              </button>
+              <button
+                type="button"
+                (click)="formAbierto.set(false)"
+                class="rounded-lg border border-outline px-4 py-1 text-sm"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+</section>

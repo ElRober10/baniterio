@@ -111,7 +111,17 @@
             </label>
             <label class="flex flex-col gap-1 sm:col-span-2">
               <span class="text-xs text-muted">Recibo (PDF o foto)</span>
-              <input type="file" accept=".pdf,image/*" (change)="onRecibo($event)" />
+              <span
+                class="relative inline-flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-outline px-3 py-1.5 text-xs font-medium hover:border-gold hover:text-gold"
+              >
+                📎 {{ recibo?.name ?? 'Elegir archivo' }}
+                <input
+                  type="file"
+                  accept=".pdf,image/*"
+                  (change)="onRecibo($event)"
+                  class="absolute h-px w-px overflow-hidden opacity-0"
+                />
+              </span>
             </label>
             <div class="flex gap-2 sm:col-span-2">
               <button type="submit" [disabled]="guardandoMov()"
@@ -246,7 +256,7 @@
                         class="text-gold" title="Ver recibo">📄</a>
                     }
                     @if (c.puedoGestionar && c.esAnioActual && m.manual) {
-                      <button type="button" (click)="borrarMovimiento(m.id)"
+                      <button type="button" (click)="pedirBorrarMovimiento(m.id)"
                         class="ml-2 text-xs text-muted underline hover:text-red-300">borrar</button>
                     }
                   </td>
@@ -295,6 +305,21 @@
           <button type="button" [disabled]="enviandoTransfer()" (click)="confirmarTransferencia()"
             class="rounded-xl bg-gold px-4 py-2 text-sm font-semibold text-brand-dark disabled:opacity-50">Sí</button>
           <button type="button" (click)="modalTransferir.set(false)"
+            class="rounded-xl border border-outline px-4 py-2 text-sm">No</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (movABorrar() != null) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div class="w-full max-w-sm rounded-2xl bg-surface p-6">
+        <h3 class="font-display text-lg font-bold">¿Borrar este movimiento?</h3>
+        <p class="mt-2 text-sm text-muted">No se puede deshacer.</p>
+        <div class="mt-5 flex justify-center gap-2">
+          <button type="button" [disabled]="borrandoMov()" (click)="confirmarBorrarMovimiento()"
+            class="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Sí, borrar</button>
+          <button type="button" (click)="movABorrar.set(null)"
             class="rounded-xl border border-outline px-4 py-2 text-sm">No</button>
         </div>
       </div>

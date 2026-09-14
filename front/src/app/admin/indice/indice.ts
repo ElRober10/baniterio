@@ -11,6 +11,8 @@ interface SeccionAdmin {
   area: Area;
   descripcion: string;
   ruta: string;
+  /** Título de la tarjeta; si falta, se usa la etiqueta del área. */
+  titulo?: string;
 }
 
 const SECCIONES_ADMIN: SeccionAdmin[] = [
@@ -23,6 +25,13 @@ const SECCIONES_ADMIN: SeccionAdmin[] = [
     area: 'ADMIN_PERMISOS',
     descripcion: 'Rol y accesos de cada miembro.',
     ruta: '/panel/administracion/permisos',
+  },
+  {
+    area: 'INVENTARIO',
+    titulo: 'Cantidades para eventos',
+    descripcion:
+      'Ajusta las cantidades de la lista de la compra de cada evento y añade o quita artículos.',
+    ruta: '/panel/administracion/lista-compra',
   },
 ];
 

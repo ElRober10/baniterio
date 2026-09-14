@@ -1,10 +1,11 @@
 package com.baniterio.app.ui.cuentas
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,7 +18,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -48,17 +48,14 @@ import com.baniterio.app.data.dto.MovimientoFilaDto
 import com.baniterio.app.data.dto.PenistaCuotaDto
 import com.baniterio.app.data.rememberSelectorArchivo
 import com.baniterio.app.theme.BaniterioColors
-import com.baniterio.app.theme.BaniterioWordmark
+import com.baniterio.app.ui.comun.CabeceraPantalla
+import com.baniterio.app.ui.comun.CajaSelect
+import com.baniterio.app.ui.comun.EstadoCarga
+import com.baniterio.app.ui.comun.PantallaConEstado
 import com.baniterio.app.ui.comun.relieveDeCarta
 import com.baniterio.app.ui.eventos.formatoFecha
 import com.baniterio.app.ui.eventos.formatoImporte
 import kotlinx.coroutines.launch
-
-private sealed interface EstadoCuentaDetalle {
-    data object Cargando : EstadoCuentaDetalle
-    data class Cargada(val cuenta: CuentaDetalleDto) : EstadoCuentaDetalle
-    data class Error(val mensaje: String) : EstadoCuentaDetalle
-}
 
 private val CATEGORIAS = listOf(
     "REFRESCOS" to "Refrescos",
@@ -130,7 +127,7 @@ fun CuentaDetalleScreen(
     cuentaId: Long,
     onVolver: () -> Unit,
 ) {
-    var estado by remember { mutableStateOf<EstadoCuentaDetalle>(EstadoCuentaDetalle.Cargando) }
+    var estado by remember { mutableStateOf<EstadoCarga<CuentaDetalleDto>>(EstadoCarga.Cargando) }
     var intento by remember { mutableStateOf(0) }
     var anioSel by remember { mutableStateOf<Int?>(null) }
     var mostrarAniosViejos by remember { mutableStateOf(false) }
@@ -155,15 +152,15 @@ fun CuentaDetalleScreen(
     val selectorArchivo = rememberSelectorArchivo()
 
     LaunchedEffect(cuentaId, intento, anioSel) {
-        estado = EstadoCuentaDetalle.Cargando
+        estado = EstadoCarga.Cargando
         estado = when (val r = cuentasRepo.detalle(cuentaId, anioSel)) {
-            is ResultadoCuenta.Exito -> EstadoCuentaDetalle.Cargada(r.dato)
-            is ResultadoCuenta.Error -> EstadoCuentaDetalle.Error(r.mensaje)
+            is ResultadoCuenta.Exito -> EstadoCarga.Cargado(r.dato)
+            is ResultadoCuenta.Error -> EstadoCarga.Error(r.mensaje)
         }
     }
 
     fun trasCambio(nueva: CuentaDetalleDto, msg: String) {
-        estado = EstadoCuentaDetalle.Cargada(nueva)
+        estado = EstadoCarga.Cargado(nueva)
         aviso = msg
     }
 
@@ -171,24 +168,10 @@ fun CuentaDetalleScreen(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BaniterioWordmark()
-            Text(
-                "Volver",
-                style = MaterialTheme.typography.bodyMedium,
-                color = BaniterioColors.brandBright,
-                modifier = Modifier.clickable { onVolver() },
-            )
-        }
+        CabeceraPantalla(onVolver)
 
-        when (val e = estado) {
-            is EstadoCuentaDetalle.Cargando -> Text("Cargando…", color = BaniterioColors.muted)
-            is EstadoCuentaDetalle.Error -> {
-                Text(e.mensaje, color = BaniterioColors.muted)
-                Button(onClick = { intento++ }) { Text("Reintentar") }
-            }
-            is EstadoCuentaDetalle.Cargada -> {
-                val c = e.cuenta
+        PantallaConEstado(estado, onReintentar = { intento++ }) { c ->
+            run {
                 val gestionar = c.puedoGestionar && c.esAnioActual
 
                 // Cabecera
@@ -197,12 +180,30 @@ fun CuentaDetalleScreen(
                         .relieveDeCarta(RoundedCornerShape(18.dp)).padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(
-                        c.nombre,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        fontWeight = FontWeight.Bold,
-                    )
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            c.nombre,
+                            modifier = Modifier.weight(1f, fill = false),
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        if (gestionar) {
+                            Text(
+                                "Cerrar el año ${c.anio}",
+                                modifier = Modifier
+                                    .border(BorderStroke(1.dp, BaniterioColors.outline), RoundedCornerShape(8.dp))
+                                    .clickable { modalCerrarAnio = true }
+                                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = BaniterioColors.muted,
+                            )
+                        }
+                    }
 
                     if (c.anios.isNotEmpty()) {
                         val visibles = if (mostrarAniosViejos) c.anios else c.anios.take(5)
@@ -230,16 +231,30 @@ fun CuentaDetalleScreen(
                     )
                     val cobrado = c.cobradoSinIngresar ?: 0.0
                     if (c.puedoGestionar && cobrado > 0.0) {
-                        Text(
-                            "Tienes ${formatoImporte(cobrado)} € cobrados por bizum o efectivo sin llevar al banco.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                        Button(onClick = { confirmandoTransfer = true }) { Text("He transferido al banco") }
-                    }
-                    if (gestionar) {
-                        OutlinedButton(onClick = { modalCerrarAnio = true }) {
-                            Text("Cerrar el año ${c.anio}")
+                        Row(
+                            modifier = Modifier.fillMaxWidth()
+                                .border(BorderStroke(1.dp, BaniterioColors.gold.copy(alpha = 0.3f)), RoundedCornerShape(12.dp))
+                                .background(BaniterioColors.gold.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                "Tienes ${formatoImporte(cobrado)} € cobrados por bizum o efectivo sin llevar al banco.",
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onBackground,
+                            )
+                            Text(
+                                "He transferido al banco",
+                                modifier = Modifier
+                                    .background(BaniterioColors.gold, RoundedCornerShape(8.dp))
+                                    .clickable { confirmandoTransfer = true }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = BaniterioColors.brandDark,
+                                fontWeight = FontWeight.SemiBold,
+                            )
                         }
                     }
                 }
@@ -566,7 +581,7 @@ private fun FormMovimiento(
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Select("Tipo", if (tipo == "GASTO") "Gasto" else "Ingreso") { cerrar ->
+        CajaSelect("Tipo", if (tipo == "GASTO") "Gasto" else "Ingreso") { cerrar ->
             DropdownMenuItem(text = { Text("Gasto") }, onClick = { onTipo("GASTO"); cerrar() })
             DropdownMenuItem(text = { Text("Ingreso") }, onClick = { onTipo("INGRESO"); cerrar() })
         }
@@ -586,7 +601,7 @@ private fun FormMovimiento(
             label = { Text("Fecha (aaaa-mm-dd, opcional)") }, singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        Select(
+        CajaSelect(
             "Categoría (opcional)",
             CATEGORIAS.firstOrNull { it.first == categoria }?.second ?: "—",
         ) { cerrar ->
@@ -601,29 +616,5 @@ private fun FormMovimiento(
             }
         }
         Button(onClick = onGuardar, enabled = !guardando) { Text("Guardar") }
-    }
-}
-
-/** Caja tipo "select": etiqueta + botón a lo ancho con el valor y ▾ + [DropdownMenu]. */
-@Composable
-private fun Select(
-    etiqueta: String,
-    valor: String,
-    menu: @Composable androidx.compose.foundation.layout.ColumnScope.(cerrar: () -> Unit) -> Unit,
-) {
-    var abierto by remember { mutableStateOf(false) }
-    Column {
-        Text(etiqueta, color = BaniterioColors.muted, style = MaterialTheme.typography.bodySmall)
-        Box {
-            OutlinedButton(onClick = { abierto = true }, modifier = Modifier.fillMaxWidth()) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(valor, color = MaterialTheme.colorScheme.onBackground)
-                    Text("▾", color = BaniterioColors.muted)
-                }
-            }
-            DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
-                menu { abierto = false }
-            }
-        }
     }
 }

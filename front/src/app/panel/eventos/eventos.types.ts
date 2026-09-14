@@ -140,6 +140,7 @@ export interface BebidaPendiente {
 export interface AsistenciaResumen {
   id: number;
   nombre: string;
+  telefono: string | null;
   estado: EstadoAsistencia;
   esManual: boolean;
   cuota: number | null;
@@ -245,6 +246,7 @@ export interface BebidaFila {
 /** Una fila del listado de asistentes. `estado` es APUNTADO o EN_DUDA. */
 export interface AsistenteFila {
   nombre: string;
+  telefono: string | null;
   estado: 'APUNTADO' | 'EN_DUDA';
   esManual: boolean;
   bebida: BebidaFila | null;

@@ -154,13 +154,12 @@
               }
             </div>
             <div class="mt-2 grid gap-2 grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]">
-              <button
-                type="button"
-                (click)="proximamente('Lista de la compra')"
+              <a
+                [routerLink]="['/panel/eventos', e.id, 'lista-compra']"
                 class="rounded-xl border border-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand/20"
               >
                 Lista de la compra
-              </button>
+              </a>
               <a
                 [routerLink]="['/panel/eventos', e.id, 'inventario']"
                 class="rounded-xl border border-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand/20"
@@ -217,6 +216,15 @@
                   class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark disabled:opacity-50"
                 >
                   Mandar notificación
+                </button>
+              }
+              @if (e.puedoEditar) {
+                <button
+                  type="button"
+                  (click)="modalAnadirAsistente.set(true)"
+                  class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-brand-bright/60"
+                >
+                  Añadir asistente
                 </button>
               }
               @if (e.puedoBorrar && !e.oculto) {
@@ -308,7 +316,22 @@
         </article>
 
         @if (modalAsistentes()) {
-          <app-modal-asistentes [eventoId]="e.id" (cerrar)="modalAsistentes.set(false)" />
+          <app-modal-asistentes
+            [eventoId]="e.id"
+            [puedoEditar]="e.puedoEditar"
+            [llevaFicha]="e.asistencia.ficha.llevaFicha"
+            [diasEvento]="e.asistencia.ficha.diasEvento"
+            (cerrar)="modalAsistentes.set(false)"
+          />
+        }
+        @if (modalAnadirAsistente()) {
+          <app-modal-anadir-asistente
+            [eventoId]="e.id"
+            [llevaFicha]="e.asistencia.ficha.llevaFicha"
+            [diasEvento]="e.asistencia.ficha.diasEvento"
+            (cerrar)="modalAnadirAsistente.set(false)"
+            (anadido)="onAsistenteAnadido($event)"
+          />
         }
         @if (modalPago()) {
           <app-modal-he-pagado

@@ -22,11 +22,12 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Una línea del inventario de un evento (tabla {@code articulo_evento}, ver V37):
- * lo que se ha "enviado" del inventario general de la peña a esa fiesta. Una fila
- * por combinación evento + artículo de origen ({@code articuloInventario}), que
- * es al que se le devuelve la cantidad al deshacer el envío. {@code categoria},
- * {@code nombre} y {@code tamano} son copia congelada del momento del envío.
+ * Una línea del inventario de un evento (tabla {@code articulo_evento}, ver V37 y
+ * V39). Una fila por producto {@code (evento, categoria, nombre, tamano)}. Puede
+ * tener parte de stock ({@code cantidad}, con {@code articuloInventario} de
+ * origen, al que se le devuelve al deshacer el envío) y parte comprada desde la
+ * lista de la compra ({@code cantidadComprada}, sin origen, que se devuelve a la
+ * lista). {@code categoria}, {@code nombre} y {@code tamano} son copia congelada.
  */
 @Entity
 @Table(name = "articulo_evento")
@@ -45,8 +46,9 @@ public class ArticuloEvento {
     @JoinColumn(name = "evento_id", nullable = false)
     private Evento evento;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "articulo_inventario_id", nullable = false)
+    /** Artículo de origen de la parte de stock; {@code null} si toda la fila viene de la lista de la compra. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "articulo_inventario_id")
     private ArticuloInventario articuloInventario;
 
     @Enumerated(EnumType.STRING)
@@ -59,8 +61,13 @@ public class ArticuloEvento {
     @Column(nullable = false, length = 20)
     private String tamano;
 
+    /** Parte de stock: viene del inventario general y vuelve a él al devolver. */
     @Column(nullable = false, precision = 8, scale = 2)
     private BigDecimal cantidad;
+
+    /** Parte comprada desde la lista de la compra; vuelve a la lista al devolver (V39). */
+    @Column(name = "cantidad_comprada", nullable = false, precision = 8, scale = 2)
+    private BigDecimal cantidadComprada;
 
     @Column(nullable = false)
     private int orden;

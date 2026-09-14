@@ -35,15 +35,11 @@ import com.baniterio.app.data.ResultadoEvento
 import com.baniterio.app.data.dto.EventoResumen
 import com.baniterio.app.data.dto.ListaEventosResponse
 import com.baniterio.app.theme.BaniterioColors
-import com.baniterio.app.theme.BaniterioWordmark
+import com.baniterio.app.ui.comun.CabeceraPantalla
+import com.baniterio.app.ui.comun.EstadoCarga
+import com.baniterio.app.ui.comun.PantallaConEstado
 import com.baniterio.app.ui.comun.relieveDeCarta
 import kotlinx.coroutines.launch
-
-private sealed interface EstadoEventos {
-    data object Cargando : EstadoEventos
-    data class Cargada(val datos: ListaEventosResponse) : EstadoEventos
-    data class Error(val mensaje: String) : EstadoEventos
-}
 
 @Composable
 fun EventosScreen(
@@ -54,7 +50,7 @@ fun EventosScreen(
     onVerOcultos: () -> Unit,
     onVolver: () -> Unit,
 ) {
-    var estado by remember { mutableStateOf<EstadoEventos>(EstadoEventos.Cargando) }
+    var estado by remember { mutableStateOf<EstadoCarga<ListaEventosResponse>>(EstadoCarga.Cargando) }
     var pagina by remember { mutableStateOf(0) }
     var aviso by remember { mutableStateOf<String?>(null) }
     var dialogoSolicitud by remember { mutableStateOf(false) }
@@ -62,13 +58,13 @@ fun EventosScreen(
     val scope = rememberCoroutineScope()
 
     suspend fun cargar(p: Int, mostrarCargando: Boolean = true) {
-        if (mostrarCargando) estado = EstadoEventos.Cargando
+        if (mostrarCargando) estado = EstadoCarga.Cargando
         estado = when (val r = eventosRepo.listar(p)) {
             is ResultadoEvento.Exito -> {
                 pagina = r.dato.pagina
-                EstadoEventos.Cargada(r.dato)
+                EstadoCarga.Cargado(r.dato)
             }
-            is ResultadoEvento.Error -> EstadoEventos.Error(r.mensaje)
+            is ResultadoEvento.Error -> EstadoCarga.Error(r.mensaje)
         }
     }
     LaunchedEffect(Unit) { cargar(0) }
@@ -77,15 +73,7 @@ fun EventosScreen(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BaniterioWordmark()
-            Text(
-                "Volver",
-                style = MaterialTheme.typography.bodyMedium,
-                color = BaniterioColors.brandBright,
-                modifier = Modifier.clickable { onVolver() },
-            )
-        }
+        CabeceraPantalla(onVolver)
         Text(
             "Eventos",
             style = MaterialTheme.typography.headlineMedium,
@@ -93,14 +81,8 @@ fun EventosScreen(
             fontWeight = FontWeight.Bold,
         )
 
-        when (val e = estado) {
-            is EstadoEventos.Cargando -> Text("Cargando…", color = BaniterioColors.muted)
-            is EstadoEventos.Error -> {
-                Text(e.mensaje, color = BaniterioColors.muted)
-                Button(onClick = { scope.launch { cargar(pagina) } }) { Text("Reintentar") }
-            }
-            is EstadoEventos.Cargada -> {
-                val d = e.datos
+        PantallaConEstado(estado, onReintentar = { scope.launch { cargar(pagina) } }) { d ->
+            run {
                 if (d.puedeCrear) {
                     Button(
                         onClick = onCrear,

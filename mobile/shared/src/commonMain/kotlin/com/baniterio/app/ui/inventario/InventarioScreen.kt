@@ -18,7 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.baniterio.app.theme.BaniterioColors
-import com.baniterio.app.theme.BaniterioWordmark
+import com.baniterio.app.ui.comun.CabeceraPantalla
 import com.baniterio.app.ui.comun.relieveDeCarta
 
 /** Las cinco categorías fijas del inventario: clave de backend + rótulo para la UI. */
@@ -44,15 +44,7 @@ fun InventarioScreen(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BaniterioWordmark()
-            Text(
-                "Volver",
-                style = MaterialTheme.typography.bodyMedium,
-                color = BaniterioColors.brandBright,
-                modifier = Modifier.clickable { onVolver() },
-            )
-        }
+        CabeceraPantalla(onVolver)
         Text(
             "Inventario",
             style = MaterialTheme.typography.headlineMedium,

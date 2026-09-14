@@ -1,14 +1,12 @@
 package com.baniterio.api.push;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 import com.baniterio.api.identidad.AsistenciaEventoRepository;
 import com.baniterio.api.identidad.Membresia;
 import com.baniterio.api.identidad.MembresiaRepository;
-import com.baniterio.api.identidad.Pena;
-import com.baniterio.api.identidad.PenaRepository;
+import com.baniterio.api.identidad.PenaPilotoService;
 import com.baniterio.api.identidad.RolMembresia;
 import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
@@ -22,13 +20,13 @@ class ResolutorAudienciaTest {
 
     private final MembresiaRepository membresias = mock(MembresiaRepository.class);
     private final UsuarioRepository usuarios = mock(UsuarioRepository.class);
-    private final PenaRepository penas = mock(PenaRepository.class);
+    private final PenaPilotoService pena = mock(PenaPilotoService.class);
     private final AsistenciaEventoRepository asistencias = mock(AsistenciaEventoRepository.class);
     private final ResolutorAudiencia resolutor =
-            new ResolutorAudiencia(membresias, usuarios, penas, asistencias);
+            new ResolutorAudiencia(membresias, usuarios, pena, asistencias);
 
     {
-        when(penas.findBySlug("baniterio")).thenReturn(Optional.of(Pena.builder().id(1L).build()));
+        when(pena.id()).thenReturn(1L);
         // Por defecto no hay superadmins sueltos; los tests que lo necesiten lo re-stubean.
         when(usuarios.findAll()).thenReturn(List.of());
     }

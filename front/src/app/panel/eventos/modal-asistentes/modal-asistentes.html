@@ -6,13 +6,24 @@
   <div class="carta-relieve flex max-h-[90vh] w-full max-w-4xl flex-col rounded-2xl p-6">
     <div class="flex items-start justify-between gap-3">
       <h2 class="font-display text-xl font-extrabold">Asistentes</h2>
-      <button
-        type="button"
-        (click)="cerrar.emit()"
-        class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark"
-      >
-        Cerrar
-      </button>
+      <div class="flex shrink-0 gap-2">
+        @if (puedoEditar()) {
+          <button
+            type="button"
+            (click)="modalAnadir.set(true)"
+            class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-brand-bright/60"
+          >
+            Añadir asistente
+          </button>
+        }
+        <button
+          type="button"
+          (click)="cerrar.emit()"
+          class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark"
+        >
+          Cerrar
+        </button>
+      </div>
     </div>
 
     @switch (estado()) {
@@ -87,6 +98,16 @@
       }
     }
   </div>
+
+  @if (modalAnadir()) {
+    <app-modal-anadir-asistente
+      [eventoId]="eventoId()"
+      [llevaFicha]="llevaFicha()"
+      [diasEvento]="diasEvento()"
+      (cerrar)="modalAnadir.set(false)"
+      (anadido)="onAsistenteAnadido($event)"
+    />
+  }
 
   @if (filaConfirmando(); as fila) {
     <div

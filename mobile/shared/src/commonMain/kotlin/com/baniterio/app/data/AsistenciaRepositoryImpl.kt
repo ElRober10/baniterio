@@ -59,12 +59,13 @@ class AsistenciaRepositoryImpl(
         eventoId: Long,
         nombre: String,
         estado: String,
+        telefono: String?,
         ficha: FichaBebidaBody?,
     ): ResultadoAsistencia<AsistenciaResumenDto> = peticion {
         http.post("$API_BASE_URL/eventos/$eventoId/asistencias") {
             auth()
             contentType(ContentType.Application.Json)
-            setBody(AnadirAsistenteBody(nombre, estado, ficha))
+            setBody(AnadirAsistenteBody(nombre, telefono, estado, ficha))
         }.body()
     }
 

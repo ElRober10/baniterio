@@ -18,7 +18,7 @@ import com.baniterio.api.identidad.EstadoSolicitud;
 import com.baniterio.api.identidad.Membresia;
 import com.baniterio.api.identidad.MembresiaRepository;
 import com.baniterio.api.identidad.Pena;
-import com.baniterio.api.identidad.PenaRepository;
+import com.baniterio.api.identidad.PenaPilotoService;
 import com.baniterio.api.identidad.PermisoArea;
 import com.baniterio.api.identidad.PermisoAreaRepository;
 import com.baniterio.api.identidad.RolMembresia;
@@ -53,9 +53,6 @@ import org.springframework.util.StringUtils;
 @Service
 public class AdminService {
 
-    /** Peña piloto. Con el alcance de una sola peña, se resuelve por slug. */
-    private static final String SLUG_PENA = "baniterio";
-
     /**
      * Texto de rechazo cuando quien administra no escribe un motivo propio
      * (spec §2). Neutro y sin acusaciones: la persona puede hablar con la peña.
@@ -68,7 +65,7 @@ public class AdminService {
     private final UsuarioRepository usuarios;
     private final MembresiaRepository membresias;
     private final TelefonoAutorizadoRepository telefonos;
-    private final PenaRepository penas;
+    private final PenaPilotoService pena;
     private final PermisoAreaRepository permisos;
     private final ServicioPermisos servicioPermisos;
     private final ApplicationEventPublisher publisher;
@@ -76,7 +73,7 @@ public class AdminService {
 
     public AdminService(SolicitudIngresoRepository solicitudes, UsuarioRepository usuarios,
                         MembresiaRepository membresias, TelefonoAutorizadoRepository telefonos,
-                        PenaRepository penas, PermisoAreaRepository permisos,
+                        PenaPilotoService pena, PermisoAreaRepository permisos,
                         ServicioPermisos servicioPermisos,
                         ApplicationEventPublisher publisher,
                         List<ContadorPendientes> contadores) {
@@ -84,19 +81,15 @@ public class AdminService {
         this.usuarios = usuarios;
         this.membresias = membresias;
         this.telefonos = telefonos;
-        this.penas = penas;
+        this.pena = pena;
         this.permisos = permisos;
         this.servicioPermisos = servicioPermisos;
         this.publisher = publisher;
         this.contadores = contadores;
     }
 
-    /** Id de la peña piloto. Si falta la siembra (V6), es un fallo de arranque legítimo (500). */
     private Long penaId() {
-        return penas.findBySlug(SLUG_PENA)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Falta la peña piloto '" + SLUG_PENA + "'"))
-                .getId();
+        return pena.id();
     }
 
     /**
@@ -153,13 +146,13 @@ public class AdminService {
         }
 
         Usuario admin = usuarios.findById(adminId).orElseThrow();
-        Pena pena = sol.getPena();
+        Pena penaSolicitud = sol.getPena();
 
         // Reutiliza la fila de telefono_autorizado si ya existe (columna UNIQUE).
         TelefonoAutorizado tel = telefonos.findByTelefono(sol.getTelefono())
                 .orElseGet(() -> TelefonoAutorizado.builder()
                         .telefono(sol.getTelefono())
-                        .pena(pena)
+                        .pena(penaSolicitud)
                         .usado(false)
                         .build());
         tel.setAutorizadoPor(admin);
@@ -178,7 +171,7 @@ public class AdminService {
                     .build());
             membresias.save(Membresia.builder()
                     .usuario(usuario)
-                    .pena(pena)
+                    .pena(penaSolicitud)
                     .rol(RolMembresia.MIEMBRO)
                     .activa(true)
                     .build());

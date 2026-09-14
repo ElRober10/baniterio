@@ -1,16 +1,13 @@
 package com.baniterio.app.ui.eventos
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -30,6 +27,7 @@ import com.baniterio.app.data.dto.CatalogoBebidasDto
 import com.baniterio.app.data.dto.FichaBebidaBody
 import com.baniterio.app.data.dto.FichaBebidaMiaDto
 import com.baniterio.app.theme.BaniterioColors
+import com.baniterio.app.ui.comun.CajaSelect
 
 // Sentinelas de los desplegables de bebida (los ids reales del catálogo son > 0).
 private const val OTRA = -1L
@@ -240,43 +238,6 @@ private fun SelectorAlternativa(elegida: String, onElegir: (String) -> Unit) {
     CajaSelect("Para alternar", texto, esPlaceholder = false) { cerrar ->
         ALTERNATIVAS.forEach { (valor, t) ->
             DropdownMenuItem(text = { Text(t) }, onClick = { onElegir(valor); cerrar() })
-        }
-    }
-}
-
-/**
- * Caja con aspecto de "select": etiqueta encima, botón a lo ancho con el valor a
- * la izquierda y un ▾ a la derecha, y un [DropdownMenu] al pulsarlo. El valor va
- * en color apagado si todavía es el texto de placeholder.
- */
-@Composable
-private fun CajaSelect(
-    etiqueta: String,
-    texto: String,
-    esPlaceholder: Boolean,
-    menu: @Composable ColumnScope.(cerrar: () -> Unit) -> Unit,
-) {
-    var abierto by remember { mutableStateOf(false) }
-    Column {
-        Text(etiqueta, color = BaniterioColors.muted, style = MaterialTheme.typography.bodySmall)
-        Box {
-            OutlinedButton(onClick = { abierto = true }, modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        texto,
-                        color = if (esPlaceholder) BaniterioColors.muted
-                        else MaterialTheme.colorScheme.onBackground,
-                    )
-                    Text("▾", color = BaniterioColors.muted)
-                }
-            }
-            DropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
-                menu { abierto = false }
-            }
         }
     }
 }
