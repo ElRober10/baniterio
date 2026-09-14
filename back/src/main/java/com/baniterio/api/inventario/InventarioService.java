@@ -58,7 +58,7 @@ public class InventarioService {
     public InventarioResponse ver(Long usuarioId) {
         boolean puedoEditar = permisos.puede(usuarioId, AreaProtegida.INVENTARIO);
         List<ArticuloInventario> filas =
-                articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(penaId());
+                articulos.findByPenaIdOrderByCategoriaAscNombreAsc(penaId());
 
         List<CategoriaInventarioDto> categorias = Arrays.stream(CategoriaInventario.values())
                 .map(cat -> new CategoriaInventarioDto(
@@ -95,7 +95,7 @@ public class InventarioService {
             return ArticuloDto.de(articulos.save(art));
         }
 
-        int orden = articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(penaId).stream()
+        int orden = articulos.findByPenaIdOrderByCategoriaAscNombreAsc(penaId).stream()
                 .filter(a -> a.getCategoria() == req.categoria())
                 .mapToInt(ArticuloInventario::getOrden)
                 .max().orElse(0) + 1;
@@ -164,7 +164,7 @@ public class InventarioService {
     public void enviarCategoria(Long usuarioId, CategoriaInventario categoria, Long eventoId) {
         permisos.exigir(usuarioId, AreaProtegida.INVENTARIO, SinPermisoInventarioException::new);
         Evento evento = eventoAbierto(eventoId);
-        articulos.findByPenaIdOrderByCategoriaAscOrdenAscNombreAsc(penaId()).stream()
+        articulos.findByPenaIdOrderByCategoriaAscNombreAsc(penaId()).stream()
                 .filter(a -> a.getCategoria() == categoria && a.getCantidad().signum() > 0)
                 .forEach(a -> moverAlEvento(evento, a));
     }
@@ -175,7 +175,7 @@ public class InventarioService {
                         evento.getId(), art.getCategoria(), art.getNombre(), art.getTamano())
                 .orElse(null);
         if (fila == null) {
-            int orden = articulosEvento.findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(evento.getId())
+            int orden = articulosEvento.findByEventoIdOrderByCategoriaAscNombreAsc(evento.getId())
                     .stream()
                     .filter(f -> f.getCategoria() == art.getCategoria())
                     .mapToInt(ArticuloEvento::getOrden)
@@ -206,7 +206,7 @@ public class InventarioService {
         eventoAbierto(eventoId); // valida existencia / pertenencia / no oculto → 404
         boolean puedoEditar = permisos.puede(usuarioId, AreaProtegida.INVENTARIO);
         List<ArticuloEvento> filas =
-                articulosEvento.findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(eventoId);
+                articulosEvento.findByEventoIdOrderByCategoriaAscNombreAsc(eventoId);
 
         List<CategoriaEventoDto> categorias = Arrays.stream(CategoriaInventario.values())
                 .map(cat -> new CategoriaEventoDto(

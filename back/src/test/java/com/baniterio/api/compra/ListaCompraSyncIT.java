@@ -1,27 +1,40 @@
 package com.baniterio.api.compra;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
+import com.baniterio.api.identidad.Alternativa;
 import com.baniterio.api.identidad.AreaProtegida;
 import com.baniterio.api.identidad.AsistenciaEvento;
 import com.baniterio.api.identidad.AsistenciaEventoRepository;
+import com.baniterio.api.identidad.Bebida;
+import com.baniterio.api.identidad.BebidaRepository;
 import com.baniterio.api.identidad.Cuenta;
 import com.baniterio.api.identidad.CuentaRepository;
 import com.baniterio.api.identidad.EstadoAsistencia;
 import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
+import com.baniterio.api.identidad.FichaBebida;
+import com.baniterio.api.identidad.FichaBebidaRepository;
 import com.baniterio.api.identidad.Membresia;
 import com.baniterio.api.identidad.MembresiaRepository;
+import com.baniterio.api.identidad.Modalidad;
 import com.baniterio.api.identidad.Pena;
 import com.baniterio.api.identidad.PenaRepository;
 import com.baniterio.api.identidad.PermisoArea;
 import com.baniterio.api.identidad.PermisoAreaRepository;
 import com.baniterio.api.identidad.RolMembresia;
+import com.baniterio.api.identidad.TipoBebida;
 import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
+import com.baniterio.api.inventario.ArticuloEvento;
+import com.baniterio.api.inventario.ArticuloEventoRepository;
+import com.baniterio.api.inventario.ArticuloInventario;
+import com.baniterio.api.inventario.ArticuloInventarioRepository;
+import com.baniterio.api.inventario.CategoriaInventario;
 import com.baniterio.api.support.IntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,7 +63,11 @@ class ListaCompraSyncIT extends IntegrationTest {
     @Autowired CuentaRepository cuentas;
     @Autowired EventoRepository eventos;
     @Autowired AsistenciaEventoRepository asistencias;
+    @Autowired FichaBebidaRepository fichas;
+    @Autowired BebidaRepository bebidas;
     @Autowired LineaCompraEventoRepository lineas;
+    @Autowired ArticuloInventarioRepository articulosInventario;
+    @Autowired ArticuloEventoRepository articulosEvento;
     @Autowired PasswordEncoder passwordEncoder;
 
     RestTestClient http;
@@ -87,6 +104,33 @@ class ListaCompraSyncIT extends IntegrationTest {
         Evento e = eventos.save(Evento.builder().pena(pena()).cuenta(c).nombre(nombre)
                 .fecha(LocalDate.now().minusDays(60)).oculto(false).build());
         return e.getId();
+    }
+
+    /** Evento de 2 días con ficha de bebida (para las reglas ALCOHOL_SELECCIONADO/CERVEZA_ALTERNATIVA). */
+    long crearEventoConFicha(String nombre) {
+        Cuenta c = cuentas.save(Cuenta.builder().pena(pena()).nombre(nombre + " cuenta")
+                .llevaFichaBebida(true).build());
+        Evento e = eventos.save(Evento.builder().pena(pena()).cuenta(c).nombre(nombre)
+                .fecha(LocalDate.now().minusDays(61)).fechaFin(LocalDate.now().minusDays(60)).oculto(false).build());
+        return e.getId();
+    }
+
+    /** Apunta una persona los 2 días que bebe {@code marcaAlcohol} (rellena su ficha de bebida). */
+    void apuntarConAlcohol(long eventoId, String marcaAlcohol) {
+        Evento evento = eventos.findById(eventoId).orElseThrow();
+        String tel = "6" + String.format("%08d", ThreadLocalRandom.current().nextInt(100_000_000));
+        Usuario u = usuarios.save(Usuario.builder()
+                .telefono(tel).email(tel + "@sync.test")
+                .passwordHash(passwordEncoder.encode("secreto1"))
+                .nombre("A" + tel).apellidos("L").esSuperadmin(false).activo(true).build());
+        AsistenciaEvento a = asistencias.save(AsistenciaEvento.builder()
+                .evento(evento).usuario(u).estado(EstadoAsistencia.APUNTADO).build());
+        Bebida alcohol = bebidas.findByTipoAndNombreIgnoreCase(TipoBebida.ALCOHOL, marcaAlcohol).orElseThrow();
+        Bebida refresco = bebidas.findByTipoAndNombreIgnoreCase(TipoBebida.REFRESCO, "Coca-Cola").orElseThrow();
+        fichas.save(FichaBebida.builder()
+                .asistencia(a).alcohol(alcohol).refresco(refresco)
+                .alternativa(Alternativa.NADA).modalidad(Modalidad.COMPLETA)
+                .asisteDia1(true).asisteDia2(true).embarazada(false).build());
     }
 
     void apuntar(long eventoId, int cuantos) {
@@ -128,6 +172,21 @@ class ListaCompraSyncIT extends IntegrationTest {
             for (Map<String, Object> l : (List<Map<String, Object>>) cat.get("lineas")) {
                 if (nombre.equals(l.get("nombre"))) {
                     return ((Number) l.get("cantidad")).doubleValue();
+                }
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    String tamanoLinea(Map<String, Object> body, String categoria, String nombre) {
+        for (Map<String, Object> cat : (List<Map<String, Object>>) body.get("categorias")) {
+            if (!categoria.equals(cat.get("categoria"))) {
+                continue;
+            }
+            for (Map<String, Object> l : (List<Map<String, Object>>) cat.get("lineas")) {
+                if (nombre.equals(l.get("nombre"))) {
+                    return (String) l.get("tamano");
                 }
             }
         }
@@ -214,7 +273,7 @@ class ListaCompraSyncIT extends IntegrationTest {
         long platosRegla = idDeRegla(reglasAdmin(eventoId, admin), "Platos");
         http.put().uri("/api/v1/admin/lista-compra/eventos/" + eventoId + "/reglas/" + platosRegla)
                 .header(AUTHORIZATION, "Bearer " + admin)
-                .body(Map.of("activa", false))
+                .body(Map.of("activa", false, "factor", 3))
                 .exchange().expectStatus().isNoContent();
 
         var body = getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin);
@@ -376,5 +435,175 @@ class ListaCompraSyncIT extends IntegrationTest {
                 .header(AUTHORIZATION, "Bearer " + admin)
                 .exchange().expectStatus().isNotFound()
                 .expectBody().jsonPath("$.codigo").isEqualTo("ARTICULO_EVENTO_NO_ENCONTRADO");
+    }
+
+    // --- Task 6: descuento por inventario (bloque 2) ------------------------
+
+    long crearReglaPorEvento(long eventoId, String admin, String categoria, String nombre, int factor) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> creada = http.post().uri("/api/v1/admin/lista-compra/eventos/" + eventoId + "/reglas")
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("categoria", categoria, "nombre", nombre, "tamano", "unidad",
+                        "tipoFormula", "POR_EVENTO", "factor", factor))
+                .exchange().expectStatus().isCreated()
+                .expectBody(Map.class).returnResult().getResponseBody();
+        return ((Number) creada.get("id")).longValue();
+    }
+
+    void sumarInventarioGeneral(String nombre, CategoriaInventario categoria, BigDecimal cantidad) {
+        articulosInventario.save(ArticuloInventario.builder()
+                .pena(pena()).categoria(categoria).nombre(nombre).tamano("unidad")
+                .cantidad(cantidad).orden(999).build());
+    }
+
+    void sumarInventarioFiesta(long eventoId, String nombre, CategoriaInventario categoria, BigDecimal cantidad) {
+        Evento evento = eventos.findById(eventoId).orElseThrow();
+        articulosEvento.save(ArticuloEvento.builder()
+                .evento(evento).categoria(categoria).nombre(nombre).tamano("unidad")
+                .cantidad(cantidad).cantidadComprada(BigDecimal.ZERO).orden(999).build());
+    }
+
+    @Test
+    void el_inventario_general_de_la_pena_no_descuenta_la_lista() {
+        // Solo lo enviado a ESTE evento (inventario de la fiesta) descuenta; lo que
+        // haya suelto en el almacén general de la peña no cuenta para este evento.
+        long eventoId = crearEventoDeUnDia("Sync IT inventario general no cuenta");
+        String admin = token(RolMembresia.ADMIN, false);
+        crearReglaPorEvento(eventoId, admin, "COMIDA", "Servilletas", 5);
+        sumarInventarioGeneral("Servilletas", CategoriaInventario.COMIDA, new BigDecimal("100"));
+
+        assertThat(cantidadLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
+                "COMIDA", "Servilletas")).isEqualTo(5.0);
+    }
+
+    @Test
+    void el_resto_tras_restar_stock_se_redondea_siempre_al_alza() {
+        // Fregasuelos: 0.2 L de necesidad bruta, sin redondear antes de restar (para
+        // no comprar de más). Sin stock, lo que sobra (0.2) se redondea a 1 entero
+        // (no se compran fracciones de litro sueltas). Si en la fiesta ya hay 0.2 L
+        // o más, no sobra nada y no hace falta comprar.
+        long eventoId = crearEventoDeUnDia("Sync IT litro");
+        String admin = token(RolMembresia.ADMIN, false);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> creada = http.post().uri("/api/v1/admin/lista-compra/eventos/" + eventoId + "/reglas")
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("categoria", "LIMPIEZA", "nombre", "Fregasuelos evento", "tamano", "litro",
+                        "tipoFormula", "POR_EVENTO", "factor", 0.2))
+                .exchange().expectStatus().isCreated()
+                .expectBody(Map.class).returnResult().getResponseBody();
+        long reglaId = ((Number) creada.get("id")).longValue();
+
+        assertThat(cantidadLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
+                "LIMPIEZA", "Fregasuelos evento")).isEqualTo(1.0);
+
+        Evento evento = eventos.findById(eventoId).orElseThrow();
+        articulosEvento.save(ArticuloEvento.builder()
+                .evento(evento).categoria(CategoriaInventario.LIMPIEZA).nombre("Fregasuelos evento")
+                .tamano("litro").cantidad(new BigDecimal("0.5")).cantidadComprada(BigDecimal.ZERO)
+                .orden(999).build());
+        assertThat(cantidadLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
+                "LIMPIEZA", "Fregasuelos evento")).isNull();
+
+        http.delete().uri("/api/v1/admin/lista-compra/eventos/" + eventoId + "/reglas/" + reglaId)
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .exchange().expectStatus().isNoContent();
+    }
+
+    @Test
+    void alcohol_de_una_sola_persona_compra_la_botella_mas_pequena_que_llegue_al_litro() {
+        // 1 persona, 2 días, factor 0.5/persona-día -> hace falta 1 L en total como
+        // mínimo. Sin stock se compra la botella de 1 L; si ya hay 0.8 L en la
+        // fiesta, con una botella de 70cl se pasa de sobra del litro, así que se
+        // compra esa en vez de la de 1 L.
+        long eventoId = crearEventoConFicha("Sync IT botella alcohol");
+        String admin = token(RolMembresia.ADMIN, false);
+        apuntarConAlcohol(eventoId, "Beefeater");
+
+        var body1 = getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin);
+        assertThat(cantidadLinea(body1, "ALCOHOL", "Beefeater")).isEqualTo(1.0);
+        assertThat(tamanoLinea(body1, "ALCOHOL", "Beefeater")).isEqualTo("1 L");
+
+        Evento evento = eventos.findById(eventoId).orElseThrow();
+        articulosEvento.save(ArticuloEvento.builder()
+                .evento(evento).categoria(CategoriaInventario.ALCOHOL).nombre("Beefeater")
+                .tamano("1 L").cantidad(new BigDecimal("0.8")).cantidadComprada(BigDecimal.ZERO)
+                .orden(999).build());
+
+        var body2 = getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin);
+        assertThat(cantidadLinea(body2, "ALCOHOL", "Beefeater")).isEqualTo(1.0);
+        assertThat(tamanoLinea(body2, "ALCOHOL", "Beefeater")).isEqualTo("70 cl");
+    }
+
+    @Test
+    void una_cantidad_a_0_no_aparece_en_la_lista() {
+        long eventoId = crearEventoDeUnDia("Sync IT oculta a 0");
+        String admin = token(RolMembresia.ADMIN, false);
+        crearReglaPorEvento(eventoId, admin, "COMIDA", "Vasos", 5);
+        assertThat(cantidadLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
+                "COMIDA", "Vasos")).isEqualTo(5.0);
+
+        sumarInventarioFiesta(eventoId, "Vasos", CategoriaInventario.COMIDA, new BigDecimal("5"));
+        assertThat(cantidadLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
+                "COMIDA", "Vasos")).isNull();
+    }
+
+    @Test
+    void descuenta_tambien_lo_ya_enviado_o_comprado_en_el_inventario_de_la_fiesta() {
+        long eventoId = crearEventoDeUnDia("Sync IT descuento fiesta");
+        String admin = token(RolMembresia.ADMIN, false);
+        crearReglaPorEvento(eventoId, admin, "COMIDA", "Platos hondos", 5);
+
+        Evento evento = eventos.findById(eventoId).orElseThrow();
+        articulosEvento.save(ArticuloEvento.builder()
+                .evento(evento).categoria(CategoriaInventario.COMIDA).nombre("Platos hondos").tamano("unidad")
+                .cantidad(new BigDecimal("2")).cantidadComprada(new BigDecimal("1")).orden(1).build());
+
+        assertThat(cantidadLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
+                "COMIDA", "Platos hondos")).isEqualTo(2.0);
+    }
+
+    @Test
+    void bloquear_congela_tambien_el_descuento_por_inventario() {
+        long eventoId = crearEventoDeUnDia("Sync IT descuento bloqueo");
+        String admin = token(RolMembresia.ADMIN, false);
+        crearReglaPorEvento(eventoId, admin, "COMIDA", "Hielo evento", 4);
+        getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin);
+
+        http.put().uri("/api/v1/eventos/" + eventoId + "/lista-compra/bloqueo")
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("bloqueada", true))
+                .exchange().expectStatus().isNoContent();
+
+        sumarInventarioFiesta(eventoId, "Hielo evento", CategoriaInventario.COMIDA, new BigDecimal("4"));
+        assertThat(cantidadLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
+                "COMIDA", "Hielo evento")).isEqualTo(4.0);
+
+        http.put().uri("/api/v1/eventos/" + eventoId + "/lista-compra/bloqueo")
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("bloqueada", false))
+                .exchange().expectStatus().isNoContent();
+        assertThat(cantidadLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
+                "COMIDA", "Hielo evento")).isNull();
+    }
+
+    @Test
+    void la_cerveza_se_descuenta_por_categoria_entera_sin_importar_la_marca() {
+        // La plantilla tiene una única línea genérica "Cerveza", pero el inventario de
+        // la fiesta guarda una fila por marca (Mahou Clásica, Coronita...): cualquier
+        // marca enviada a este evento tiene que cubrir esa necesidad genérica.
+        long eventoId = crearEventoDeUnDia("Sync IT cerveza por marca");
+        String admin = token(RolMembresia.ADMIN, false);
+        long reglaId = crearReglaPorEvento(eventoId, admin, "CERVEZA", "Cerveza especial evento", 10);
+        assertThat(cantidadLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
+                "CERVEZA", "Cerveza especial evento")).isEqualTo(10.0);
+
+        sumarInventarioFiesta(eventoId, "Marca A", CategoriaInventario.CERVEZA, new BigDecimal("3"));
+        sumarInventarioFiesta(eventoId, "Marca B", CategoriaInventario.CERVEZA, new BigDecimal("4"));
+        assertThat(cantidadLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
+                "CERVEZA", "Cerveza especial evento")).isEqualTo(3.0);
+
+        http.delete().uri("/api/v1/admin/lista-compra/eventos/" + eventoId + "/reglas/" + reglaId)
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .exchange().expectStatus().isNoContent();
     }
 }

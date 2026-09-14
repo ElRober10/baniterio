@@ -1,5 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Volver } from '../../../shared/volver/volver';
 import { InventarioService } from '../../inventario/inventario.service';
 import { ArticuloFiesta, CategoriaFiesta } from '../../inventario/inventario.types';
@@ -14,7 +14,7 @@ type DestinoDevolucion = 'inventario' | 'lista';
  */
 @Component({
   selector: 'app-inventario-fiesta',
-  imports: [Volver],
+  imports: [Volver, RouterLink],
   templateUrl: './inventario-fiesta.html',
   styleUrl: './inventario-fiesta.css',
 })
@@ -38,8 +38,8 @@ export class InventarioFiesta implements OnInit {
     const c = this.confirmacion();
     if (!c) return '';
     return c.destino === 'lista'
-      ? `¿Devolver «${c.articulo.nombre}» a la lista de la compra?`
-      : `¿Devolver «${c.articulo.nombre}» al inventario general?`;
+      ? `¿Devolver ${c.articulo.cantidadComprada} de «${c.articulo.nombre}» a la lista de la compra?`
+      : `¿Devolver ${this.stockDe(c.articulo)} de «${c.articulo.nombre}» al inventario general?`;
   });
 
   ngOnInit(): void {

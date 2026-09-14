@@ -32,27 +32,43 @@
             class="carta-relieve rounded-xl p-4"
             [class.opacity-60]="!r.activa"
           >
-            <div class="flex flex-wrap items-baseline justify-between gap-2">
-              <div>
-                <span class="font-semibold">{{ r.nombre || r.etiqueta }}</span>
-                <span class="text-sm text-muted"> · {{ r.tamano }} · {{ r.etiqueta }}</span>
-              </div>
-              <span class="text-xs text-muted">{{ formulaLegible(r) }} · calculado: {{ r.cantidadCalculada }}</span>
+            <div>
+              <span class="font-semibold">{{ r.nombre || r.etiqueta }}</span>
+              <span class="text-sm text-muted"> · {{ r.tamano }} · {{ r.etiqueta }}</span>
             </div>
+            <p class="mt-1 text-sm text-gold-soft">Fórmula: {{ formulaLegible(r) }}</p>
+            @if (r.origen === 'PLANTILLA') {
+              <p class="text-xs text-muted">
+                Si cambias la cantidad por unidad de fórmula o el "por cada", se guarda para este evento
+                y para los que se abran a partir de ahora.
+              </p>
+            }
 
-            <div class="mt-3 flex flex-wrap items-center gap-3">
+            <div class="mt-3 flex flex-wrap items-end gap-3">
               <label class="text-sm">
-                Cantidad:
+                <span class="block text-xs text-muted">Cantidad por unidad de fórmula</span>
                 <input
                   type="number"
                   min="0"
-                  step="0.5"
-                  [(ngModel)]="r.cantidadAjustada"
-                  [disabled]="esDinamica(r)"
-                  placeholder="fórmula"
-                  class="ml-1 w-24 rounded-lg border border-outline bg-transparent px-2 py-1 text-sm disabled:opacity-40"
+                  step="0.1"
+                  [(ngModel)]="r.factor"
+                  data-testid="factor"
+                  class="mt-1 w-24 rounded-lg border border-outline bg-transparent px-2 py-1 text-sm"
                 />
               </label>
+
+              @if (tienePorCada(r)) {
+                <label class="text-sm">
+                  <span class="block text-xs text-muted">Por cada (peñistas)</span>
+                  <input
+                    type="number"
+                    min="1"
+                    [(ngModel)]="r.porCada"
+                    data-testid="por-cada"
+                    class="mt-1 w-24 rounded-lg border border-outline bg-transparent px-2 py-1 text-sm"
+                  />
+                </label>
+              }
 
               <label class="flex items-center gap-1 text-sm">
                 <input type="checkbox" [(ngModel)]="r.activa" />

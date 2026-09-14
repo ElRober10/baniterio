@@ -46,19 +46,42 @@ public class ServicioPermisos {
         this.usuarios = usuarios;
     }
 
-    /** El usuario existe y está activo. Un usuario desactivado no puede nada. */
+    /**
+     * Toda la lógica vive en estos privados, que se llaman entre sí directamente
+     * (nunca a través de {@code this} hacia un método público): un privado no pasa
+     * por el proxy de Spring, así que llamarlo desde otro método de la clase no
+     * pierde la demarcación transaccional como sí pasaría con dos públicos
+     * {@code @Transactional} llamándose entre sí. Los públicos de abajo son solo
+     * la puerta de entrada transaccional.
+     */
     private Optional<Usuario> usuarioActivo(Long usuarioId) {
         return usuarios.findById(usuarioId).filter(u -> u.isActivo());
     }
 
-    @Transactional(readOnly = true)
-    public boolean esAdministrador(Long usuarioId) {
-        Optional<Usuario> usuario = usuarioActivo(usuarioId);
-        if (usuario.isEmpty()) {
+    private RolMembresia rolInterno(Long usuarioId) {
+        return membresias.findByUsuarioIdAndPenaId(usuarioId, penaId())
+                .filter(m -> m.isActiva())
+                .map(m -> m.getRol())
+                .orElse(null);
+    }
+
+    private boolean esAdministradorInterno(Long usuarioId) {
+        return usuarioActivo(usuarioId)
+                // Un superadmin sin membresía sigue siendo administrador (red de seguridad).
+                .map(u -> u.isEsSuperadmin() || rolInterno(usuarioId) == RolMembresia.ADMIN)
+                .orElse(false);
+    }
+
+    private boolean puedeInterno(Long usuarioId, AreaProtegida area) {
+        if (usuarioActivo(usuarioId).isEmpty()) {
             return false;
         }
-        // Un superadmin sin membresía sigue siendo administrador (red de seguridad).
-        return usuario.get().isEsSuperadmin() || rolDe(usuarioId) == RolMembresia.ADMIN;
+        return esAdministradorInterno(usuarioId) || permisos.existsByUsuarioIdAndArea(usuarioId, area);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean esAdministrador(Long usuarioId) {
+        return esAdministradorInterno(usuarioId);
     }
 
     @Transactional(readOnly = true)
@@ -66,20 +89,12 @@ public class ServicioPermisos {
         if (usuarioActivo(usuarioId).isEmpty()) {
             return null;
         }
-        Long penaId = penaId();
-        return membresias.findByUsuarioIdAndPenaId(usuarioId, penaId)
-                .filter(m -> m.isActiva())
-                .map(m -> m.getRol())
-                .orElse(null);
+        return rolInterno(usuarioId);
     }
 
     @Transactional(readOnly = true)
     public boolean puede(Long usuarioId, AreaProtegida area) {
-        if (usuarioActivo(usuarioId).isEmpty()) {
-            return false;
-        }
-        return esAdministrador(usuarioId)
-                || permisos.existsByUsuarioIdAndArea(usuarioId, area);
+        return puedeInterno(usuarioId, area);
     }
 
     @Transactional(readOnly = true)
@@ -87,7 +102,7 @@ public class ServicioPermisos {
         if (usuarioActivo(usuarioId).isEmpty()) {
             return Set.of();
         }
-        if (esAdministrador(usuarioId)) {
+        if (esAdministradorInterno(usuarioId)) {
             return Collections.unmodifiableSet(EnumSet.allOf(AreaProtegida.class));
         }
         Set<AreaProtegida> resultado = EnumSet.noneOf(AreaProtegida.class);
@@ -102,7 +117,7 @@ public class ServicioPermisos {
      */
     @Transactional(readOnly = true)
     public void exigir(Long usuarioId, AreaProtegida area, Supplier<? extends RuntimeException> excepcion) {
-        if (!puede(usuarioId, area)) {
+        if (!puedeInterno(usuarioId, area)) {
             throw excepcion.get();
         }
     }
@@ -110,7 +125,7 @@ public class ServicioPermisos {
     /** Igual que {@link #exigir}, pero para las operaciones que exigen ser administrador. */
     @Transactional(readOnly = true)
     public void exigirAdmin(Long usuarioId, Supplier<? extends RuntimeException> excepcion) {
-        if (!esAdministrador(usuarioId)) {
+        if (!esAdministradorInterno(usuarioId)) {
             throw excepcion.get();
         }
     }

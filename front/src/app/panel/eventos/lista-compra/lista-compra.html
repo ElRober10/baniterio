@@ -24,16 +24,24 @@
           <span class="text-gold-soft"> · lista bloqueada</span>
         }
       </p>
-      @if (puedoEditar()) {
-        <button
-          type="button"
-          [disabled]="ocupado()"
-          (click)="alternarBloqueo()"
-          class="mt-2 rounded-lg border border-outline px-3 py-1 text-sm disabled:opacity-50"
+      <div class="mt-2 flex flex-wrap gap-2">
+        @if (puedoEditar()) {
+          <button
+            type="button"
+            [disabled]="ocupado()"
+            (click)="alternarBloqueo()"
+            class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark disabled:opacity-50"
+          >
+            {{ bloqueada() ? 'Desbloquear lista' : 'Bloquear lista' }}
+          </button>
+        }
+        <a
+          [routerLink]="['/panel/eventos', eventoId, 'inventario']"
+          class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark"
         >
-          {{ bloqueada() ? 'Desbloquear lista' : 'Bloquear lista' }}
-        </button>
-      }
+          Inventario de la fiesta
+        </a>
+      </div>
       @if (categorias().length === 0) {
         <p class="mt-6 text-sm text-muted">Todavía no hay nada que comprar para este evento.</p>
       } @else {

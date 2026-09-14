@@ -46,10 +46,10 @@ describe('ListaCompraService', () => {
   });
 
   it('ajustarRegla() hace PUT con body', () => {
-    service.ajustarRegla(7, 3, { cantidadAjustada: 12, activa: true }).subscribe();
+    service.ajustarRegla(7, 3, { cantidadAjustada: 12, activa: true, factor: 3, porCada: null }).subscribe();
     const req = http.expectOne(`${base}/admin/lista-compra/eventos/7/reglas/3`);
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body).toEqual({ cantidadAjustada: 12, activa: true });
+    expect(req.request.body).toEqual({ cantidadAjustada: 12, activa: true, factor: 3, porCada: null });
     req.flush(null);
   });
 

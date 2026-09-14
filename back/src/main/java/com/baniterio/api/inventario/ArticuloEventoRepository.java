@@ -8,7 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 /** Acceso a BBDD para {@link ArticuloEvento} (inventario de la fiesta). */
 public interface ArticuloEventoRepository extends JpaRepository<ArticuloEvento, Long> {
 
-    List<ArticuloEvento> findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(Long eventoId);
+    /** Ordenado por categoría (orden del enum) y luego alfabéticamente. */
+    List<ArticuloEvento> findByEventoIdOrderByCategoriaAscNombreAsc(Long eventoId);
 
     Optional<ArticuloEvento> findByEventoIdAndArticuloInventarioId(Long eventoId, Long articuloInventarioId);
 

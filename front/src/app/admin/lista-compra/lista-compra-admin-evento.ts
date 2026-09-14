@@ -74,10 +74,6 @@ export class ListaCompraAdminEvento implements OnInit {
     });
   }
 
-  protected esDinamica(r: ReglaCompraEvento): boolean {
-    return r.tipoFormula === 'ALCOHOL_SELECCIONADO' || r.tipoFormula === 'REFRESCO_SELECCIONADO';
-  }
-
   protected formulaLegible(r: ReglaCompraEvento): string {
     switch (r.tipoFormula) {
       case 'POR_PENISTA':
@@ -90,6 +86,8 @@ export class ListaCompraAdminEvento implements OnInit {
         return `${r.factor} por evento`;
       case 'POR_CADA_N_PENISTAS':
         return `${r.factor} por cada ${r.porCada} peñistas`;
+      case 'POR_CADA_N_PENISTAS_DIA':
+        return `${r.factor} por cada ${r.porCada} peñistas y día`;
       case 'CERVEZA_ALTERNATIVA':
         return `${r.factor} por peñista y día (bebe cerveza)`;
       case 'TINTO_ALTERNATIVA':
@@ -101,11 +99,20 @@ export class ListaCompraAdminEvento implements OnInit {
     }
   }
 
+  protected tienePorCada(r: ReglaCompraEvento): boolean {
+    return r.tipoFormula === 'POR_CADA_N_PENISTAS' || r.tipoFormula === 'POR_CADA_N_PENISTAS_DIA';
+  }
+
   protected guardar(r: ReglaCompraEvento): void {
     this.guardando.set(true);
     this.aviso.set('');
     this.service
-      .ajustarRegla(this.eventoId, r.id, { cantidadAjustada: r.cantidadAjustada, activa: r.activa })
+      .ajustarRegla(this.eventoId, r.id, {
+        cantidadAjustada: null,
+        activa: r.activa,
+        factor: r.factor,
+        porCada: this.tienePorCada(r) ? r.porCada : null,
+      })
       .subscribe({
         next: () => {
           this.guardando.set(false);

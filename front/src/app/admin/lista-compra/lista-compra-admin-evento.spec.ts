@@ -58,7 +58,7 @@ function montar(): { fixture: ComponentFixture<ListaCompraAdminEvento>; http: Ht
   const fixture = TestBed.createComponent(ListaCompraAdminEvento);
   const http = TestBed.inject(HttpTestingController);
   fixture.detectChanges();
-  http.expectOne(`${base}/admin/lista-compra/eventos/7`).flush(RESPUESTA);
+  http.expectOne(`${base}/admin/lista-compra/eventos/7`).flush(structuredClone(RESPUESTA));
   fixture.detectChanges();
   return { fixture, http };
 }
@@ -66,12 +66,12 @@ function montar(): { fixture: ComponentFixture<ListaCompraAdminEvento>; http: Ht
 describe('ListaCompraAdminEvento', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it('ajustar una regla hace PUT con cantidad y activa', () => {
+  it('desactivar una regla hace PUT con activa a false, manteniendo factor y porCada', () => {
     const { fixture, http } = montar();
     const el = fixture.nativeElement as HTMLElement;
-    const input = el.querySelector('input[type="number"]') as HTMLInputElement;
-    input.value = '50';
-    input.dispatchEvent(new Event('input'));
+    const checkbox = el.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change'));
     fixture.detectChanges();
 
     Array.from(el.querySelectorAll('button'))
@@ -80,9 +80,28 @@ describe('ListaCompraAdminEvento', () => {
 
     const put = http.expectOne(`${base}/admin/lista-compra/eventos/7/reglas/1`);
     expect(put.request.method).toBe('PUT');
-    expect(put.request.body).toEqual({ cantidadAjustada: 50, activa: true });
+    expect(put.request.body).toEqual({ cantidadAjustada: null, activa: false, factor: 3, porCada: null });
     put.flush(null);
-    http.expectOne(`${base}/admin/lista-compra/eventos/7`).flush(RESPUESTA);
+    http.expectOne(`${base}/admin/lista-compra/eventos/7`).flush(structuredClone(RESPUESTA));
+    http.verify();
+  });
+
+  it('cambiar el factor de la fórmula lo manda en el PUT', () => {
+    const { fixture, http } = montar();
+    const el = fixture.nativeElement as HTMLElement;
+    const input = el.querySelector('input[data-testid="factor"]') as HTMLInputElement;
+    input.value = '4';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Guardar')!
+      .dispatchEvent(new Event('click'));
+
+    const put = http.expectOne(`${base}/admin/lista-compra/eventos/7/reglas/1`);
+    expect(put.request.body).toEqual({ cantidadAjustada: null, activa: true, factor: 4, porCada: null });
+    put.flush(null);
+    http.expectOne(`${base}/admin/lista-compra/eventos/7`).flush(structuredClone(RESPUESTA));
     http.verify();
   });
 
@@ -110,7 +129,7 @@ describe('ListaCompraAdminEvento', () => {
     expect(post.request.method).toBe('POST');
     expect(post.request.body.nombre).toBe('Film');
     post.flush({});
-    http.expectOne(`${base}/admin/lista-compra/eventos/7`).flush(RESPUESTA);
+    http.expectOne(`${base}/admin/lista-compra/eventos/7`).flush(structuredClone(RESPUESTA));
     http.verify();
   });
 
@@ -126,7 +145,7 @@ describe('ListaCompraAdminEvento', () => {
     const del = http.expectOne(`${base}/admin/lista-compra/eventos/7/reglas/2`);
     expect(del.request.method).toBe('DELETE');
     del.flush(null);
-    http.expectOne(`${base}/admin/lista-compra/eventos/7`).flush(RESPUESTA);
+    http.expectOne(`${base}/admin/lista-compra/eventos/7`).flush(structuredClone(RESPUESTA));
     http.verify();
   });
 });

@@ -122,18 +122,24 @@ fun InventarioFiestaScreen(
                                 )
                             }
                             if (datos.puedoEditar) {
-                                Row(
+                                Column(
                                     Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
-                                    if (a.cantidad - a.cantidadComprada > 0.0) {
-                                        OutlinedButton(onClick = { confirmar = a }) {
-                                            Text("Devolver a inventario")
+                                    if (a.cantidadComprada > 0.0) {
+                                        OutlinedButton(
+                                            onClick = { confirmarLista = a },
+                                            modifier = Modifier.fillMaxWidth(),
+                                        ) {
+                                            Text("Devolver ${fmtFiesta(a.cantidadComprada)} a la lista de la compra")
                                         }
                                     }
-                                    if (a.cantidadComprada > 0.0) {
-                                        OutlinedButton(onClick = { confirmarLista = a }) {
-                                            Text("Devolver a la lista")
+                                    if (a.cantidad - a.cantidadComprada > 0.0) {
+                                        OutlinedButton(
+                                            onClick = { confirmar = a },
+                                            modifier = Modifier.fillMaxWidth(),
+                                        ) {
+                                            Text("Devolver ${fmtFiesta(a.cantidad - a.cantidadComprada)} al inventario general")
                                         }
                                     }
                                 }
@@ -160,8 +166,8 @@ fun InventarioFiestaScreen(
                 }) { Text("Devolver") }
             },
             dismissButton = { TextButton(onClick = { confirmar = null }) { Text("Cancelar") } },
-            title = { Text("Devolver a inventario") },
-            text = { Text("¿Devolver «${art.nombre}» al inventario general?") },
+            title = { Text("Devolver al inventario general") },
+            text = { Text("¿Devolver ${fmtFiesta(art.cantidad - art.cantidadComprada)} de «${art.nombre}» al inventario general?") },
         )
     }
 
@@ -183,7 +189,7 @@ fun InventarioFiestaScreen(
             },
             dismissButton = { TextButton(onClick = { confirmarLista = null }) { Text("Cancelar") } },
             title = { Text("Devolver a la lista de la compra") },
-            text = { Text("¿Devolver «${art.nombre}» a la lista de la compra?") },
+            text = { Text("¿Devolver ${fmtFiesta(art.cantidadComprada)} de «${art.nombre}» a la lista de la compra?") },
         )
     }
 }
