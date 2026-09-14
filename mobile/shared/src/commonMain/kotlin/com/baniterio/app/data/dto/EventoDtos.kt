@@ -164,6 +164,7 @@ data class EventoDetalle(
 data class AsistenciaResumenDto(
     val id: Long,
     val nombre: String,
+    val telefono: String? = null,
     val estado: String,
     val esManual: Boolean,
     val cuota: Double? = null,
@@ -192,6 +193,7 @@ data class BebidaFilaDto(
 @Serializable
 data class AsistenteFilaDto(
     val nombre: String,
+    val telefono: String? = null,
     val estado: String,
     val esManual: Boolean,
     val bebida: BebidaFilaDto? = null,
@@ -227,6 +229,7 @@ data class ListadoAsistentesDto(
 @Serializable
 data class AnadirAsistenteBody(
     val nombre: String,
+    val telefono: String? = null,
     val estado: String,
     val ficha: FichaBebidaBody? = null,
 )

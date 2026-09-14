@@ -23,6 +23,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.baniterio.app.data.AsistenciaRepository
+import com.baniterio.app.data.BebidaRepository
 import com.baniterio.app.data.EventosRepository
 import com.baniterio.app.data.ResultadoEvento
 import com.baniterio.app.data.dto.AsistenteFilaDto
@@ -72,6 +74,11 @@ fun ListadoAsistentesDialog(
     eventoId: Long,
     repo: EventosRepository,
     onCerrar: () -> Unit,
+    puedoEditar: Boolean = false,
+    llevaFicha: Boolean = false,
+    diasEvento: List<String> = emptyList(),
+    asistenciaRepo: AsistenciaRepository? = null,
+    bebidaRepo: BebidaRepository? = null,
 ) {
     var datos by remember { mutableStateOf<ListadoAsistentesDto?>(null) }
     var error by remember { mutableStateOf(false) }
@@ -79,17 +86,29 @@ fun ListadoAsistentesDialog(
     var confirmando by remember { mutableStateOf<AsistenteFilaDto?>(null) }
     var metodoElegido by remember { mutableStateOf("BIZUM") }
     var guardando by remember { mutableStateOf(false) }
+    var mostrarAnadir by remember { mutableStateOf(false) }
 
-    LaunchedEffect(eventoId) {
-        when (val r = repo.asistentes(eventoId)) {
-            is ResultadoEvento.Exito -> datos = r.dato
-            is ResultadoEvento.Error -> error = true
+    fun cargar() {
+        scope.launch {
+            when (val r = repo.asistentes(eventoId)) {
+                is ResultadoEvento.Exito -> datos = r.dato
+                is ResultadoEvento.Error -> error = true
+            }
         }
     }
 
+    LaunchedEffect(eventoId) { cargar() }
+
     AlertDialog(
         onDismissRequest = onCerrar,
-        confirmButton = { TextButton(onClick = onCerrar) { Text("Cerrar") } },
+        confirmButton = {
+            Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
+                if (puedoEditar && asistenciaRepo != null && bebidaRepo != null) {
+                    TextButton(onClick = { mostrarAnadir = true }) { Text("Añadir asistente") }
+                }
+                TextButton(onClick = onCerrar) { Text("Cerrar") }
+            }
+        },
         title = { Text("Asistentes") },
         text = {
             Column(
@@ -184,10 +203,34 @@ fun ListadoAsistentesDialog(
                             selected = metodoElegido == valor,
                             onClick = { metodoElegido = valor },
                             shape = SegmentedButtonDefaults.itemShape(i, METODOS_PAGO.size),
-                        ) { Text(etiqueta) }
+                        ) {
+                            Text(
+                                etiqueta,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        }
                     }
                 }
             },
+        )
+    }
+
+    if (mostrarAnadir && asistenciaRepo != null && bebidaRepo != null) {
+        AnadirAsistenteDialog(
+            eventoId = eventoId,
+            llevaFicha = llevaFicha,
+            diasEvento = diasEvento,
+            asistenciaRepo = asistenciaRepo,
+            eventosRepo = repo,
+            bebidaRepo = bebidaRepo,
+            onAnadido = {
+                mostrarAnadir = false
+                cargar()
+            },
+            onCerrar = { mostrarAnadir = false },
         )
     }
 }

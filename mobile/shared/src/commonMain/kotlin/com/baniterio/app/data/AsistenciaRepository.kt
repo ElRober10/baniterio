@@ -27,6 +27,7 @@ interface AsistenciaRepository {
         eventoId: Long,
         nombre: String,
         estado: String,
+        telefono: String? = null,
         ficha: FichaBebidaBody? = null,
     ): ResultadoAsistencia<AsistenciaResumenDto>
     suspend fun quitar(eventoId: Long, asistenciaId: Long): ResultadoAsistencia<Unit>

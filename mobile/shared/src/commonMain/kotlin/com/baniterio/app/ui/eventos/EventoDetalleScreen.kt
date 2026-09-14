@@ -1,5 +1,6 @@
 package com.baniterio.app.ui.eventos
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -17,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -32,8 +35,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.baniterio.app.data.AsistenciaRepository
+import com.baniterio.app.data.BebidaRepository
 import com.baniterio.app.data.EventosRepository
 import com.baniterio.app.data.ResultadoEvento
 import com.baniterio.app.data.dto.EventoDetalle
@@ -43,6 +52,26 @@ import com.baniterio.app.ui.comun.EstadoCarga
 import com.baniterio.app.ui.comun.PantallaConEstado
 import com.baniterio.app.ui.comun.relieveDeCarta
 import kotlinx.coroutines.launch
+
+/** Icono de papelera dibujado a mano (sin depender de una librería de iconos). */
+@Composable
+private fun IconoPapelera(modifier: Modifier = Modifier, tint: Color = Color.White) {
+    Canvas(modifier = modifier.width(20.dp).height(20.dp)) {
+        val stroke = Stroke(width = size.width / 11f, cap = StrokeCap.Round)
+        val left = size.width * 0.22f
+        val right = size.width * 0.78f
+        val lidY = size.height * 0.28f
+        val bottomY = size.height * 0.92f
+        drawLine(tint, Offset(size.width * 0.12f, lidY), Offset(size.width * 0.88f, lidY), stroke.width, stroke.cap)
+        drawLine(tint, Offset(size.width * 0.38f, lidY), Offset(size.width * 0.38f, size.height * 0.1f), stroke.width, stroke.cap)
+        drawLine(tint, Offset(size.width * 0.62f, lidY), Offset(size.width * 0.62f, size.height * 0.1f), stroke.width, stroke.cap)
+        drawLine(tint, Offset(size.width * 0.38f, size.height * 0.1f), Offset(size.width * 0.62f, size.height * 0.1f), stroke.width, stroke.cap)
+        drawLine(tint, Offset(left, lidY), Offset(left + size.width * 0.04f, bottomY), stroke.width, stroke.cap)
+        drawLine(tint, Offset(right, lidY), Offset(right - size.width * 0.04f, bottomY), stroke.width, stroke.cap)
+        drawLine(tint, Offset(left + size.width * 0.04f, bottomY), Offset(right - size.width * 0.04f, bottomY), stroke.width, stroke.cap)
+        drawLine(tint, Offset(size.width * 0.5f, lidY + size.height * 0.1f), Offset(size.width * 0.5f, bottomY - size.height * 0.1f), stroke.width, stroke.cap)
+    }
+}
 
 private fun metodoLegible(m: String?) = when (m) {
     "BIZUM" -> "Bizum"
@@ -67,6 +96,8 @@ internal val ESTADOS_ASISTENCIA = listOf(
 @Composable
 fun EventoDetalleScreen(
     eventosRepo: EventosRepository,
+    asistenciaRepo: AsistenciaRepository,
+    bebidaRepo: BebidaRepository,
     eventoId: Long,
     onEditar: () -> Unit,
     onBorrado: () -> Unit,
@@ -77,6 +108,8 @@ fun EventoDetalleScreen(
     var estado by remember { mutableStateOf<EstadoCarga<EventoDetalle>>(EstadoCarga.Cargando) }
     var aviso by remember { mutableStateOf<String?>(null) }
     var intento by remember { mutableStateOf(0) }
+    var confirmarBorrado by remember { mutableStateOf(false) }
+    var mostrarAnadirAsistente by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(eventoId, intento) {
@@ -113,13 +146,29 @@ fun EventoDetalleScreen(
                             fontWeight = FontWeight.Bold,
                         )
                     }
-                    Text(
-                        ev.nombre,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.alpha(if (ev.pasado) 0.7f else 1f),
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Text(
+                            ev.nombre,
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f).alpha(if (ev.pasado) 0.7f else 1f),
+                        )
+                        if (ev.puedoBorrar && !ev.oculto) {
+                            IconButton(
+                                onClick = { confirmarBorrado = true },
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFFDC2626)),
+                            ) {
+                                IconoPapelera()
+                            }
+                        }
+                    }
                     Text(
                         buildString {
                             append(formatoFecha(ev.fecha))
@@ -181,10 +230,37 @@ fun EventoDetalleScreen(
                     }
                     ev.asistencia.ficha.miFicha?.let { f ->
                         if (f.cuota != null) {
-                            Text(
-                                "Tu cuota: ${formatoImporte(f.cuota)} €",
-                                color = MaterialTheme.colorScheme.onBackground,
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    "Tu cuota: ${formatoImporte(f.cuota)} €",
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                )
+                                val confirmado = f.estadoPago == "CONFIRMADO_EN_CUENTA" ||
+                                    f.estadoPago == "CONFIRMADO_PENDIENTE_ENVIO"
+                                val declarada = f.estadoPago == "DECLARADO"
+                                OutlinedButton(
+                                    onClick = {
+                                        when {
+                                            confirmado -> verPagoInfo = true
+                                            declarada -> verPagoDeclarado = true
+                                            else -> verPago = true
+                                        }
+                                    },
+                                ) {
+                                    Text(
+                                        when {
+                                            confirmado -> "Ya he pagado"
+                                            declarada -> "Ver mi pago declarado"
+                                            else -> "Confirmar el pago"
+                                        },
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
+                            }
                         } else if (f.cuotaPendiente) {
                             Text(
                                 "Tu cuota está pendiente de que se fije la cuota máxima del evento.",
@@ -217,71 +293,39 @@ fun EventoDetalleScreen(
                     }
 
                     if (ev.asistencia.ficha.llevaFicha) {
-                        val botonPeña = ButtonDefaults.buttonColors(
+                        val botonRelleno = ButtonDefaults.buttonColors(
                             containerColor = BaniterioColors.brand,
                             contentColor = BaniterioColors.gold,
                         )
-                        Row(
+                        Button(
+                            onClick = { verAsistentes = true },
+                            colors = botonRelleno,
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Button(
-                                onClick = { verAsistentes = true },
-                                colors = botonPeña,
-                                modifier = Modifier.weight(1f),
-                            ) { Text("Listado de asistentes", fontWeight = FontWeight.Bold) }
-                            ev.asistencia.ficha.miFicha?.let { f ->
-                                if (f.cuota != null) {
-                                    val confirmado = f.estadoPago == "CONFIRMADO_EN_CUENTA" ||
-                                        f.estadoPago == "CONFIRMADO_PENDIENTE_ENVIO"
-                                    val declarada = f.estadoPago == "DECLARADO"
-                                    Button(
-                                        onClick = {
-                                            when {
-                                                confirmado -> verPagoInfo = true
-                                                declarada -> verPagoDeclarado = true
-                                                else -> verPago = true
-                                            }
-                                        },
-                                        colors = botonPeña,
-                                        modifier = Modifier.weight(1f),
-                                    ) {
-                                        Text(
-                                            when {
-                                                confirmado -> "Ya he pagado"
-                                                declarada -> "Ver mi pago declarado"
-                                                else -> "Confirmar el pago"
-                                            },
-                                            fontWeight = FontWeight.Bold,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        Row(
+                        ) { Text("Listado de asistentes", fontWeight = FontWeight.Bold) }
+                        OutlinedButton(
+                            onClick = onInventarioFiesta,
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            OutlinedButton(
-                                onClick = onInventarioFiesta,
-                                modifier = Modifier.weight(1f),
-                            ) { Text("Inventario de la fiesta", fontWeight = FontWeight.Bold) }
-                        }
-                        Row(
+                        ) { Text("Inventario de la fiesta", fontWeight = FontWeight.Bold) }
+                        Button(
+                            onClick = onListaCompra,
+                            colors = botonRelleno,
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            OutlinedButton(
-                                onClick = onListaCompra,
-                                modifier = Modifier.weight(1f),
-                            ) { Text("Lista de la compra", fontWeight = FontWeight.Bold) }
-                        }
+                        ) { Text("Lista de la compra", fontWeight = FontWeight.Bold) }
                     }
 
                     aviso?.let { Text(it, color = BaniterioColors.gold) }
 
                     if (verAsistentes) {
-                        ListadoAsistentesDialog(eventoId, eventosRepo, onCerrar = { verAsistentes = false })
+                        ListadoAsistentesDialog(
+                            eventoId,
+                            eventosRepo,
+                            onCerrar = { verAsistentes = false },
+                            puedoEditar = ev.puedoEditar,
+                            llevaFicha = ev.asistencia.ficha.llevaFicha,
+                            diasEvento = ev.asistencia.ficha.diasEvento,
+                            asistenciaRepo = asistenciaRepo,
+                            bebidaRepo = bebidaRepo,
+                        )
                     }
                     if (verPago) {
                         HePagadoDialog(
@@ -376,45 +420,75 @@ fun EventoDetalleScreen(
                         }
                     }
 
-                    if (ev.puedoEditar || ev.puedoBorrar) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (ev.puedoEditar) {
-                                Button(
-                                    onClick = onEditar,
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = BaniterioColors.brand,
-                                        contentColor = BaniterioColors.gold,
-                                    ),
-                                ) { Text("Editar", fontWeight = FontWeight.Bold) }
-                            }
-                            if (ev.puedoBorrar && !ev.oculto) {
-                                OutlinedButton(
-                                    onClick = {
-                                        scope.launch {
-                                            when (val r = eventosRepo.ocultar(eventoId)) {
-                                                is ResultadoEvento.Exito -> onBorrado()
-                                                is ResultadoEvento.Error -> aviso = r.mensaje
+                    if (ev.puedoEditar) {
+                        OutlinedButton(
+                            onClick = onEditar,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Editar", fontWeight = FontWeight.Bold) }
+                        Button(
+                            onClick = { mostrarAnadirAsistente = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = BaniterioColors.brand,
+                                contentColor = BaniterioColors.gold,
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Añadir asistente", fontWeight = FontWeight.Bold) }
+                    }
+                    if (ev.puedoBorrar && ev.oculto) {
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedButton(
+                                onClick = {
+                                    scope.launch {
+                                        when (val r = eventosRepo.recuperar(eventoId)) {
+                                            is ResultadoEvento.Exito -> {
+                                                aviso = "Evento recuperado."
+                                                intento++
                                             }
+                                            is ResultadoEvento.Error -> aviso = r.mensaje
                                         }
-                                    },
-                                ) { Text("Borrar") }
-                            }
-                            if (ev.puedoBorrar && ev.oculto) {
-                                OutlinedButton(
-                                    onClick = {
-                                        scope.launch {
-                                            when (val r = eventosRepo.recuperar(eventoId)) {
-                                                is ResultadoEvento.Exito -> {
-                                                    aviso = "Evento recuperado."
-                                                    intento++
-                                                }
-                                                is ResultadoEvento.Error -> aviso = r.mensaje
-                                            }
-                                        }
-                                    },
-                                ) { Text("Recuperar") }
-                            }
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                            ) { Text("Recuperar", fontWeight = FontWeight.Bold) }
                         }
+                    }
+
+                    if (mostrarAnadirAsistente) {
+                        AnadirAsistenteDialog(
+                            eventoId = eventoId,
+                            llevaFicha = ev.asistencia.ficha.llevaFicha,
+                            diasEvento = ev.asistencia.ficha.diasEvento,
+                            asistenciaRepo = asistenciaRepo,
+                            eventosRepo = eventosRepo,
+                            bebidaRepo = bebidaRepo,
+                            onAnadido = {
+                                mostrarAnadirAsistente = false
+                                aviso = "«${it.nombre}» añadido."
+                                intento++
+                            },
+                            onCerrar = { mostrarAnadirAsistente = false },
+                        )
+                    }
+
+                    if (confirmarBorrado) {
+                        AlertDialog(
+                            onDismissRequest = { confirmarBorrado = false },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    confirmarBorrado = false
+                                    scope.launch {
+                                        when (val r = eventosRepo.ocultar(eventoId)) {
+                                            is ResultadoEvento.Exito -> onBorrado()
+                                            is ResultadoEvento.Error -> aviso = r.mensaje
+                                        }
+                                    }
+                                }) { Text("Sí, borrar") }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { confirmarBorrado = false }) { Text("Cancelar") }
+                            },
+                            title = { Text("¿Borrar «${ev.nombre}»?") },
+                        )
                     }
                 }
             }
