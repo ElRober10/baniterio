@@ -26,6 +26,9 @@ public interface AsistenciaEventoRepository extends JpaRepository<AsistenciaEven
 
     boolean existsByEventoIdAndUsuarioId(Long eventoId, Long usuarioId);
 
+    /** Filas añadidas a mano (sin usuario) con ese teléfono, para enlazarlas al registrarse. */
+    List<AsistenciaEvento> findByTelefonoAndUsuarioIsNull(String telefono);
+
     /** Ids de usuarios con app que ya han respondido a ese evento (para la audiencia del push). */
     @Query("""
             select a.usuario.id from AsistenciaEvento a

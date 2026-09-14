@@ -17,6 +17,7 @@ import com.baniterio.api.identidad.Usuario;
 import com.baniterio.api.identidad.UsuarioRepository;
 import com.baniterio.api.identidad.VinculoPareja;
 import com.baniterio.api.identidad.VinculoParejaRepository;
+import com.baniterio.api.evento.AsistenciaService;
 import com.baniterio.api.media.AlmacenImagenes;
 import com.baniterio.api.media.CatalogoAvatares;
 import com.baniterio.api.media.ProcesadorImagen;
@@ -57,11 +58,12 @@ public class PerfilService {
     private final AlmacenImagenes almacen;
     private final VinculoParejaService vinculoParejaService;
     private final HijosReconciliador hijosReconciliador;
+    private final AsistenciaService asistenciaService;
 
     public PerfilService(UsuarioRepository usuarios, PerfilRepository perfiles,
             VinculoParejaRepository vinculos, HijoRepository hijos, CatalogoAvatares catalogo,
             AlmacenImagenes almacen, VinculoParejaService vinculoParejaService,
-            HijosReconciliador hijosReconciliador) {
+            HijosReconciliador hijosReconciliador, AsistenciaService asistenciaService) {
         this.usuarios = usuarios;
         this.perfiles = perfiles;
         this.vinculos = vinculos;
@@ -70,6 +72,7 @@ public class PerfilService {
         this.almacen = almacen;
         this.vinculoParejaService = vinculoParejaService;
         this.hijosReconciliador = hijosReconciliador;
+        this.asistenciaService = asistenciaService;
     }
 
     /**
@@ -90,6 +93,7 @@ public class PerfilService {
 
         Usuario usuario = usuarios.findById(usuarioId).orElseThrow();
         hijosReconciliador.enlazarSiEsHijo(usuario);
+        asistenciaService.enlazarPorTelefono(usuario);
         Optional<Perfil> perfil = perfiles.findByUsuarioId(usuarioId);
 
         ParejaEnPerfil pareja = vinculos

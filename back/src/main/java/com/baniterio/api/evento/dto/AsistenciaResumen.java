@@ -11,6 +11,6 @@ import com.baniterio.api.identidad.EstadoAsistencia;
  * {@code cuota} y {@code modalidad} solo vienen si el alta llevaba ficha de
  * bebida (San Miguel); si no, {@code null}.
  */
-public record AsistenciaResumen(Long id, String nombre, EstadoAsistencia estado, boolean esManual,
-                                BigDecimal cuota, String modalidad) {
+public record AsistenciaResumen(Long id, String nombre, String telefono, EstadoAsistencia estado,
+                                boolean esManual, BigDecimal cuota, String modalidad) {
 }
