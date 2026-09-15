@@ -41,6 +41,16 @@
     </p>
   </a>
 
+  <a
+    routerLink="/panel/inventario"
+    class="group relative overflow-hidden rounded-2xl border border-outline bg-panel p-6 transition hover:border-gold"
+  >
+    <h2 class="font-display text-lg font-bold transition group-hover:text-gold">Inventario</h2>
+    <p class="mt-2 text-sm leading-relaxed text-muted">
+      Lo que tiene la peña: bebida, comida, limpieza y demás, por categorías.
+    </p>
+  </a>
+
   @for (seccion of secciones; track seccion.nombre) {
     <div class="relative overflow-hidden rounded-2xl border border-outline bg-panel p-6">
       <div class="flex items-center justify-between">

@@ -39,7 +39,7 @@ const ALTERNATIVA: Record<string, string> = {
 };
 
 /** Máximo de columnas antes de rendirse y dejar que la lista tenga scroll. */
-const MAX_COLUMNAS = 3;
+const MAX_COLUMNAS = 4;
 
 /**
  * Modal (overlay a pantalla completa, como `ModalRespuestaEvento`) con la lista
@@ -47,7 +47,7 @@ const MAX_COLUMNAS = 3;
  * ha pagado. Solo lectura; lo abre cualquier miembro desde el detalle del evento.
  *
  * La lista intenta caber sin scroll: empieza en 1 columna y, mientras se
- * desborde y no pase de {@link MAX_COLUMNAS}, añade una columna más. Si a 3
+ * desborde y no pase de {@link MAX_COLUMNAS}, añade una columna más. Si a 4
  * columnas sigue sin caber, se queda con scroll.
  */
 @Component({
