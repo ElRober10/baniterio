@@ -66,11 +66,17 @@ public class JwtService {
         this.expiracion = Duration.ofDays(props.jwt().expiracionDias());
     }
 
+    /** Sobrecarga sin {@code esDemo} (equivale a {@code false}): la usan los usuarios normales. */
     public String generar(Long usuarioId, boolean esSuperadmin) {
+        return generar(usuarioId, esSuperadmin, false);
+    }
+
+    public String generar(Long usuarioId, boolean esSuperadmin, boolean esDemo) {
         Instant ahora = Instant.now();
         return Jwts.builder()
                 .subject(usuarioId.toString())
                 .claim("esSuperadmin", esSuperadmin)
+                .claim("esDemo", esDemo)
                 .issuedAt(Date.from(ahora))
                 .expiration(Date.from(ahora.plus(expiracion)))
                 .signWith(key, Jwts.SIG.HS256)
@@ -86,7 +92,8 @@ public class JwtService {
                     .getPayload();
             return Optional.of(new UsuarioPrincipal(
                     Long.parseLong(claims.getSubject()),
-                    Boolean.TRUE.equals(claims.get("esSuperadmin", Boolean.class))));
+                    Boolean.TRUE.equals(claims.get("esSuperadmin", Boolean.class)),
+                    Boolean.TRUE.equals(claims.get("esDemo", Boolean.class))));
         } catch (Exception e) {
             log.debug("JWT rechazado: {}", e.getMessage());
             return Optional.empty();
