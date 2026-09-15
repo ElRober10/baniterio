@@ -3,7 +3,7 @@
   role="dialog"
   aria-label="Listado de asistentes"
 >
-  <div class="carta-relieve flex max-h-[90vh] w-full max-w-4xl flex-col rounded-2xl p-6">
+  <div class="carta-relieve flex max-h-[90vh] w-full max-w-7xl flex-col rounded-2xl p-6">
     <div class="flex items-start justify-between gap-3">
       <h2 class="font-display text-xl font-extrabold">Asistentes</h2>
       <div class="flex shrink-0 gap-2">
@@ -44,10 +44,10 @@
               [style.grid-template-columns]="'repeat(' + columnas() + ', minmax(0, 1fr))'"
             >
               @for (a of d.asistentes; track $index) {
-                <div class="rounded-xl border border-outline/40 bg-brand/10 p-3">
-                  <div class="flex items-baseline justify-between gap-2">
+                <div class="flex min-h-28 flex-col rounded-xl border border-outline/40 bg-brand/10 p-3">
+                  <div class="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
                     <span
-                      class="text-sm font-semibold"
+                      class="min-w-0 text-sm font-semibold"
                       [class.text-gold-soft]="a.estado === 'EN_DUDA'"
                     >
                       {{ a.nombre }}
@@ -58,7 +58,7 @@
                         <span class="text-xs text-muted">· invitado</span>
                       }
                     </span>
-                    <span class="shrink-0 text-sm font-bold text-gold-soft">
+                    <span class="min-w-0 text-sm font-bold text-gold-soft">
                       {{ a.cuota != null ? a.cuota + ' €' : 'sin cuota' }} ·
                       {{ estadoPagoTexto(a.estadoPago) }}
                       @if (confirmado(a) && a.metodoPago) {
