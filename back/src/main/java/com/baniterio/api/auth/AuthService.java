@@ -47,6 +47,13 @@ import org.springframework.util.StringUtils;
 @Service
 public class AuthService {
 
+    /**
+     * Teléfono de la cuenta demo pública (contraseña 123456, sembrada en V45):
+     * cualquiera puede entrar con ella para ver la app con datos ficticios,
+     * pero no puede modificar nada (lo corta {@link JwtAuthenticationFilter}).
+     */
+    public static final String TELEFONO_DEMO = "666666666";
+
     private final TelefonoAutorizadoRepository telefonosAutorizados;
     private final UsuarioRepository usuarios;
     private final MembresiaRepository membresias;
@@ -119,7 +126,8 @@ public class AuthService {
                 .filter(u -> passwordEncoder.matches(req.password(), u.getPasswordHash()))
                 .orElseThrow(CredencialesInvalidasException::new);
 
-        String token = jwtService.generar(usuario.getId(), usuario.isEsSuperadmin());
+        boolean esDemo = TELEFONO_DEMO.equals(usuario.getTelefono());
+        String token = jwtService.generar(usuario.getId(), usuario.isEsSuperadmin(), esDemo);
         UsuarioResponse dto = UsuarioResponse.de(usuario,
                 servicioPermisos.rolDe(usuario.getId()),
                 servicioPermisos.areasDe(usuario.getId()));
