@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: baniterio-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: baniterio
+      POSTGRES_USER: baniterio
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    volumes:
+      - baniterio-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U baniterio -d baniterio"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./back
+    container_name: baniterio-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/baniterio
+      DATABASE_USERNAME: baniterio
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      MAIL_MODO: ${MAIL_MODO:-log}
+      PUSH_MODO: ${PUSH_MODO:-log}
+      PUSH_CREDENCIALES: ${PUSH_CREDENCIALES:-}
+      MEDIA_DIR: /media
+      SWAGGER_ENABLED: "false"
+    volumes:
+      - baniterio-media:/media
+
+  frontend:
+    build: ./front
+    container_name: baniterio-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  baniterio-postgres-data:
+  baniterio-media:
