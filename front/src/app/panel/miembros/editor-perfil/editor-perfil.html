@@ -36,7 +36,11 @@
         <div
           class="flex flex-col justify-center gap-4 border-b border-outline/40 p-5 lg:border-b-0 lg:border-r"
         >
-          <div class="relative aspect-4/5 w-full overflow-hidden rounded-xl bg-surface">
+          <div
+            class="relative aspect-4/5 w-full overflow-hidden rounded-xl bg-surface"
+            [class.ring-2]="intentoSinImagen()"
+            [class.ring-red-400]="intentoSinImagen()"
+          >
             @if (urlTarjeta()) {
               <img
                 [src]="urlTarjeta()"
@@ -87,7 +91,9 @@
               <input
                 type="text"
                 formControlName="nombre"
-                class="rounded-xl border border-outline bg-surface px-4 py-2.5 text-ink outline-none focus:border-gold"
+                class="rounded-xl border bg-surface px-4 py-2.5 text-ink outline-none focus:border-gold"
+                [class.border-outline]="!invalido(form.get('nombre'))"
+                [class.border-red-400]="invalido(form.get('nombre'))"
               />
             </label>
             <label class="flex flex-col gap-1.5 text-sm">
@@ -95,7 +101,9 @@
               <input
                 type="text"
                 formControlName="apellidos"
-                class="rounded-xl border border-outline bg-surface px-4 py-2.5 text-ink outline-none focus:border-gold"
+                class="rounded-xl border bg-surface px-4 py-2.5 text-ink outline-none focus:border-gold"
+                [class.border-outline]="!invalido(form.get('apellidos'))"
+                [class.border-red-400]="invalido(form.get('apellidos'))"
               />
             </label>
             <label class="flex flex-col gap-1.5 text-sm">
@@ -199,7 +207,9 @@
                       <input
                         type="text"
                         formControlName="nombre"
-                        class="rounded-xl border border-outline bg-surface px-4 py-2 text-ink outline-none focus:border-gold"
+                        class="rounded-xl border bg-surface px-4 py-2 text-ink outline-none focus:border-gold"
+                        [class.border-outline]="!invalido(grupo.get('nombre'))"
+                        [class.border-red-400]="invalido(grupo.get('nombre'))"
                       />
                     </label>
                     <label class="flex flex-col gap-1.5 text-sm">
