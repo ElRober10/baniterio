@@ -34,7 +34,7 @@ export class ModalAnadirAsistente implements OnInit {
   protected readonly nombre = signal('');
   protected readonly telefono = signal('');
   protected readonly confirmarPago = signal(false);
-  protected readonly metodoPago = signal<MetodoPago>('EFECTIVO');
+  protected readonly metodoPago = signal<MetodoPago>('BIZUM');
   protected readonly catalogo = signal<CatalogoBebidas | null>(null);
   protected readonly guardando = signal(false);
   protected readonly error = signal('');
