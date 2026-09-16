@@ -142,7 +142,7 @@ public class ListaCompraService {
                     diasQueVa,
                     f != null,
                     f != null && f.getAlcohol() != null ? f.getAlcohol().getNombre() : null,
-                    f != null ? f.getRefresco().getNombre() : null,
+                    f != null && f.getRefresco() != null ? f.getRefresco().getNombre() : null,
                     f != null ? f.getAlternativa() : null));
         }
         return new DatosEvento(apuntadas.size(), diasFiesta, llevaFicha, personas);

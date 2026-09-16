@@ -83,10 +83,6 @@ export class FichaBebida implements OnInit {
     const emb = this.embarazada();
     const refrescoOtra = this.refrescoSel() === OTRA ? this.refrescoOtra().trim() : '';
     const refrescoId = this.refrescoSel() !== OTRA && this.refrescoSel() ? Number(this.refrescoSel()) : null;
-    if (!refrescoId && !refrescoOtra) {
-      this.error.set('Elige un refresco.');
-      return;
-    }
     const alt: Alternativa = emb ? 'NADA' : this.alternativa();
     if (!emb && alt === 'CERVEZA_ESPECIAL' && !this.cervezaEspecial().trim()) {
       this.error.set('Escribe cuál es tu cerveza especial.');

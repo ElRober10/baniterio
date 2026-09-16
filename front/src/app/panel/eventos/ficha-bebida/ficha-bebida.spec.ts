@@ -92,11 +92,21 @@ describe('FichaBebida', () => {
     });
   });
 
-  it('sin refresco no emite y muestra error', () => {
+  it('sin refresco emite igualmente (es opcional)', () => {
     crear(['2026-09-25']);
     enviar();
-    expect(emitido).toBeUndefined();
-    expect(el().textContent).toContain('Elige un refresco');
+    expect(emitido).toEqual({
+      estado: 'APUNTADO',
+      alcoholBebidaId: null,
+      alcoholOtra: null,
+      refrescoBebidaId: null,
+      refrescoOtra: null,
+      alternativa: 'NADA',
+      cervezaEspecial: null,
+      embarazada: false,
+      asisteDia1: true,
+      asisteDia2: true,
+    });
   });
 
   it('precarga fichaActual', () => {

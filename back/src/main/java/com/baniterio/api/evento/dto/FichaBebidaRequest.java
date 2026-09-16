@@ -8,8 +8,9 @@ import jakarta.validation.constraints.Size;
 /**
  * Cuerpo de {@code PUT /eventos/{id}/ficha-bebida} y de la parte {@code ficha} de
  * "añadir a mano". Para cada bebida: o {@code *BebidaId} (una del catálogo) o
- * {@code *Otra} (texto nuevo → queda pendiente de aprobación), nunca las dos. El
- * refresco es obligatorio; el alcohol no (sin ninguno = "No bebo alcohol").
+ * {@code *Otra} (texto nuevo → queda pendiente de aprobación), nunca las dos.
+ * Ni el refresco ni el alcohol son obligatorios (sin ninguno = "No bebo
+ * alcohol" / sin refresco para alternar).
  * {@code asisteDia1/2} y {@code embarazada} son {@code Boolean} (wrapper) para
  * que Jackson no falle si el cliente los omite; {@code null} = valor por defecto.
  * {@code paraUsuarioId} solo se usa en {@code PUT /ficha-bebida} directo (no en
@@ -50,9 +51,9 @@ public record FichaBebidaRequest(
         return vacio(alcoholOtra) || alcoholBebidaId == null;
     }
 
-    @AssertTrue(message = "refresco: elige uno del catálogo o escribe uno nuevo")
+    @AssertTrue(message = "refresco: elige uno del catálogo o escribe uno nuevo, no las dos")
     public boolean isRefrescoValido() {
-        return (refrescoBebidaId != null) ^ !vacio(refrescoOtra);
+        return vacio(refrescoOtra) || refrescoBebidaId == null;
     }
 
     @AssertTrue(message = "la cerveza especial solo se rellena si la alternativa es CERVEZA_ESPECIAL")

@@ -172,8 +172,9 @@ export class ModalAsistentes implements OnInit {
       return '—';
     }
     const alc = a.bebida.alcohol ?? 'sin alcohol';
+    const refresco = a.bebida.refresco ?? 'sin refresco';
     const alt = ALTERNATIVA[a.bebida.alternativa] ?? a.bebida.alternativa;
     const mod = MODALIDAD[a.bebida.modalidad] ?? a.bebida.modalidad;
-    return `${alc} · ${a.bebida.refresco} · ${alt} (${mod})`;
+    return `${alc} · ${refresco} · ${alt} (${mod})`;
   }
 }

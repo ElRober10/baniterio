@@ -133,7 +133,7 @@ public class FichaBebidaService {
         Bebida alcohol = embarazada ? null : resolver(TipoBebida.ALCOHOL, req.alcoholBebidaId(),
                 req.alcoholOtra(), proponenteId, false);
         Bebida refresco = resolver(TipoBebida.REFRESCO, req.refrescoBebidaId(),
-                req.refrescoOtra(), proponenteId, true);
+                req.refrescoOtra(), proponenteId, false);
         Alternativa alternativa = embarazada ? Alternativa.NADA
                 : Alternativa.valueOf(req.alternativa());
         String cervezaEspecial = (!embarazada && alternativa == Alternativa.CERVEZA_ESPECIAL)
@@ -207,12 +207,13 @@ public class FichaBebidaService {
         Bebida al = f.getAlcohol();
         Bebida re = f.getRefresco();
         boolean bebidaPendiente = (al != null && al.getEstado() != EstadoBebida.ACEPTADA)
-                || re.getEstado() != EstadoBebida.ACEPTADA;
+                || (re != null && re.getEstado() != EstadoBebida.ACEPTADA);
         boolean confirmado = f.getEstadoPago() != null && f.getEstadoPago().confirmado();
         return new FichaBebidaDetalle.MiFicha(
                 al != null ? al.getId() : null,
                 al != null ? al.getNombre() : "No bebo alcohol",
-                re.getId(), re.getNombre(),
+                re != null ? re.getId() : null,
+                re != null ? re.getNombre() : null,
                 f.getAlternativa().name(), f.getCervezaEspecial(),
                 f.isEmbarazada(), f.isAsisteDia1(), f.isAsisteDia2(),
                 f.getModalidad().name(), f.getCuota(), f.getCuota() == null, bebidaPendiente,

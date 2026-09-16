@@ -52,8 +52,8 @@ public class FichaBebida {
     @JoinColumn(name = "alcohol_bebida_id")
     private Bebida alcohol;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "refresco_bebida_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "refresco_bebida_id")
     private Bebida refresco;
 
     @Enumerated(EnumType.STRING)

@@ -467,7 +467,7 @@ public class AsistenciaService {
     private static AsistenteFila aFila(AsistenciaEvento a, FichaBebida f, java.util.Set<String> telefonosAutorizados) {
         BebidaFila bebida = f == null ? null : new BebidaFila(
                 f.getAlcohol() != null ? f.getAlcohol().getNombre() : null,
-                f.getRefresco().getNombre(),
+                f.getRefresco() != null ? f.getRefresco().getNombre() : null,
                 f.getAlternativa().name(),
                 f.getModalidad().name());
         EstadoPagoCuota estado = f == null ? null : f.getEstadoPago();
