@@ -187,6 +187,37 @@ public class CuentaConsultaService {
                 .map(en -> new ResumenGasto(en.getKey(), en.getValue()))
                 .toList();
 
+        // El saldo de cada fila se muestra en el orden visual de la hoja (peñistas
+        // arriba, gastos/ingresos abajo), no en el orden cronológico real de las
+        // fechas: si no, un gasto con fecha antigua puede aparecer con un saldo que
+        // no cuenta las cuotas ya cobradas, aunque se muestren por encima en la tabla.
+        BigDecimal corriente = saldoInicial;
+        List<PenistaCuota> penistasConSaldoVisual = new ArrayList<>();
+        for (PenistaCuota p : penistas) {
+            if (p.ingreso() != null) {
+                corriente = corriente.add(p.ingreso());
+                penistasConSaldoVisual.add(new PenistaCuota(p.asistenciaId(), p.nombre(), p.anio(), p.cuota(),
+                        p.estadoPago(), p.metodoPago(), p.camisetaCantidad(), p.camisetaTalla(),
+                        p.camisetaConfirmada(), p.sudaderaCantidad(), p.sudaderaTalla(), p.sudaderaConfirmada(),
+                        p.ingreso(), corriente));
+            } else {
+                penistasConSaldoVisual.add(p);
+            }
+        }
+        penistas = penistasConSaldoVisual;
+
+        List<MovimientoFila> filasConSaldoVisual = new ArrayList<>();
+        for (MovimientoFila f : filas) {
+            if (f.manual() || "CAMISETA".equals(f.origen()) || "SUDADERA".equals(f.origen())) {
+                corriente = corriente.add(f.importe());
+                filasConSaldoVisual.add(new MovimientoFila(f.id(), f.concepto(), f.categoria(), f.importe(),
+                        f.fecha(), corriente, f.reciboArchivo(), f.manual(), f.origen(), f.adelantadoPor()));
+            } else {
+                filasConSaldoVisual.add(f);
+            }
+        }
+        filas = filasConSaldoVisual;
+
         return new CuentaDetalle(c.getId(), c.getNombre(), c.getDescripcion(),
                 anio, anios, esActual,
                 saldo, saldoInicial, estimacion, cobradoSinIngresar, admin,
