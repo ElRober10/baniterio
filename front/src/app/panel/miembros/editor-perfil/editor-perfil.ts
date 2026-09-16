@@ -10,7 +10,14 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { Volver } from '../../../shared/volver/volver';
@@ -154,6 +161,11 @@ export class EditorPerfil implements OnInit, OnDestroy {
 
   protected get hijosArray(): FormArray {
     return this.form.get('hijos') as FormArray;
+  }
+
+  /** Para marcar en rojo un campo obligatorio vacío tras intentar guardar. */
+  protected invalido(control: AbstractControl | null): boolean {
+    return !!control && control.invalid && control.touched;
   }
 
   protected anadirHijo(): void {
