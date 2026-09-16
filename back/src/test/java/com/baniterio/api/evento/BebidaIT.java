@@ -94,9 +94,9 @@ class BebidaIT extends IntegrationTest {
                 .header(AUTHORIZATION, "Bearer " + s.token())
                 .exchange().expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.alcohol.length()").isEqualTo(18)
+                .jsonPath("$.alcohol.length()").isEqualTo(17)
                 .jsonPath("$.alcohol[0].nombre").isEqualTo("Absolut")
-                .jsonPath("$.refresco.length()").isEqualTo(12);
+                .jsonPath("$.refresco.length()").isEqualTo(14);
     }
 
     @Test
