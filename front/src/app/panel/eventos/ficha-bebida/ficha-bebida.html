@@ -73,7 +73,7 @@
         (change)="set(refrescoSel, $event)"
         class="mt-1 w-full rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
       >
-        <option value="" disabled [selected]="refrescoSel() === ''">Elige…</option>
+        <option value="" [selected]="refrescoSel() === ''">Ninguno</option>
         @for (b of catalogo.refresco; track b.id) {
           <option [value]="b.id" [selected]="esId(refrescoSel(), b.id)">{{ b.nombre }}</option>
         }

@@ -235,10 +235,10 @@ export type MetodoPago = 'TRANSFERENCIA' | 'BIZUM' | 'EFECTIVO';
 /** Relación de una persona a la que puedo incluir en mi pago. */
 export type RelacionPago = 'PAREJA' | 'HIJO' | 'INVITADO';
 
-/** Lo que bebe un asistente en el listado. `alcohol` null = no bebe alcohol. */
+/** Lo que bebe un asistente en el listado. `alcohol`/`refresco` null = no bebe / no quiere ninguno. */
 export interface BebidaFila {
   alcohol: string | null;
-  refresco: string;
+  refresco: string | null;
   alternativa: Alternativa;
   modalidad: Modalidad;
 }
