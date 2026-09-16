@@ -34,6 +34,7 @@ export class Login {
   protected readonly estado = signal<'idle' | 'enviando' | 'error'>('idle');
   protected readonly mensajeError = signal('');
   protected readonly sesionExpirada = inject(ActivatedRoute).snapshot.queryParamMap.has('expirada');
+  protected readonly mostrarPassword = signal(false);
 
   protected readonly form = this.formBuilder.group({
     telefono: ['', [Validators.required, Validators.pattern(/^[67]\d{8}$/)]],

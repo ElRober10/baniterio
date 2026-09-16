@@ -1,9 +1,22 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth.service';
 import { Volver } from '../../shared/volver/volver';
+
+/** Validador del `FormGroup`: `noCoincide` si `password` y `confirmarPassword` difieren. */
+function passwordsIguales(grupo: AbstractControl): ValidationErrors | null {
+  const password = grupo.get('password')?.value;
+  const confirmar = grupo.get('confirmarPassword')?.value;
+  return password === confirmar ? null : { noCoincide: true };
+}
 
 /**
  * Pantalla de registro (alta de cuenta). Componente standalone de Angular.
@@ -34,15 +47,21 @@ export class Registro {
 
   protected readonly estado = signal<Estado>('idle');
   protected readonly mensajeError = signal('');
+  protected readonly mostrarPassword = signal(false);
+  protected readonly mostrarConfirmarPassword = signal(false);
 
-  protected readonly form = this.formBuilder.group({
-    nombre: ['', [Validators.required]],
-    apellidos: ['', [Validators.required]],
-    mote: [''],
-    telefono: ['', [Validators.required, Validators.pattern(/^[67]\d{8}$/)]],
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(6)]],
-  });
+  protected readonly form = this.formBuilder.group(
+    {
+      nombre: ['', [Validators.required]],
+      apellidos: ['', [Validators.required]],
+      mote: [''],
+      telefono: ['', [Validators.required, Validators.pattern(/^[67]\d{8}$/)]],
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required, Validators.minLength(6)]],
+      confirmarPassword: ['', [Validators.required]],
+    },
+    { validators: passwordsIguales },
+  );
 
   protected enviar(): void {
     if (this.form.invalid) {
