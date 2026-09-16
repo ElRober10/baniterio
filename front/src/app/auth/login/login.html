@@ -41,12 +41,31 @@
 
         <label class="flex flex-col gap-1.5 text-sm font-medium">
           Contraseña
-          <input
-            type="password"
-            formControlName="password"
-            autocomplete="current-password"
-            class="rounded-xl border border-outline bg-surface/40 px-4 py-2.5 font-sans text-base text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/25"
-          />
+          <span class="relative">
+            <input
+              [type]="mostrarPassword() ? 'text' : 'password'"
+              formControlName="password"
+              autocomplete="current-password"
+              class="w-full rounded-xl border border-outline bg-surface/40 px-4 py-2.5 pr-11 font-sans text-base text-ink outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/25"
+            />
+            <button
+              type="button"
+              (click)="mostrarPassword.set(!mostrarPassword())"
+              [attr.aria-label]="mostrarPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              class="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted transition hover:text-ink"
+            >
+              @if (mostrarPassword()) {
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M10.58 10.58a2 2 0 0 0 2.83 2.83M9.88 4.69A9.77 9.77 0 0 1 12 4.5c5 0 9 4 10.5 7.5-.6 1.36-1.5 2.66-2.62 3.78M6.1 6.1C4.16 7.42 2.7 9.28 1.5 12c1.5 3.5 5.5 7.5 10.5 7.5 1.06 0 2.07-.18 3-.5" />
+                </svg>
+              } @else {
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-5 w-5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M1.5 12S5.5 4.5 12 4.5 22.5 12 22.5 12 18.5 19.5 12 19.5 1.5 12 1.5 12Z" />
+                  <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              }
+            </button>
+          </span>
           @if (form.controls.password.invalid && form.controls.password.touched) {
             <span class="text-xs font-normal text-red-400">Introduce tu contraseña.</span>
           }
