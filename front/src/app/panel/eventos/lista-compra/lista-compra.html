@@ -48,59 +48,53 @@
         @for (cat of categorias(); track trackCat($index, cat)) {
           <article class="carta-relieve mt-4 rounded-2xl p-5">
             <h2 class="font-display text-lg font-bold text-gold-soft">{{ cat.etiqueta }}</h2>
-            <table class="mt-3 w-full table-fixed text-sm">
-              <colgroup>
-                <col />
-                <col class="w-28 sm:w-40" />
-                <col class="w-20" />
-                @if (puedoEditar()) {
-                  <col class="w-28" />
-                }
-              </colgroup>
-              <thead>
-                <tr class="text-left text-xs uppercase tracking-wide text-muted">
-                  <th class="pb-1">Artículo</th>
-                  <th class="pb-1">Tamaño</th>
-                  <th class="pb-1 text-right">Cantidad</th>
-                  @if (puedoEditar()) {
-                    <th class="pb-1"></th>
-                  }
-                </tr>
-              </thead>
-              <tbody>
-                @for (l of cat.lineas; track l.id) {
-                  <tr class="border-t border-outline/30" [class.opacity-50]="l.comprada">
-                    <td class="py-1">
-                      {{ l.nombre }}
-                      @if (l.necesitaFicha) {
-                        <span class="text-xs text-muted">· necesita ficha de bebida</span>
-                      }
-                      @if (l.ajustada) {
-                        <span class="text-xs text-gold-soft">· ajustado</span>
-                      }
-                    </td>
-                    <td class="py-1">{{ l.tamano }}</td>
-                    <td class="py-1 text-right font-semibold">{{ l.cantidad }}</td>
+            <div class="mt-3 overflow-x-auto">
+              <table class="w-full min-w-max whitespace-nowrap text-sm">
+                <thead>
+                  <tr class="text-left text-xs uppercase tracking-wide text-muted">
+                    <th class="pb-1 pr-4">Artículo</th>
+                    <th class="pb-1 pr-4">Tamaño</th>
+                    <th class="pb-1 pr-4 text-right">Cantidad</th>
                     @if (puedoEditar()) {
-                      <td class="py-1 text-right">
-                        @if (l.comprada) {
-                          <span class="text-xs text-gold-soft">✓ Comprada</span>
-                        } @else if (l.cantidad > 0) {
-                          <button
-                            type="button"
-                            [disabled]="ocupado()"
-                            (click)="comprar(l)"
-                            class="whitespace-nowrap rounded-lg border border-outline px-2 py-1 text-xs font-medium hover:border-gold hover:text-gold disabled:opacity-50"
-                          >
-                            Comprado
-                          </button>
-                        }
-                      </td>
+                      <th class="pb-1"></th>
                     }
                   </tr>
-                }
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  @for (l of cat.lineas; track l.id) {
+                    <tr class="border-t border-outline/30" [class.opacity-50]="l.comprada">
+                      <td class="py-1 pr-4">
+                        {{ l.nombre }}
+                        @if (l.necesitaFicha) {
+                          <span class="text-xs text-muted">· necesita ficha de bebida</span>
+                        }
+                        @if (l.ajustada) {
+                          <span class="text-xs text-gold-soft">· ajustado</span>
+                        }
+                      </td>
+                      <td class="py-1 pr-4">{{ l.tamano }}</td>
+                      <td class="py-1 pr-4 text-right font-semibold">{{ l.cantidad }}</td>
+                      @if (puedoEditar()) {
+                        <td class="py-1 text-right">
+                          @if (l.comprada) {
+                            <span class="text-xs text-gold-soft">✓ Comprada</span>
+                          } @else if (l.cantidad > 0) {
+                            <button
+                              type="button"
+                              [disabled]="ocupado()"
+                              (click)="comprar(l)"
+                              class="whitespace-nowrap rounded-lg border border-outline px-2 py-1 text-xs font-medium hover:border-gold hover:text-gold disabled:opacity-50"
+                            >
+                              Comprado
+                            </button>
+                          }
+                        </td>
+                      }
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           </article>
         }
       }
