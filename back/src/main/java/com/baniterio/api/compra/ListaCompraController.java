@@ -1,9 +1,11 @@
 package com.baniterio.api.compra;
 
 import com.baniterio.api.auth.UsuarioPrincipal;
+import com.baniterio.api.compra.dto.AjustarLineaRequest;
 import com.baniterio.api.compra.dto.CambiarBloqueoRequest;
 import com.baniterio.api.compra.dto.ListaCompraResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,6 +41,15 @@ public class ListaCompraController {
     public void comprado(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long eventoId, @PathVariable Long lineaId) {
         service.marcarComprada(principal.id(), eventoId, lineaId);
+    }
+
+    /** Ajusta a mano la cantidad de una línea, con la lista bloqueada. Área {@code INVENTARIO}. */
+    @PutMapping("/{eventoId}/lista-compra/lineas/{lineaId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void ajustarLinea(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long eventoId, @PathVariable Long lineaId,
+            @Valid @RequestBody AjustarLineaRequest req) {
+        service.ajustarLinea(principal.id(), eventoId, lineaId, req);
     }
 
     /** Bloquea o desbloquea el auto-cálculo de la lista de la compra. Área {@code INVENTARIO}. */

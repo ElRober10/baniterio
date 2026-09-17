@@ -65,4 +65,12 @@ export class ListaCompraService {
   bloqueo(eventoId: number, bloqueada: boolean): Observable<void> {
     return this.http.put<void>(`${this.base}/eventos/${eventoId}/lista-compra/bloqueo`, { bloqueada });
   }
+
+  /** Ajusta a mano la cantidad de una línea; solo con la lista bloqueada. */
+  ajustarLinea(eventoId: number, lineaId: number, cantidad: number): Observable<void> {
+    return this.http.put<void>(
+      `${this.base}/eventos/${eventoId}/lista-compra/lineas/${lineaId}`,
+      { cantidad },
+    );
+  }
 }

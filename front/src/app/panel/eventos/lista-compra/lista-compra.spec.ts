@@ -132,6 +132,97 @@ describe('ListaCompra', () => {
     http.verify();
   });
 
+  it('con la lista bloqueada y permiso, se puede ajustar a mano la cantidad de una línea', () => {
+    const { fixture, http } = montar();
+    fixture.detectChanges();
+    http.expectOne(`${base}/eventos/7/lista-compra`).flush({
+      puedoEditar: true,
+      llevaFicha: false,
+      bloqueada: true,
+      apuntados: 4,
+      diasFiesta: 1,
+      categorias: [
+        {
+          categoria: 'ALCOHOL',
+          etiqueta: 'Alcohol',
+          lineas: [
+            {
+              id: 9,
+              nombre: "Seagram's",
+              tamano: '1 L',
+              cantidad: 1,
+              cantidadCalculada: 1,
+              ajustada: false,
+              dinamica: true,
+              necesitaFicha: false,
+              comprada: false,
+            },
+          ],
+        },
+      ],
+    });
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const botones = Array.from(el.querySelectorAll('button'));
+    botones.find((b) => b.textContent?.includes('Ajustar'))!.click();
+    fixture.detectChanges();
+
+    const input = el.querySelector('input[type="number"]') as HTMLInputElement;
+    input.value = '0.8';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Guardar'))!
+      .click();
+
+    http.expectOne(`${base}/eventos/7/lista-compra/lineas/9`).flush(null);
+    http.expectOne(`${base}/eventos/7/lista-compra`).flush({
+      puedoEditar: true,
+      llevaFicha: false,
+      bloqueada: true,
+      apuntados: 4,
+      diasFiesta: 1,
+      categorias: [],
+    });
+    http.verify();
+  });
+
+  it('sin la lista bloqueada no se ofrece "Ajustar"', () => {
+    const { fixture, http } = montar();
+    fixture.detectChanges();
+    http.expectOne(`${base}/eventos/7/lista-compra`).flush({
+      puedoEditar: true,
+      llevaFicha: false,
+      bloqueada: false,
+      apuntados: 4,
+      diasFiesta: 1,
+      categorias: [
+        {
+          categoria: 'LIMPIEZA',
+          etiqueta: 'Limpieza y utensilios',
+          lineas: [
+            {
+              id: 5,
+              nombre: 'Platos',
+              tamano: 'unidad',
+              cantidad: 12,
+              cantidadCalculada: 12,
+              ajustada: false,
+              dinamica: false,
+              necesitaFicha: false,
+              comprada: false,
+            },
+          ],
+        },
+      ],
+    });
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Ajustar');
+    http.verify();
+  });
+
   it('una línea comprada se muestra como "✓ Comprada" y sin botón', () => {
     const { fixture, http } = montar();
     fixture.detectChanges();

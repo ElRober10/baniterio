@@ -331,6 +331,11 @@ public class ApiExceptionHandler {
         return error(HttpStatus.NOT_FOUND, "LINEA_COMPRA_NO_ENCONTRADA");
     }
 
+    @ExceptionHandler(com.baniterio.api.compra.LineaCompraNoAjustableException.class)
+    ResponseEntity<Map<String, Object>> lineaCompraNoAjustable() {
+        return error(HttpStatus.CONFLICT, "LINEA_COMPRA_NO_AJUSTABLE");
+    }
+
     @ExceptionHandler(com.baniterio.api.inventario.NadaQueDevolverException.class)
     ResponseEntity<Map<String, Object>> nadaQueDevolver() {
         return error(HttpStatus.BAD_REQUEST, "NADA_QUE_DEVOLVER");

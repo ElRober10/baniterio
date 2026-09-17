@@ -6,8 +6,9 @@ import { CategoriaListaCompra, LineaCompra } from './lista-compra.types';
 
 /**
  * Lista de la compra calculada de un evento, `/panel/eventos/:id/lista-compra`.
- * Solo lectura; la ve cualquier peñista. El ajuste de cantidades está en
- * "Cantidades para eventos" (administración).
+ * La ve cualquier peñista; el admin (área INVENTARIO) puede además marcar
+ * "comprado" y, con la lista bloqueada, ajustar a mano la cantidad final de
+ * una línea (p.ej. cuando ya sabe que el stock parcial que queda alcanza).
  */
 @Component({
   selector: 'app-lista-compra',
@@ -27,6 +28,8 @@ export class ListaCompra implements OnInit {
   protected readonly puedoEditar = signal(false);
   protected readonly bloqueada = signal(false);
   protected readonly ocupado = signal(false);
+  protected readonly editandoId = signal<number | null>(null);
+  protected readonly cantidadEditada = signal<number | null>(null);
 
   ngOnInit(): void {
     this.cargar();
@@ -68,6 +71,33 @@ export class ListaCompra implements OnInit {
     this.service.bloqueo(this.eventoId, !this.bloqueada()).subscribe({
       next: () => {
         this.ocupado.set(false);
+        this.cargar();
+      },
+      error: () => {
+        this.ocupado.set(false);
+        this.estado.set('error');
+      },
+    });
+  }
+
+  protected empezarEdicion(l: LineaCompra): void {
+    this.editandoId.set(l.id);
+    this.cantidadEditada.set(l.cantidad);
+  }
+
+  protected cancelarEdicion(): void {
+    this.editandoId.set(null);
+    this.cantidadEditada.set(null);
+  }
+
+  protected guardarEdicion(l: LineaCompra): void {
+    const cantidad = this.cantidadEditada();
+    if (this.ocupado() || cantidad === null || cantidad < 0) return;
+    this.ocupado.set(true);
+    this.service.ajustarLinea(this.eventoId, l.id, cantidad).subscribe({
+      next: () => {
+        this.ocupado.set(false);
+        this.cancelarEdicion();
         this.cargar();
       },
       error: () => {

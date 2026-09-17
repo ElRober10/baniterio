@@ -109,20 +109,39 @@ class ListaCompraIT extends IntegrationTest {
                 .findFirst().orElseThrow().get("id")).longValue();
     }
 
-    /** Busca una línea de la lista de la compra por categoría + nombre; devuelve su cantidad o null. */
+    /** Busca una línea de la lista de la compra por categoría + nombre, o null si no está. */
     @SuppressWarnings("unchecked")
-    Double cantidadLinea(Map<String, Object> body, String categoria, String nombre) {
+    Map<String, Object> lineaDe(Map<String, Object> body, String categoria, String nombre) {
         for (Map<String, Object> cat : (List<Map<String, Object>>) body.get("categorias")) {
             if (!categoria.equals(cat.get("categoria"))) {
                 continue;
             }
             for (Map<String, Object> l : (List<Map<String, Object>>) cat.get("lineas")) {
                 if (nombre.equals(l.get("nombre"))) {
-                    return ((Number) l.get("cantidad")).doubleValue();
+                    return l;
                 }
             }
         }
         return null;
+    }
+
+    Double cantidadLinea(Map<String, Object> body, String categoria, String nombre) {
+        Map<String, Object> l = lineaDe(body, categoria, nombre);
+        return l == null ? null : ((Number) l.get("cantidad")).doubleValue();
+    }
+
+    long idDeLinea(Map<String, Object> body, String categoria, String nombre) {
+        return ((Number) lineaDe(body, categoria, nombre).get("id")).longValue();
+    }
+
+    /** Regla manual POR_EVENTO: cantidad fija, no depende de apuntados. Útil para tener una línea visible. */
+    long crearLineaFija(long eventoId, String admin, String nombre) {
+        http.post().uri("/api/v1/admin/lista-compra/eventos/" + eventoId + "/reglas")
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("categoria", "COMIDA", "nombre", nombre, "tamano", "unidad",
+                        "tipoFormula", "POR_EVENTO", "factor", 3))
+                .exchange().expectStatus().isCreated();
+        return idDeLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin), "COMIDA", nombre);
     }
 
     @Test
@@ -241,6 +260,62 @@ class ListaCompraIT extends IntegrationTest {
                 .header(AUTHORIZATION, "Bearer " + admin)
                 .body(Map.of("activa", true, "factor", 3))
                 .exchange().expectStatus().isNoContent();
+    }
+
+    @Test
+    void ajustar_linea_sin_bloquear_la_lista_es_409() {
+        long eventoId = crearEventoDeUnDia("Lista compra IT ajuste linea sin bloqueo");
+        String admin = token(RolMembresia.ADMIN, false);
+        long lineaId = crearLineaFija(eventoId, admin, "Hielo");
+
+        http.put().uri("/api/v1/eventos/" + eventoId + "/lista-compra/lineas/" + lineaId)
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("cantidad", 5))
+                .exchange().expectStatus().isEqualTo(409)
+                .expectBody().jsonPath("$.codigo").isEqualTo("LINEA_COMPRA_NO_AJUSTABLE");
+    }
+
+    @Test
+    void ajustar_linea_con_la_lista_bloqueada_cambia_la_cantidad_y_queda_marcada_como_ajustada() {
+        long eventoId = crearEventoDeUnDia("Lista compra IT ajuste linea");
+        String admin = token(RolMembresia.ADMIN, false);
+        long lineaId = crearLineaFija(eventoId, admin, "Hielo");
+
+        http.put().uri("/api/v1/eventos/" + eventoId + "/lista-compra/bloqueo")
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("bloqueada", true))
+                .exchange().expectStatus().isNoContent();
+
+        http.put().uri("/api/v1/eventos/" + eventoId + "/lista-compra/lineas/" + lineaId)
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("cantidad", 7))
+                .exchange().expectStatus().isNoContent();
+
+        Map<String, Object> linea = lineaDe(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
+                "COMIDA", "Hielo");
+        assertThat(((Number) linea.get("cantidad")).doubleValue()).isEqualTo(7.0);
+        assertThat(linea).containsEntry("ajustada", true);
+    }
+
+    @Test
+    void ajustar_linea_ya_comprada_es_409() {
+        long eventoId = crearEventoDeUnDia("Lista compra IT ajuste linea comprada");
+        String admin = token(RolMembresia.ADMIN, false);
+        long lineaId = crearLineaFija(eventoId, admin, "Hielo");
+
+        http.put().uri("/api/v1/eventos/" + eventoId + "/lista-compra/bloqueo")
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("bloqueada", true))
+                .exchange().expectStatus().isNoContent();
+        http.post().uri("/api/v1/eventos/" + eventoId + "/lista-compra/lineas/" + lineaId + "/comprado")
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .exchange().expectStatus().isNoContent();
+
+        http.put().uri("/api/v1/eventos/" + eventoId + "/lista-compra/lineas/" + lineaId)
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("cantidad", 5))
+                .exchange().expectStatus().isEqualTo(409)
+                .expectBody().jsonPath("$.codigo").isEqualTo("LINEA_COMPRA_NO_AJUSTABLE");
     }
 
     @Test
