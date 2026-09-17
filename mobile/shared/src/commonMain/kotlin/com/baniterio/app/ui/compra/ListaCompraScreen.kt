@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,8 +50,9 @@ private fun fmt(d: Double): String =
     if (d % 1.0 == 0.0) d.toLong().toString() else d.toString()
 
 /**
- * Lista de la compra calculada de un evento. Solo lectura; la ve cualquier
- * peñista. El ajuste de cantidades está en "Cantidades para eventos".
+ * Lista de la compra calculada de un evento. La ve cualquier peñista; el
+ * admin puede además marcar "comprado" y, con la lista bloqueada, ajustar a
+ * mano la cantidad final de una línea (p.ej. cuando el stock parcial alcanza).
  */
 @Composable
 fun ListaCompraScreen(
@@ -61,6 +63,8 @@ fun ListaCompraScreen(
     var estado by remember { mutableStateOf<EstadoCarga<DatosLista>>(EstadoCarga.Cargando) }
     var intento by remember { mutableStateOf(0) }
     var ocupado by remember { mutableStateOf(false) }
+    var editandoId by remember { mutableStateOf<Long?>(null) }
+    var cantidadTexto by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(intento) {
@@ -145,37 +149,83 @@ fun ListaCompraScreen(
                                     color = BaniterioColors.muted,
                                 )
                             }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    fmt(l.cantidad),
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
-                                    modifier = Modifier.width(24.dp),
-                                )
-                                if (datos.puedoEditar) {
-                                    Box(
-                                        modifier = Modifier.width(132.dp).padding(start = 12.dp),
-                                        contentAlignment = Alignment.CenterStart,
-                                    ) {
-                                        if (l.comprada) {
-                                            Text(
-                                                "✓ Comprada",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = BaniterioColors.gold,
-                                            )
-                                        } else if (l.cantidad > 0.0) {
-                                            OutlinedButton(
-                                                enabled = !ocupado,
-                                                onClick = {
-                                                    ocupado = true
-                                                    scope.launch {
-                                                        listaCompraRepo.marcarComprada(eventoId, l.id)
-                                                        ocupado = false
-                                                        intento++
+                            if (editandoId == l.id) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    OutlinedTextField(
+                                        value = cantidadTexto,
+                                        onValueChange = { cantidadTexto = it },
+                                        modifier = Modifier.width(80.dp),
+                                        singleLine = true,
+                                    )
+                                    OutlinedButton(
+                                        enabled = !ocupado,
+                                        modifier = Modifier.padding(start = 8.dp),
+                                        onClick = {
+                                            val cantidad = cantidadTexto.replace(',', '.').toDoubleOrNull()
+                                            if (cantidad != null && cantidad >= 0.0) {
+                                                ocupado = true
+                                                scope.launch {
+                                                    listaCompraRepo.ajustarLinea(eventoId, l.id, cantidad)
+                                                    ocupado = false
+                                                    editandoId = null
+                                                    intento++
+                                                }
+                                            }
+                                        },
+                                    ) { Text("Guardar", maxLines = 1, softWrap = false) }
+                                    OutlinedButton(
+                                        enabled = !ocupado,
+                                        modifier = Modifier.padding(start = 4.dp),
+                                        onClick = { editandoId = null },
+                                    ) { Text("Cancelar", maxLines = 1, softWrap = false) }
+                                }
+                            } else {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        fmt(l.cantidad),
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                        modifier = Modifier.width(24.dp),
+                                    )
+                                    if (datos.puedoEditar) {
+                                        Box(
+                                            modifier = Modifier.width(132.dp).padding(start = 12.dp),
+                                            contentAlignment = Alignment.CenterStart,
+                                        ) {
+                                            if (l.comprada) {
+                                                Text(
+                                                    "✓ Comprada",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = BaniterioColors.gold,
+                                                )
+                                            } else {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    if (datos.bloqueada) {
+                                                        OutlinedButton(
+                                                            enabled = !ocupado,
+                                                            onClick = {
+                                                                editandoId = l.id
+                                                                cantidadTexto = fmt(l.cantidad)
+                                                            },
+                                                        ) { Text("Ajustar", maxLines = 1, softWrap = false) }
                                                     }
-                                                },
-                                            ) { Text("Comprado", maxLines = 1, softWrap = false) }
+                                                    if (l.cantidad > 0.0) {
+                                                        OutlinedButton(
+                                                            enabled = !ocupado,
+                                                            modifier = Modifier.padding(start = 4.dp),
+                                                            onClick = {
+                                                                ocupado = true
+                                                                scope.launch {
+                                                                    listaCompraRepo.marcarComprada(eventoId, l.id)
+                                                                    ocupado = false
+                                                                    intento++
+                                                                }
+                                                            },
+                                                        ) { Text("Comprado", maxLines = 1, softWrap = false) }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }

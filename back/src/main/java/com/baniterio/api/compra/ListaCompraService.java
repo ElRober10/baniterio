@@ -15,6 +15,7 @@ import com.baniterio.api.auth.ServicioPermisos;
 import com.baniterio.api.compra.CalculadoraListaCompra.DatosEvento;
 import com.baniterio.api.compra.CalculadoraListaCompra.LineaCalculada;
 import com.baniterio.api.compra.CalculadoraListaCompra.PersonaCompra;
+import com.baniterio.api.compra.dto.AjustarLineaRequest;
 import com.baniterio.api.compra.dto.AjustarReglaRequest;
 import com.baniterio.api.compra.dto.CategoriaListaCompraDto;
 import com.baniterio.api.compra.dto.CrearReglaRequest;
@@ -333,6 +334,28 @@ public class ListaCompraService {
         fila = articulosEvento.save(fila);
         linea.setComprada(true);
         linea.setArticuloEventoId(fila.getId());
+        lineas.save(linea);
+    }
+
+    /**
+     * Ajusta a mano la cantidad final de una línea. Solo con la lista bloqueada
+     * (si no, {@link #sincronizar} la pisaría en la próxima lectura) y la línea
+     * aún no comprada.
+     */
+    @Transactional
+    public void ajustarLinea(Long usuarioId, Long eventoId, Long lineaId, AjustarLineaRequest req) {
+        exigirArea(usuarioId);
+        Evento e = eventoAbierto(eventoId);
+        if (!e.isListaCompraBloqueada()) {
+            throw new LineaCompraNoAjustableException();
+        }
+        LineaCompraEvento linea = lineas.findByIdAndEventoId(lineaId, eventoId)
+                .orElseThrow(LineaCompraNoEncontradaException::new);
+        if (linea.isComprada()) {
+            throw new LineaCompraNoAjustableException();
+        }
+        linea.setCantidad(req.cantidad());
+        linea.setAjustada(true);
         lineas.save(linea);
     }
 

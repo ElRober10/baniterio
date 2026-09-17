@@ -21,4 +21,5 @@ interface ListaCompraRepository {
     suspend fun borrarRegla(eventoId: Long, reglaId: Long): ResultadoListaCompra<Unit>
     suspend fun marcarComprada(eventoId: Long, lineaId: Long): ResultadoListaCompra<Unit>
     suspend fun cambiarBloqueo(eventoId: Long, bloqueada: Boolean): ResultadoListaCompra<Unit>
+    suspend fun ajustarLinea(eventoId: Long, lineaId: Long, cantidad: Double): ResultadoListaCompra<Unit>
 }

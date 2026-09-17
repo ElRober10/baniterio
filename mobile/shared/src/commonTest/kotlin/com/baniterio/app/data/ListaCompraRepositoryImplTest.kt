@@ -126,4 +126,21 @@ class ListaCompraRepositoryImplTest {
         assertIs<ResultadoListaCompra.Error>(res)
         assertEquals(CodigoErrorListaCompra.LINEA_NO_ENCONTRADA, res.codigo)
     }
+
+    @Test
+    fun ajustar_linea_hace_put_con_body() = runTest {
+        val (r, v) = repo(status = HttpStatusCode.NoContent)
+        r.ajustarLinea(7, 3, 0.8)
+        assertEquals("PUT", v[0].metodo)
+        assertEquals("/api/v1/eventos/7/lista-compra/lineas/3", v[0].path)
+        assert(v[0].cuerpo.contains("\"cantidad\":0.8")) { v[0].cuerpo }
+    }
+
+    @Test
+    fun ajustar_linea_no_ajustable_error_tipado() = runTest {
+        val (r, _) = repo(status = HttpStatusCode.Conflict, cuerpo = """{"codigo":"LINEA_COMPRA_NO_AJUSTABLE"}""")
+        val res = r.ajustarLinea(7, 3, 5.0)
+        assertIs<ResultadoListaCompra.Error>(res)
+        assertEquals(CodigoErrorListaCompra.LINEA_NO_AJUSTABLE, res.codigo)
+    }
 }

@@ -79,6 +79,10 @@ data class AjustarReglaBody(val cantidadAjustada: Double?, val activa: Boolean)
 @Serializable
 data class CambiarBloqueoBody(val bloqueada: Boolean)
 
+/** Cuerpo de `PUT /api/v1/eventos/{id}/lista-compra/lineas/{lineaId}`. */
+@Serializable
+data class AjustarLineaBody(val cantidad: Double)
+
 /** Cuerpo de `POST .../reglas`. */
 @Serializable
 data class CrearReglaBody(

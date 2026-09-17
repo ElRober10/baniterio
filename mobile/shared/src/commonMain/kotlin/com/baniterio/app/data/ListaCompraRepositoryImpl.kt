@@ -1,5 +1,6 @@
 package com.baniterio.app.data
 
+import com.baniterio.app.data.dto.AjustarLineaBody
 import com.baniterio.app.data.dto.AjustarReglaBody
 import com.baniterio.app.data.dto.CambiarBloqueoBody
 import com.baniterio.app.data.dto.CrearReglaBody
@@ -78,6 +79,14 @@ class ListaCompraRepositoryImpl(
             auth()
             contentType(ContentType.Application.Json)
             setBody(CambiarBloqueoBody(bloqueada))
+        }.let { }
+    }
+
+    override suspend fun ajustarLinea(eventoId: Long, lineaId: Long, cantidad: Double): ResultadoListaCompra<Unit> = peticion {
+        http.put("$API_BASE_URL/eventos/$eventoId/lista-compra/lineas/$lineaId") {
+            auth()
+            contentType(ContentType.Application.Json)
+            setBody(AjustarLineaBody(cantidad))
         }.let { }
     }
 
