@@ -6,3 +6,28 @@ export interface EventoPrecioBebida {
   fecha: string;
   fechaFin: string | null;
 }
+
+export interface Tienda {
+  id: number;
+  nombre: string;
+}
+
+export interface BebidaRef {
+  id: number;
+  nombre: string;
+}
+
+export interface PrecioCelda {
+  bebidaId: number;
+  tamano: string;
+  tiendaId: number;
+  precio: number | null;
+}
+
+export interface GrillaAlcohol {
+  puedoEditar: boolean;
+  tiendas: Tienda[];
+  tamanos: string[];
+  bebidas: BebidaRef[];
+  precios: PrecioCelda[];
+}

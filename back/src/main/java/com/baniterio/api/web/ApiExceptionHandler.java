@@ -336,6 +336,26 @@ public class ApiExceptionHandler {
         return error(HttpStatus.CONFLICT, "LINEA_COMPRA_NO_AJUSTABLE");
     }
 
+    @ExceptionHandler(com.baniterio.api.preciobebida.TiendaDuplicadaException.class)
+    ResponseEntity<Map<String, Object>> tiendaDuplicada() {
+        return error(HttpStatus.CONFLICT, "TIENDA_DUPLICADA");
+    }
+
+    @ExceptionHandler(com.baniterio.api.preciobebida.TiendaNoEncontradaException.class)
+    ResponseEntity<Map<String, Object>> tiendaNoEncontrada() {
+        return error(HttpStatus.NOT_FOUND, "TIENDA_NO_ENCONTRADA");
+    }
+
+    @ExceptionHandler(com.baniterio.api.preciobebida.TamanoPrecioBebidaDuplicadoException.class)
+    ResponseEntity<Map<String, Object>> tamanoPrecioBebidaDuplicado() {
+        return error(HttpStatus.CONFLICT, "TAMANO_PRECIO_BEBIDA_DUPLICADO");
+    }
+
+    @ExceptionHandler(com.baniterio.api.preciobebida.TamanoPrecioBebidaNoValidoException.class)
+    ResponseEntity<Map<String, Object>> tamanoPrecioBebidaNoValido() {
+        return error(HttpStatus.BAD_REQUEST, "TAMANO_PRECIO_BEBIDA_NO_VALIDO");
+    }
+
     @ExceptionHandler(com.baniterio.api.inventario.NadaQueDevolverException.class)
     ResponseEntity<Map<String, Object>> nadaQueDevolver() {
         return error(HttpStatus.BAD_REQUEST, "NADA_QUE_DEVOLVER");
