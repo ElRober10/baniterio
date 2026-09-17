@@ -108,53 +108,55 @@
           }
 
           @if (e.asistencia.ficha.llevaFicha && !editandoFicha()) {
-            <div class="mt-3 grid grid-cols-2 gap-2">
-              @if (e.asistencia.ficha.miFicha && puedeEditarFicha()) {
-                <button
-                  type="button"
-                  (click)="abrirEditorFicha()"
-                  class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark"
-                >
-                  Cambiar lo que voy a beber
-                </button>
-              }
-              <button
-                type="button"
-                (click)="modalAsistentes.set(true)"
-                class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark"
-              >
-                Listado de asistentes
-              </button>
-            </div>
-            @if (e.asistencia.ficha.miFicha?.cuota != null) {
-              <div class="mt-2 flex justify-center">
-                @if (pagoConfirmado()) {
+            <div class="mt-3 flex flex-col gap-2 md:flex-row md:items-stretch">
+              <div class="grid grid-cols-2 gap-2 md:contents">
+                @if (e.asistencia.ficha.miFicha && puedeEditarFicha()) {
                   <button
                     type="button"
-                    (click)="modalPagoInfo.set(true)"
-                    class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark"
+                    (click)="abrirEditorFicha()"
+                    class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark md:flex-1"
                   >
-                    Ya he pagado
-                  </button>
-                } @else if (pagoDeclaradoPendiente()) {
-                  <button
-                    type="button"
-                    (click)="modalPagoDeclarado.set(true)"
-                    class="rounded-xl border border-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand/20"
-                  >
-                    Ver mi pago declarado
-                  </button>
-                } @else {
-                  <button
-                    type="button"
-                    (click)="modalPago.set(true)"
-                    class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark"
-                  >
-                    Confirmar el pago
+                    Cambiar lo que voy a beber
                   </button>
                 }
+                <button
+                  type="button"
+                  (click)="modalAsistentes.set(true)"
+                  class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark md:flex-1"
+                >
+                  Listado de asistentes
+                </button>
               </div>
-            }
+              @if (e.asistencia.ficha.miFicha?.cuota != null) {
+                <div class="flex justify-center md:contents">
+                  @if (pagoConfirmado()) {
+                    <button
+                      type="button"
+                      (click)="modalPagoInfo.set(true)"
+                      class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark md:flex-1"
+                    >
+                      Ya he pagado
+                    </button>
+                  } @else if (pagoDeclaradoPendiente()) {
+                    <button
+                      type="button"
+                      (click)="modalPagoDeclarado.set(true)"
+                      class="rounded-xl border border-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand/20 md:flex-1"
+                    >
+                      Ver mi pago declarado
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      (click)="modalPago.set(true)"
+                      class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark md:flex-1"
+                    >
+                      Confirmar el pago
+                    </button>
+                  }
+                </div>
+              }
+            </div>
             <div class="mt-2 grid gap-2 grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]">
               <a
                 [routerLink]="['/panel/eventos', e.id, 'lista-compra']"
