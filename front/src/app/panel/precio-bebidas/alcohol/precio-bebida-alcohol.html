@@ -1,0 +1,105 @@
+<section class="mx-auto w-full max-w-7xl">
+  <div class="mb-4">
+    <app-volver [destino]="'/panel/precio-bebidas/' + anio + '/' + eventoId" etiqueta="Evento" />
+  </div>
+
+  <h1 class="font-display text-2xl font-extrabold leading-tight">Bebidas alcohólicas</h1>
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <p class="mt-4 text-sm text-muted">Cargando…</p>
+    }
+    @case ('error') {
+      <p class="mt-4 text-sm text-red-300">No se ha podido cargar la rejilla.</p>
+      <button
+        type="button"
+        (click)="cargar()"
+        class="mt-2 rounded-lg border border-outline px-3 py-1 text-sm"
+      >
+        Reintentar
+      </button>
+    }
+    @case ('listo') {
+      <div class="mt-4 flex flex-wrap items-center gap-2">
+        @for (t of tamanos(); track trackTamano($index, t)) {
+          <button
+            type="button"
+            (click)="tamanoActivo.set(t)"
+            class="rounded-full px-4 py-1.5 text-sm font-medium transition"
+            [class.bg-brand]="tamanoActivo() === t"
+            [class.text-gold]="tamanoActivo() === t"
+            [class.border]="tamanoActivo() !== t"
+            [class.border-outline]="tamanoActivo() !== t"
+            [class.text-muted]="tamanoActivo() !== t"
+          >
+            {{ t }}
+          </button>
+        }
+        @if (puedoEditar()) {
+          <button
+            type="button"
+            [disabled]="ocupado()"
+            (click)="anadirTamano()"
+            class="rounded-full border border-outline px-4 py-1.5 text-sm font-medium text-muted transition hover:border-gold hover:text-gold disabled:opacity-50"
+          >
+            + Tamaño
+          </button>
+        }
+      </div>
+
+      @if (bebidas().length === 0) {
+        <p class="mt-6 text-sm text-muted">No hay marcas de alcohol aceptadas en el catálogo.</p>
+      } @else {
+        <article class="carta-relieve mt-4 rounded-2xl p-5">
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-max whitespace-nowrap text-sm">
+              <thead>
+                <tr class="text-left text-xs uppercase tracking-wide text-muted">
+                  <th class="pb-2 pr-4">Marca</th>
+                  @for (t of tiendas(); track trackTienda($index, t)) {
+                    <th class="pb-2 pr-4 text-right">{{ t.nombre }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (b of bebidas(); track trackBebida($index, b)) {
+                  <tr class="border-t border-outline/30">
+                    <td class="py-1.5 pr-4">{{ b.nombre }}</td>
+                    @for (t of tiendas(); track trackTienda($index, t)) {
+                      <td class="py-1.5 pr-4 text-right">
+                        @if (puedoEditar()) {
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            [attr.aria-label]="b.nombre + ' en ' + t.nombre"
+                            [value]="precioDe(b.id, t.id)"
+                            (change)="guardarPrecio(b.id, t.id, $any($event.target).value)"
+                            class="w-20 rounded border border-outline bg-transparent px-1 py-0.5 text-right"
+                          />
+                        } @else {
+                          {{ precioDe(b.id, t.id) ?? '—' }}
+                        }
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </article>
+      }
+
+      @if (puedoEditar()) {
+        <button
+          type="button"
+          [disabled]="ocupado()"
+          (click)="anadirTienda()"
+          class="mt-4 rounded-xl border border-outline px-4 py-2 text-sm font-medium text-muted transition hover:border-gold hover:text-gold disabled:opacity-50"
+        >
+          + Añadir tienda
+        </button>
+      }
+    }
+  }
+</section>

@@ -7,7 +7,10 @@ function montar(): ComponentFixture<PrecioBebidaEvento> {
     imports: [PrecioBebidaEvento],
     providers: [
       provideRouter([]),
-      { provide: ActivatedRoute, useValue: { snapshot: { paramMap: new Map([['anio', '2026']]) } } },
+      {
+        provide: ActivatedRoute,
+        useValue: { snapshot: { paramMap: new Map([['anio', '2026'], ['id', '9']]) } },
+      },
     ],
   });
   return TestBed.createComponent(PrecioBebidaEvento);
@@ -16,12 +19,14 @@ function montar(): ComponentFixture<PrecioBebidaEvento> {
 describe('PrecioBebidaEvento', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it('muestra el placeholder y vuelve al año de la ruta', () => {
+  it('vuelve al año de la ruta y enlaza a "Bebidas alcohólicas"', () => {
     const fixture = montar();
     fixture.detectChanges();
 
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.textContent).toContain('Próximamente');
-    expect(el.querySelector('a')?.getAttribute('href')).toBe('/panel/precio-bebidas/2026');
+    const enlaces = Array.from(el.querySelectorAll('a'));
+    expect(enlaces[0].getAttribute('href')).toBe('/panel/precio-bebidas/2026');
+    const alcohol = enlaces.find((a) => a.textContent?.includes('Bebidas alcohólicas'));
+    expect(alcohol?.getAttribute('href')).toBe('/panel/precio-bebidas/2026/9/alcohol');
   });
 });
