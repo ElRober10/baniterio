@@ -24,6 +24,9 @@ import { InventarioCategoria } from './panel/inventario/inventario-categoria';
 import { InventarioFiesta } from './panel/eventos/inventario-fiesta/inventario-fiesta';
 import { ListaCompra } from './panel/eventos/lista-compra/lista-compra';
 import { Miembros } from './panel/miembros/miembros';
+import { PrecioBebidasAnios } from './panel/precio-bebidas/anios/precio-bebidas-anios';
+import { PrecioBebidasEventos } from './panel/precio-bebidas/eventos/precio-bebidas-eventos';
+import { PrecioBebidaEvento } from './panel/precio-bebidas/evento/precio-bebida-evento';
 import { perfilCompletoGuard } from './panel/miembros/perfil-completo.guard';
 import { Registro } from './auth/registro/registro';
 import { SolicitarAcceso } from './auth/solicitar-acceso/solicitar-acceso';
@@ -61,6 +64,18 @@ export const routes: Routes = [
       {
         path: 'inventario/:categoria',
         component: InventarioCategoria,
+        canActivate: [perfilCompletoGuard],
+      },
+      // Precio bebidas: lo ve cualquier miembro; sin areaGuard.
+      { path: 'precio-bebidas', component: PrecioBebidasAnios, canActivate: [perfilCompletoGuard] },
+      {
+        path: 'precio-bebidas/:anio',
+        component: PrecioBebidasEventos,
+        canActivate: [perfilCompletoGuard],
+      },
+      {
+        path: 'precio-bebidas/:anio/:id',
+        component: PrecioBebidaEvento,
         canActivate: [perfilCompletoGuard],
       },
       // Índice de administración: sin areaGuard (cualquier miembro lo abre); solo

@@ -1,0 +1,37 @@
+<section class="mx-auto w-full max-w-5xl">
+  <div class="mb-4"><app-volver destino="/panel/precio-bebidas" etiqueta="Precio bebidas" /></div>
+
+  <h1 class="font-display text-2xl font-extrabold leading-tight">Precio bebidas {{ anio }}</h1>
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <p class="mt-4 text-sm text-muted">Cargando…</p>
+    }
+    @case ('error') {
+      <p class="mt-4 text-sm text-red-300">No se han podido cargar los eventos.</p>
+      <button
+        type="button"
+        (click)="cargar()"
+        class="mt-2 rounded-lg border border-outline px-3 py-1 text-sm"
+      >
+        Reintentar
+      </button>
+    }
+    @case ('listo') {
+      @if (eventosDelAnio().length === 0) {
+        <p class="mt-6 text-sm text-muted">No hay eventos de {{ anio }}.</p>
+      } @else {
+        <div class="mt-4 grid gap-2 grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
+          @for (e of eventosDelAnio(); track e.id) {
+            <a
+              [routerLink]="['/panel/precio-bebidas', anio, e.id]"
+              class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark"
+            >
+              {{ e.nombre }}
+            </a>
+          }
+        </div>
+      }
+    }
+  }
+</section>

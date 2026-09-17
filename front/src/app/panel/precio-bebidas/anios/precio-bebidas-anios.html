@@ -1,0 +1,35 @@
+<section class="mx-auto w-full max-w-5xl">
+  <h1 class="font-display text-2xl font-extrabold leading-tight">Precio bebidas</h1>
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <p class="mt-4 text-sm text-muted">Cargando…</p>
+    }
+    @case ('error') {
+      <p class="mt-4 text-sm text-red-300">No se han podido cargar los años.</p>
+      <button
+        type="button"
+        (click)="cargar()"
+        class="mt-2 rounded-lg border border-outline px-3 py-1 text-sm"
+      >
+        Reintentar
+      </button>
+    }
+    @case ('listo') {
+      @if (anios().length === 0) {
+        <p class="mt-6 text-sm text-muted">Todavía no hay eventos.</p>
+      } @else {
+        <div class="mt-4 grid gap-2 grid-cols-[repeat(auto-fit,minmax(8rem,1fr))]">
+          @for (anio of anios(); track anio) {
+            <a
+              [routerLink]="['/panel/precio-bebidas', anio]"
+              class="rounded-xl bg-brand px-4 py-3 text-center text-lg font-bold text-gold transition hover:bg-brand-dark"
+            >
+              {{ anio }}
+            </a>
+          }
+        </div>
+      }
+    }
+  }
+</section>
