@@ -17,6 +17,7 @@ class Dependencias(
     val cuentasRepo: CuentasRepository,
     val inventarioRepo: InventarioRepository,
     val listaCompraRepo: ListaCompraRepository,
+    val precioBebidaRepo: PrecioBebidaRepository,
 )
 
 /**
@@ -41,5 +42,6 @@ fun crearDependencias(almacen: AlmacenCredenciales): Dependencias {
         cuentasRepo = CuentasRepositoryImpl(http, sesion),
         inventarioRepo = InventarioRepositoryImpl(http, sesion),
         listaCompraRepo = ListaCompraRepositoryImpl(http, sesion),
+        precioBebidaRepo = PrecioBebidaRepositoryImpl(http, sesion),
     )
 }

@@ -56,6 +56,8 @@ import com.baniterio.app.ui.miembros.MiembrosScreen
 import com.baniterio.app.ui.panel.PanelScreen
 import com.baniterio.app.ui.auth.registro.RegistroScreen
 import com.baniterio.app.ui.auth.solicitaracceso.SolicitarAccesoScreen
+import com.baniterio.app.ui.preciobebida.PrecioBebidaAlcoholScreen
+import com.baniterio.app.ui.preciobebida.PrecioBebidaEventosScreen
 
 private const val CLAVE_DESBLOQUEO = "Desbloqueo"
 private const val CLAVE_LOGIN = "Login"
@@ -79,6 +81,8 @@ private const val CLAVE_INVENTARIO_FIESTA = "InventarioFiesta"
 private const val CLAVE_LISTA_COMPRA = "ListaCompra"
 private const val CLAVE_LISTA_COMPRA_ADMIN = "ListaCompraAdmin"
 private const val CLAVE_LISTA_COMPRA_ADMIN_EVENTO = "ListaCompraAdminEvento"
+private const val CLAVE_PRECIO_BEBIDA_EVENTOS = "PrecioBebidaEventos"
+private const val CLAVE_PRECIO_BEBIDA_ALCOHOL = "PrecioBebidaAlcohol"
 private const val CLAVE_ADMIN_INDEX = "AdminIndex"
 private const val CLAVE_ADMIN_SOLICITUDES = "AdminSolicitudes"
 private const val CLAVE_ADMIN_PERMISOS = "AdminPermisos"
@@ -108,6 +112,8 @@ private fun Screen.aClave(): String = when (this) {
     Screen.ListaCompra -> CLAVE_LISTA_COMPRA
     Screen.ListaCompraAdmin -> CLAVE_LISTA_COMPRA_ADMIN
     Screen.ListaCompraAdminEvento -> CLAVE_LISTA_COMPRA_ADMIN_EVENTO
+    Screen.PrecioBebidaEventos -> CLAVE_PRECIO_BEBIDA_EVENTOS
+    Screen.PrecioBebidaAlcohol -> CLAVE_PRECIO_BEBIDA_ALCOHOL
     Screen.AdminIndex -> CLAVE_ADMIN_INDEX
     Screen.AdminSolicitudes -> CLAVE_ADMIN_SOLICITUDES
     Screen.AdminPermisos -> CLAVE_ADMIN_PERMISOS
@@ -137,6 +143,8 @@ private fun claveAScreen(clave: String): Screen = when (clave) {
     CLAVE_LISTA_COMPRA -> Screen.ListaCompra
     CLAVE_LISTA_COMPRA_ADMIN -> Screen.ListaCompraAdmin
     CLAVE_LISTA_COMPRA_ADMIN_EVENTO -> Screen.ListaCompraAdminEvento
+    CLAVE_PRECIO_BEBIDA_EVENTOS -> Screen.PrecioBebidaEventos
+    CLAVE_PRECIO_BEBIDA_ALCOHOL -> Screen.PrecioBebidaAlcohol
     CLAVE_ADMIN_INDEX -> Screen.AdminIndex
     CLAVE_ADMIN_SOLICITUDES -> Screen.AdminSolicitudes
     CLAVE_ADMIN_PERMISOS -> Screen.AdminPermisos
@@ -176,6 +184,7 @@ fun App(
                 screen == Screen.InventarioFiesta ||
                 screen == Screen.ListaCompra || screen == Screen.ListaCompraAdmin ||
                 screen == Screen.ListaCompraAdminEvento ||
+                screen == Screen.PrecioBebidaEventos || screen == Screen.PrecioBebidaAlcohol ||
                 screen == Screen.AdminIndex || screen == Screen.AdminSolicitudes ||
                 screen == Screen.AdminPermisos || screen == Screen.AdminBebidas ||
                 screen == Screen.AdminPagos)
@@ -216,6 +225,9 @@ fun App(
 
     // Lista de la compra: el evento cuya lista (lectura o editor de admin) se está viendo.
     var listaCompraEventoId by rememberSaveable { mutableStateOf<Long?>(null) }
+
+    // Precio compras: el evento cuya rejilla de precios se está viendo.
+    var precioBebidaEventoId by rememberSaveable { mutableStateOf<Long?>(null) }
 
     fun ir(destino: Screen) {
         screenKey = destino.aClave()
@@ -489,6 +501,27 @@ fun App(
                             listaCompraRepo = deps.listaCompraRepo,
                             eventoId = id,
                             onVolver = { ir(Screen.ListaCompraAdmin) },
+                        )
+                    }
+                }
+                is Screen.PrecioBebidaEventos -> {
+                    BackHandler { ir(Screen.Panel) }
+                    PrecioBebidaEventosScreen(
+                        precioBebidaRepo = deps.precioBebidaRepo,
+                        onAbrirEvento = { id -> precioBebidaEventoId = id; ir(Screen.PrecioBebidaAlcohol) },
+                        onVolver = { ir(Screen.Panel) },
+                    )
+                }
+                is Screen.PrecioBebidaAlcohol -> {
+                    BackHandler { ir(Screen.PrecioBebidaEventos) }
+                    val id = precioBebidaEventoId
+                    if (id == null) {
+                        LaunchedEffect(Unit) { ir(Screen.PrecioBebidaEventos) }
+                    } else {
+                        PrecioBebidaAlcoholScreen(
+                            precioBebidaRepo = deps.precioBebidaRepo,
+                            eventoId = id,
+                            onVolver = { ir(Screen.PrecioBebidaEventos) },
                         )
                     }
                 }

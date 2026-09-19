@@ -49,6 +49,21 @@ private data class DatosLista(
 private fun fmt(d: Double): String =
     if (d % 1.0 == 0.0) d.toLong().toString() else d.toString()
 
+private fun fmtEuros(d: Double): String {
+    val redondeado = kotlin.math.round(d * 100) / 100.0
+    val texto = if (redondeado % 1.0 == 0.0) {
+        "${redondeado.toLong()},00"
+    } else {
+        val centimos = kotlin.math.round((redondeado % 1.0) * 100).toLong().let { if (it < 0) -it else it }
+        "${redondeado.toLong()},${centimos.toString().padStart(2, '0')}"
+    }
+    return "$texto €"
+}
+
+/** Suma cantidad × precio unitario de las líneas de la categoría que tengan precio. */
+private fun totalEstimado(c: CategoriaListaCompraDto): Double =
+    c.lineas.filter { it.precioUnitario != null }.sumOf { it.cantidad * it.precioUnitario!! }
+
 /**
  * Lista de la compra calculada de un evento. La ve cualquier peñista; el
  * admin puede además marcar "comprado" y, con la lista bloqueada, ajustar a
@@ -140,6 +155,7 @@ fun ListaCompraScreen(
                                 Text(l.nombre, color = MaterialTheme.colorScheme.onBackground)
                                 val sub = buildString {
                                     append(l.tamano)
+                                    if (l.tienda != null) append(" · ${l.tienda}")
                                     if (l.necesitaFicha) append(" · necesita ficha de bebida")
                                     if (l.ajustada) append(" · ajustado")
                                 }
@@ -148,6 +164,13 @@ fun ListaCompraScreen(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = BaniterioColors.muted,
                                 )
+                                if (l.precioUnitario != null) {
+                                    Text(
+                                        "${fmtEuros(l.precioUnitario)}/ud · total ${fmtEuros(l.cantidad * l.precioUnitario)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = BaniterioColors.muted,
+                                    )
+                                }
                             }
                             if (editandoId == l.id) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -231,6 +254,16 @@ fun ListaCompraScreen(
                                 }
                             }
                         }
+                    }
+                    if (c.categoria == "ALCOHOL") {
+                        Text(
+                            "Gasto estimado en alcohol: ${fmtEuros(totalEstimado(c))}",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = BaniterioColors.gold,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                        )
                     }
                 }
             }
