@@ -8,7 +8,7 @@ import java.math.BigDecimal;
  * {@code cantidadCalculada} es siempre la fórmula sin ajuste (la usará el bloque 2
  * para restar el inventario de la fiesta).
  */
-public record LineaCompraDto(long id, String nombre, String tamano, BigDecimal cantidad,
-                             BigDecimal cantidadCalculada, boolean ajustada, boolean dinamica,
+public record LineaCompraDto(long id, String nombre, String tamano, String tienda, BigDecimal precioUnitario,
+                             BigDecimal cantidad, BigDecimal cantidadCalculada, boolean ajustada, boolean dinamica,
                              boolean necesitaFicha, boolean comprada) {
 }

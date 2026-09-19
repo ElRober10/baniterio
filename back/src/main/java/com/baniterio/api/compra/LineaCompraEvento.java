@@ -56,6 +56,12 @@ public class LineaCompraEvento {
     @Column(nullable = false, length = 20)
     private String tamano;
 
+    @Column(length = 120)
+    private String tienda;
+
+    @Column(name = "precio_unitario", precision = 8, scale = 2)
+    private BigDecimal precioUnitario;
+
     @Column(nullable = false, precision = 8, scale = 2)
     private BigDecimal cantidad;
 
