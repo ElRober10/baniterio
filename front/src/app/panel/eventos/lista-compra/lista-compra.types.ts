@@ -22,6 +22,8 @@ export interface LineaCompra {
   id: number;
   nombre: string;
   tamano: string;
+  tienda?: string | null;
+  precioUnitario?: number | null;
   cantidad: number;
   cantidadCalculada: number;
   ajustada: boolean;

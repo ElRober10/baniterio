@@ -1,3 +1,4 @@
+import { DecimalPipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Volver } from '../../../shared/volver/volver';
@@ -12,7 +13,7 @@ import { CategoriaListaCompra, LineaCompra } from './lista-compra.types';
  */
 @Component({
   selector: 'app-lista-compra',
-  imports: [Volver, RouterLink],
+  imports: [Volver, RouterLink, DecimalPipe],
   templateUrl: './lista-compra.html',
   styleUrl: './lista-compra.css',
 })
@@ -105,6 +106,14 @@ export class ListaCompra implements OnInit {
         this.estado.set('error');
       },
     });
+  }
+
+  /** Suma cantidad × precio unitario de las líneas de la categoría que tengan precio. */
+  protected totalEstimado(cat: CategoriaListaCompra): number {
+    return cat.lineas.reduce(
+      (total, l) => total + (l.precioUnitario != null ? l.cantidad * l.precioUnitario : 0),
+      0,
+    );
   }
 
   protected trackCat = (_: number, c: CategoriaListaCompra) => c.categoria;

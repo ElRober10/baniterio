@@ -1,4 +1,4 @@
-package com.baniterio.api.compra;
+﻿package com.baniterio.api.compra;
 
 import java.math.BigDecimal;
 import java.time.temporal.ChronoUnit;
@@ -38,6 +38,10 @@ import com.baniterio.api.inventario.ArticuloEvento;
 import com.baniterio.api.inventario.ArticuloEventoRepository;
 import com.baniterio.api.inventario.CategoriaInventario;
 import com.baniterio.api.inventario.SinPermisoInventarioException;
+import com.baniterio.api.compra.OptimizadorPrecioBebida.ItemCompra;
+import com.baniterio.api.compra.OptimizadorPrecioBebida.OpcionPrecio;
+import com.baniterio.api.preciobebida.PrecioBebidaEvento;
+import com.baniterio.api.preciobebida.PrecioBebidaEventoRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,13 +70,15 @@ public class ListaCompraService {
     private final EventoRepository eventos;
     private final AsistenciaEventoRepository asistencias;
     private final FichaBebidaRepository fichas;
+    private final PrecioBebidaEventoRepository preciosBebida;
     private final PenaPilotoService pena;
     private final ServicioPermisos permisos;
 
     public ListaCompraService(ReglaCompraRepository plantilla, ReglaCompraEventoRepository reglasEvento,
                               LineaCompraEventoRepository lineas, ArticuloEventoRepository articulosEvento,
                               EventoRepository eventos, AsistenciaEventoRepository asistencias,
-                              FichaBebidaRepository fichas, PenaPilotoService pena, ServicioPermisos permisos) {
+                              FichaBebidaRepository fichas, PrecioBebidaEventoRepository preciosBebida,
+                              PenaPilotoService pena, ServicioPermisos permisos) {
         this.plantilla = plantilla;
         this.reglasEvento = reglasEvento;
         this.lineas = lineas;
@@ -80,13 +86,14 @@ public class ListaCompraService {
         this.eventos = eventos;
         this.asistencias = asistencias;
         this.fichas = fichas;
+        this.preciosBebida = preciosBebida;
         this.pena = pena;
         this.permisos = permisos;
     }
 
     /** Una línea del cálculo con su clave de identidad. */
-    private record LineaCalc(CategoriaInventario categoria, String nombre, String tamano,
-                             BigDecimal cantidad, int orden, boolean dinamica,
+    private record LineaCalc(CategoriaInventario categoria, String nombre, String tamano, String tienda,
+                             BigDecimal precioUnitario, BigDecimal cantidad, int orden, boolean dinamica,
                              boolean necesitaFicha, boolean ajustada) {
     }
 
@@ -170,7 +177,8 @@ public class ListaCompraService {
                 continue;
             }
             porCategoria.get(l.getCategoria()).add(new LineaCompraDto(
-                    l.getId(), l.getNombre(), l.getTamano(), l.getCantidad(), BigDecimal.ZERO,
+                    l.getId(), l.getNombre(), l.getTamano(), l.getTienda(), l.getPrecioUnitario(),
+                    l.getCantidad(), BigDecimal.ZERO,
                     l.isAjustada(), l.isDinamica(), l.isNecesitaFicha(), l.isComprada()));
         }
 
@@ -184,16 +192,20 @@ public class ListaCompraService {
                 datos.apuntados(), datos.diasFiesta(), categorias);
     }
 
-    /** Stock ya cubierto: por clave exacta, por categoría entera y por marca (sin tamaño). */
+    /**
+     * Stock ya cubierto: por clave exacta, por categoría entera, por marca (sin
+     * tamaño) y por marca en cl (solo ALCOHOL, cada botella convertida a cl).
+     */
     private record StockCubierto(Map<String, BigDecimal> porClave, Map<CategoriaInventario, BigDecimal> porCategoria,
-                                  Map<String, BigDecimal> porNombre) {
+                                  Map<String, BigDecimal> porNombre, Map<String, Integer> clPorMarcaAlcohol) {
     }
 
     private static final BigDecimal LITRO = BigDecimal.ONE;
     private static final BigDecimal SETENTA_CL = new BigDecimal("0.7");
+    private static final int CL_POR_UNIDAD = 70;
 
     private static String claveNombre(CategoriaInventario cat, String nombre) {
-        return cat.name() + " " + nombre;
+        return cat.name() + " " + nombre;
     }
 
     /**
@@ -210,13 +222,29 @@ public class ListaCompraService {
         Map<String, BigDecimal> porClave = new LinkedHashMap<>();
         Map<CategoriaInventario, BigDecimal> porCategoria = new LinkedHashMap<>();
         Map<String, BigDecimal> porNombre = new LinkedHashMap<>();
+        Map<String, Integer> clPorMarcaAlcohol = new LinkedHashMap<>();
         for (ArticuloEvento a : articulosEvento.findByEventoIdOrderByCategoriaAscNombreAsc(eventoId)) {
             BigDecimal total = a.getCantidad().add(a.getCantidadComprada());
             porClave.merge(clave(a.getCategoria(), a.getNombre(), a.getTamano()), total, BigDecimal::add);
             porCategoria.merge(a.getCategoria(), total, BigDecimal::add);
             porNombre.merge(claveNombre(a.getCategoria(), a.getNombre()), total, BigDecimal::add);
+            if (a.getCategoria() == CategoriaInventario.ALCOHOL) {
+                OptimizadorPrecioBebida.parseCl(a.getTamano()).ifPresent(cl -> clPorMarcaAlcohol.merge(
+                        a.getNombre(), cl * total.intValue(), Integer::sum));
+            }
         }
-        return new StockCubierto(porClave, porCategoria, porNombre);
+        return new StockCubierto(porClave, porCategoria, porNombre, clPorMarcaAlcohol);
+    }
+
+    /** Precios de la rejilla de alcohol del evento, agrupados por marca. */
+    private Map<String, List<OpcionPrecio>> preciosPorMarca(Long eventoId) {
+        Map<String, List<OpcionPrecio>> out = new LinkedHashMap<>();
+        for (PrecioBebidaEvento p : preciosBebida.findByEventoId(eventoId)) {
+            OptimizadorPrecioBebida.parseCl(p.getTamano()).ifPresent(cl -> out
+                    .computeIfAbsent(p.getBebida().getNombre(), k -> new ArrayList<>())
+                    .add(new OpcionPrecio(p.getTamano(), cl, p.getTienda().getNombre(), p.getPrecio())));
+        }
+        return out;
     }
 
     /**
@@ -230,41 +258,80 @@ public class ListaCompraService {
                 .findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(eventoId).stream()
                 .filter(ReglaCompraEvento::isActiva).toList();
         StockCubierto stock = stockCubierto(eventoId);
+        Map<String, List<OpcionPrecio>> precios = preciosPorMarca(eventoId);
         List<LineaCalc> out = new ArrayList<>();
         for (ReglaCompraEvento r : activas) {
             for (LineaCalculada lc : CalculadoraListaCompra.lineasDe(r, datos)) {
                 boolean ajustada = !r.getTipoFormula().esDinamica() && r.getCantidadAjustada() != null;
-                String tamano = lc.tamano();
-                BigDecimal cantidad;
                 if (ajustada) {
-                    cantidad = r.getCantidadAjustada();
-                } else if (r.getCategoria() == CategoriaInventario.ALCOHOL && lc.dinamica() && "1 L".equals(tamano)) {
-                    // Una sola persona bebiendo esa marca: hace falta al menos 1 L en total
-                    // entre lo que ya hay y lo que se compre. Si con una botella de 70cl ya
-                    // se llega al litro, se compra esa (más barata); si no, la de 1 L.
-                    BigDecimal stockMarca = stock.porNombre()
-                            .getOrDefault(claveNombre(r.getCategoria(), lc.nombre()), BigDecimal.ZERO);
-                    if (stockMarca.compareTo(LITRO) >= 0) {
-                        cantidad = BigDecimal.ZERO;
-                    } else if (stockMarca.add(SETENTA_CL).compareTo(LITRO) >= 0) {
-                        tamano = "70 cl";
-                        cantidad = BigDecimal.ONE;
-                    } else {
-                        cantidad = BigDecimal.ONE;
-                    }
+                    out.add(new LineaCalc(r.getCategoria(), lc.nombre(), lc.tamano(), null, null,
+                            r.getCantidadAjustada(), r.getOrden(), lc.dinamica(), lc.necesitaFicha(), true));
+                } else if (r.getCategoria() == CategoriaInventario.ALCOHOL && lc.dinamica()) {
+                    out.addAll(lineasAlcohol(r, lc, stock, precios.get(lc.nombre())));
                 } else {
                     BigDecimal cubierto = r.getCategoria() == CategoriaInventario.CERVEZA
                             ? stock.porCategoria().getOrDefault(CategoriaInventario.CERVEZA, BigDecimal.ZERO)
                             : stock.porClave().getOrDefault(
                                     clave(r.getCategoria(), lc.nombre(), lc.tamano()), BigDecimal.ZERO);
                     BigDecimal restante = lc.bruto().subtract(cubierto).max(BigDecimal.ZERO);
-                    cantidad = restante.signum() > 0 ? CalculadoraListaCompra.ceil(restante) : BigDecimal.ZERO;
+                    BigDecimal cantidad = restante.signum() > 0 ? CalculadoraListaCompra.ceil(restante) : BigDecimal.ZERO;
+                    out.add(new LineaCalc(r.getCategoria(), lc.nombre(), lc.tamano(), null, null,
+                            cantidad, r.getOrden(), lc.dinamica(), lc.necesitaFicha(), false));
                 }
-                out.add(new LineaCalc(r.getCategoria(), lc.nombre(), tamano, cantidad,
-                        r.getOrden(), lc.dinamica(), lc.necesitaFicha(), ajustada));
             }
         }
         return out;
+    }
+
+    /**
+     * Una marca de alcohol: cuántas botellas de qué tamaño y en qué tienda
+     * comprar. Con precios en la rejilla, la combinación más barata que cubra lo
+     * que falta (en cl, restado el stock de la fiesta ya convertido a cl); sin
+     * ningún precio metido para esa marca, el aviso sin tienda de siempre (n=1 →
+     * botella de 1L o 70cl según lo que ya haya; n>1 → n botellas de 70cl).
+     */
+    private List<LineaCalc> lineasAlcohol(ReglaCompraEvento r, LineaCalculada lc, StockCubierto stock,
+                                          List<OpcionPrecio> opciones) {
+        if (opciones != null && !opciones.isEmpty()) {
+            int stockCl = stock.clPorMarcaAlcohol().getOrDefault(lc.nombre(), 0);
+            int targetCl = lc.bruto().multiply(BigDecimal.valueOf(CL_POR_UNIDAD)).intValue();
+            int restanteCl = Math.max(0, targetCl - stockCl);
+            var combinacion = OptimizadorPrecioBebida.combinacionMasBarata(restanteCl, opciones);
+            if (combinacion.isPresent()) {
+                List<LineaCalc> out = new ArrayList<>();
+                for (ItemCompra item : combinacion.get()) {
+                    out.add(new LineaCalc(r.getCategoria(), lc.nombre(), item.tamano(), item.tienda(),
+                            item.precioUnitario(), BigDecimal.valueOf(item.cantidad()), r.getOrden(), true, false, false));
+                }
+                return out;
+            }
+        }
+
+        // Fallback sin precios: mismo criterio de siempre, sin tienda.
+        String tamano = lc.tamano();
+        BigDecimal cantidad;
+        if ("1 L".equals(tamano)) {
+            // Una sola persona bebiendo esa marca: hace falta al menos 1 L en total
+            // entre lo que ya hay y lo que se compre. Si con una botella de 70cl ya
+            // se llega al litro, se compra esa (más barata); si no, la de 1 L.
+            BigDecimal stockMarca = stock.porNombre()
+                    .getOrDefault(claveNombre(r.getCategoria(), lc.nombre()), BigDecimal.ZERO);
+            if (stockMarca.compareTo(LITRO) >= 0) {
+                cantidad = BigDecimal.ZERO;
+            } else if (stockMarca.add(SETENTA_CL).compareTo(LITRO) >= 0) {
+                tamano = "70 cl";
+                cantidad = BigDecimal.ONE;
+            } else {
+                cantidad = BigDecimal.ONE;
+            }
+        } else {
+            BigDecimal cubierto = stock.porClave()
+                    .getOrDefault(clave(r.getCategoria(), lc.nombre(), tamano), BigDecimal.ZERO);
+            BigDecimal restante = lc.bruto().subtract(cubierto).max(BigDecimal.ZERO);
+            cantidad = restante.signum() > 0 ? CalculadoraListaCompra.ceil(restante) : BigDecimal.ZERO;
+        }
+        return List.of(new LineaCalc(r.getCategoria(), lc.nombre(), tamano, null, null, cantidad,
+                r.getOrden(), true, false, false));
     }
 
     /** Alinea linea_compra_evento con el cálculo actual. No toca las líneas compradas. */
@@ -272,16 +339,17 @@ public class ListaCompraService {
         List<LineaCalc> calculadas = calcular(e.getId(), datos);
         Map<String, LineaCompraEvento> existentes = new LinkedHashMap<>();
         for (LineaCompraEvento l : lineas.findByEventoIdOrderByCategoriaAscNombreAsc(e.getId())) {
-            existentes.put(clave(l.getCategoria(), l.getNombre(), l.getTamano()), l);
+            existentes.put(claveLinea(l.getCategoria(), l.getNombre(), l.getTamano(), l.getTienda()), l);
         }
         Set<String> vistas = new HashSet<>();
         for (LineaCalc c : calculadas) {
-            String k = clave(c.categoria(), c.nombre(), c.tamano());
+            String k = claveLinea(c.categoria(), c.nombre(), c.tamano(), c.tienda());
             vistas.add(k);
             LineaCompraEvento fila = existentes.get(k);
             if (fila == null) {
                 lineas.save(LineaCompraEvento.builder()
-                        .evento(e).categoria(c.categoria()).nombre(c.nombre()).tamano(c.tamano())
+                        .evento(e).categoria(c.categoria()).nombre(c.nombre()).tamano(c.tamano()).tienda(c.tienda())
+                        .precioUnitario(c.precioUnitario())
                         .cantidad(c.cantidad()).orden(c.orden()).dinamica(c.dinamica())
                         .necesitaFicha(c.necesitaFicha()).ajustada(c.ajustada())
                         .comprada(false).build());
@@ -291,6 +359,7 @@ public class ListaCompraService {
                 fila.setDinamica(c.dinamica());
                 fila.setNecesitaFicha(c.necesitaFicha());
                 fila.setAjustada(c.ajustada());
+                fila.setPrecioUnitario(c.precioUnitario());
                 lineas.save(fila);
             }
         }
@@ -303,6 +372,11 @@ public class ListaCompraService {
 
     private static String clave(CategoriaInventario cat, String nombre, String tamano) {
         return cat.name() + "\u0000" + nombre + "\u0000" + tamano;
+    }
+
+    /** Como {@link #clave} pero con la tienda: dos botellas del mismo tamano en tiendas distintas son lineas distintas. */
+    private static String claveLinea(CategoriaInventario cat, String nombre, String tamano, String tienda) {
+        return clave(cat, nombre, tamano) + "\u0000" + (tienda == null ? "" : tienda);
     }
 
     /** Marca una linea como comprada: su cantidad pasa al inventario de la fiesta y queda congelada. */
