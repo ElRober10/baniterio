@@ -8,6 +8,8 @@ data class LineaCompraDto(
     val id: Long = 0,
     val nombre: String,
     val tamano: String,
+    val tienda: String? = null,
+    val precioUnitario: Double? = null,
     val cantidad: Double,
     val cantidadCalculada: Double = 0.0,
     val ajustada: Boolean = false,

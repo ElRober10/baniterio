@@ -23,6 +23,8 @@ sealed class Screen {
     data object ListaCompra : Screen()
     data object ListaCompraAdmin : Screen()
     data object ListaCompraAdminEvento : Screen()
+    data object PrecioBebidaEventos : Screen()
+    data object PrecioBebidaAlcohol : Screen()
     data object AdminIndex : Screen()
     data object AdminSolicitudes : Screen()
     data object AdminPermisos : Screen()
