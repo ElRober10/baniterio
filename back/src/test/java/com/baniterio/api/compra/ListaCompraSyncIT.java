@@ -35,6 +35,10 @@ import com.baniterio.api.inventario.ArticuloEventoRepository;
 import com.baniterio.api.inventario.ArticuloInventario;
 import com.baniterio.api.inventario.ArticuloInventarioRepository;
 import com.baniterio.api.inventario.CategoriaInventario;
+import com.baniterio.api.preciobebida.PrecioArticuloEvento;
+import com.baniterio.api.preciobebida.PrecioArticuloEventoRepository;
+import com.baniterio.api.preciobebida.Tienda;
+import com.baniterio.api.preciobebida.TiendaRepository;
 import com.baniterio.api.support.IntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -68,6 +72,8 @@ class ListaCompraSyncIT extends IntegrationTest {
     @Autowired LineaCompraEventoRepository lineas;
     @Autowired ArticuloInventarioRepository articulosInventario;
     @Autowired ArticuloEventoRepository articulosEvento;
+    @Autowired TiendaRepository tiendas;
+    @Autowired PrecioArticuloEventoRepository precioArticulo;
     @Autowired PasswordEncoder passwordEncoder;
 
     RestTestClient http;
@@ -206,6 +212,37 @@ class ListaCompraSyncIT extends IntegrationTest {
             }
         }
         throw new AssertionError("línea no encontrada: " + categoria + "/" + nombre);
+    }
+
+    @SuppressWarnings("unchecked")
+    String tiendaLinea(Map<String, Object> body, String categoria, String nombre) {
+        for (Map<String, Object> cat : (List<Map<String, Object>>) body.get("categorias")) {
+            if (!categoria.equals(cat.get("categoria"))) {
+                continue;
+            }
+            for (Map<String, Object> l : (List<Map<String, Object>>) cat.get("lineas")) {
+                if (nombre.equals(l.get("nombre"))) {
+                    return (String) l.get("tienda");
+                }
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    Double precioUnitarioLinea(Map<String, Object> body, String categoria, String nombre) {
+        for (Map<String, Object> cat : (List<Map<String, Object>>) body.get("categorias")) {
+            if (!categoria.equals(cat.get("categoria"))) {
+                continue;
+            }
+            for (Map<String, Object> l : (List<Map<String, Object>>) cat.get("lineas")) {
+                if (nombre.equals(l.get("nombre"))) {
+                    Number p = (Number) l.get("precioUnitario");
+                    return p == null ? null : p.doubleValue();
+                }
+            }
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")
@@ -605,5 +642,40 @@ class ListaCompraSyncIT extends IntegrationTest {
         http.delete().uri("/api/v1/admin/lista-compra/eventos/" + eventoId + "/reglas/" + reglaId)
                 .header(AUTHORIZATION, "Bearer " + admin)
                 .exchange().expectStatus().isNoContent();
+    }
+
+    @Test
+    void cerveza_alternativa_con_precio_metido_elige_la_tienda_mas_barata() {
+        long eventoId = crearEventoConFicha("Sync IT cerveza precio");
+        Evento evento = eventos.findById(eventoId).orElseThrow();
+        String tel = "6" + String.format("%08d", ThreadLocalRandom.current().nextInt(100_000_000));
+        Usuario u = usuarios.save(Usuario.builder()
+                .telefono(tel).email(tel + "@sync.test")
+                .passwordHash(passwordEncoder.encode("secreto1"))
+                .nombre("C" + tel).apellidos("Z").esSuperadmin(false).activo(true).build());
+        AsistenciaEvento a = asistencias.save(AsistenciaEvento.builder()
+                .evento(evento).usuario(u).estado(EstadoAsistencia.APUNTADO).build());
+        Bebida refresco = bebidas.findByTipoAndNombreIgnoreCase(TipoBebida.REFRESCO, "Coca-Cola").orElseThrow();
+        fichas.save(FichaBebida.builder()
+                .asistencia(a).alcohol(null).refresco(refresco)
+                .alternativa(Alternativa.CERVEZA).modalidad(Modalidad.COMPLETA)
+                .asisteDia1(true).asisteDia2(true).embarazada(false).build());
+
+        Tienda cara = tiendas.findByPenaIdOrderByOrdenAscNombreAsc(pena().getId()).stream()
+                .filter(t -> "Hipercor".equals(t.getNombre())).findFirst().orElseThrow();
+        Tienda barata = tiendas.findByPenaIdOrderByOrdenAscNombreAsc(pena().getId()).stream()
+                .filter(t -> "Alcampo".equals(t.getNombre())).findFirst().orElseThrow();
+        precioArticulo.save(PrecioArticuloEvento.builder()
+                .evento(evento).categoria(CategoriaInventario.CERVEZA).nombreArticulo("Cerveza")
+                .tienda(cara).precio(new BigDecimal("1.50")).build());
+        precioArticulo.save(PrecioArticuloEvento.builder()
+                .evento(evento).categoria(CategoriaInventario.CERVEZA).nombreArticulo("Cerveza")
+                .tienda(barata).precio(new BigDecimal("0.90")).build());
+
+        String tok = token(RolMembresia.MIEMBRO, false);
+        Map<String, Object> body = getMap("/api/v1/eventos/" + eventoId + "/lista-compra", tok);
+
+        assertThat(tiendaLinea(body, "CERVEZA", "Cerveza")).isEqualTo("Alcampo");
+        assertThat(precioUnitarioLinea(body, "CERVEZA", "Cerveza")).isEqualTo(0.90);
     }
 }

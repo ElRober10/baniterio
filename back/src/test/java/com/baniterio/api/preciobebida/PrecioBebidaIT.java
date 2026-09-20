@@ -286,4 +286,93 @@ class PrecioBebidaIT extends IntegrationTest {
                 .exchange().expectStatus().isEqualTo(409)
                 .expectBody().jsonPath("$.codigo").isEqualTo("TAMANO_PRECIO_BEBIDA_DUPLICADO");
     }
+
+    // --- Rejilla de artículos sin tamaños (refrescos, cerveza, limpieza, comida) ---
+
+    Map<String, Object> articulos(long eventoId, String seccion, String token) {
+        return getMap("/api/v1/precio-bebida/eventos/" + eventoId + "/articulos/" + seccion, token);
+    }
+
+    @SuppressWarnings("unchecked")
+    Double precioArticuloDe(Map<String, Object> grilla, String nombre, long tiendaId) {
+        return ((List<Map<String, Object>>) grilla.get("precios")).stream()
+                .filter(p -> nombre.equals(p.get("nombreArticulo"))
+                        && ((Number) p.get("tiendaId")).longValue() == tiendaId)
+                .findFirst().map(p -> ((Number) p.get("precio")).doubleValue()).orElse(null);
+    }
+
+    @Test
+    void articulos_refrescos_lista_el_catalogo_de_bebidas_refresco() {
+        long eventoId = crearEvento("Precio articulo IT refrescos", LocalDate.of(2026, 9, 25), false);
+        Map<String, Object> grilla = articulos(eventoId, "REFRESCOS", token());
+        assertThat((List<String>) grilla.get("articulos")).contains("Coca-Cola");
+    }
+
+    @Test
+    void articulos_cerveza_incluye_tinto_de_verano_fijo() {
+        long eventoId = crearEvento("Precio articulo IT cerveza", LocalDate.of(2026, 9, 25), false);
+        Map<String, Object> grilla = articulos(eventoId, "CERVEZA", token());
+        assertThat((List<String>) grilla.get("articulos")).containsExactly(
+                "Cerveza", "Cerveza sin alcohol", "Cerveza sin gluten", "Tinto de verano");
+    }
+
+    @Test
+    void articulos_categoria_no_valida_es_400() {
+        long eventoId = crearEvento("Precio articulo IT categoria invalida", LocalDate.of(2026, 9, 25), false);
+        http.get().uri("/api/v1/precio-bebida/eventos/" + eventoId + "/articulos/ALCOHOL")
+                .header(AUTHORIZATION, "Bearer " + token())
+                .exchange().expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.codigo").isEqualTo("CATEGORIA_ARTICULO_NO_VALIDA");
+    }
+
+    @Test
+    void guardar_precio_articulo_sin_admin_es_403() {
+        long eventoId = crearEvento("Precio articulo IT sin admin", LocalDate.of(2026, 9, 25), false);
+        String tok = token();
+        long tiendaId = idDeTienda(articulos(eventoId, "REFRESCOS", tok), "Alcampo");
+
+        http.put().uri("/api/v1/precio-bebida/eventos/" + eventoId + "/articulos/REFRESCOS/precio")
+                .header(AUTHORIZATION, "Bearer " + tok)
+                .body(Map.of("nombreArticulo", "Coca-Cola", "tiendaId", tiendaId, "precio", 1.2))
+                .exchange().expectStatus().isForbidden()
+                .expectBody().jsonPath("$.codigo").isEqualTo("SIN_PERMISO");
+    }
+
+    @Test
+    void guardar_precio_articulo_admin_lo_refleja_y_precio_null_lo_borra() {
+        long eventoId = crearEvento("Precio articulo IT admin", LocalDate.of(2026, 9, 25), false);
+        String admin = token(RolMembresia.ADMIN);
+        long tiendaId = idDeTienda(articulos(eventoId, "REFRESCOS", admin), "Alcampo");
+
+        http.put().uri("/api/v1/precio-bebida/eventos/" + eventoId + "/articulos/REFRESCOS/precio")
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("nombreArticulo", "Coca-Cola", "tiendaId", tiendaId, "precio", 1.2))
+                .exchange().expectStatus().isNoContent();
+
+        assertThat(precioArticuloDe(articulos(eventoId, "REFRESCOS", admin), "Coca-Cola", tiendaId)).isEqualTo(1.2);
+
+        Map<String, Object> body = new java.util.HashMap<>();
+        body.put("nombreArticulo", "Coca-Cola");
+        body.put("tiendaId", tiendaId);
+        body.put("precio", null);
+        http.put().uri("/api/v1/precio-bebida/eventos/" + eventoId + "/articulos/REFRESCOS/precio")
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(body)
+                .exchange().expectStatus().isNoContent();
+
+        assertThat(precioArticuloDe(articulos(eventoId, "REFRESCOS", admin), "Coca-Cola", tiendaId)).isNull();
+    }
+
+    @Test
+    void guardar_precio_articulo_con_nombre_no_valido_es_400() {
+        long eventoId = crearEvento("Precio articulo IT nombre invalido", LocalDate.of(2026, 9, 25), false);
+        String admin = token(RolMembresia.ADMIN);
+        long tiendaId = idDeTienda(articulos(eventoId, "REFRESCOS", admin), "Alcampo");
+
+        http.put().uri("/api/v1/precio-bebida/eventos/" + eventoId + "/articulos/REFRESCOS/precio")
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("nombreArticulo", "Bebida inventada", "tiendaId", tiendaId, "precio", 1.2))
+                .exchange().expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.codigo").isEqualTo("NOMBRE_ARTICULO_NO_VALIDO");
+    }
 }

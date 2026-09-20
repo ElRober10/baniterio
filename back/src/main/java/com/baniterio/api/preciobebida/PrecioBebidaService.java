@@ -4,7 +4,11 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import com.baniterio.api.admin.SinPermisoException;
+import java.util.LinkedHashSet;
+
 import com.baniterio.api.auth.ServicioPermisos;
+import com.baniterio.api.compra.LineaCompraEvento;
+import com.baniterio.api.compra.LineaCompraEventoRepository;
 import com.baniterio.api.compra.OptimizadorPrecioBebida;
 import com.baniterio.api.evento.BebidaNoEncontradaException;
 import com.baniterio.api.evento.EventoNoEncontradoException;
@@ -16,11 +20,17 @@ import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
 import com.baniterio.api.identidad.PenaPilotoService;
 import com.baniterio.api.identidad.TipoBebida;
+import com.baniterio.api.inventario.ArticuloInventario;
+import com.baniterio.api.inventario.ArticuloInventarioRepository;
+import com.baniterio.api.inventario.CategoriaInventario;
 import com.baniterio.api.preciobebida.dto.AnadirTamanoRequest;
 import com.baniterio.api.preciobebida.dto.CrearTiendaRequest;
 import com.baniterio.api.preciobebida.dto.EventoPrecioBebidaDto;
 import com.baniterio.api.preciobebida.dto.GrillaAlcoholResponse;
+import com.baniterio.api.preciobebida.dto.GrillaArticuloResponse;
+import com.baniterio.api.preciobebida.dto.GuardarPrecioArticuloRequest;
 import com.baniterio.api.preciobebida.dto.GuardarPrecioRequest;
+import com.baniterio.api.preciobebida.dto.PrecioArticuloCeldaDto;
 import com.baniterio.api.preciobebida.dto.PrecioCeldaDto;
 import com.baniterio.api.preciobebida.dto.TiendaDto;
 import org.springframework.stereotype.Service;
@@ -43,17 +53,25 @@ public class PrecioBebidaService {
     private final TamanoPrecioBebidaEventoRepository tamanos;
     private final PrecioBebidaEventoRepository precios;
     private final BebidaRepository bebidas;
+    private final PrecioArticuloEventoRepository precioArticulo;
+    private final ArticuloInventarioRepository articulosInventario;
+    private final LineaCompraEventoRepository lineasCompra;
     private final ServicioPermisos permisos;
 
     public PrecioBebidaService(EventoRepository eventos, PenaPilotoService pena, TiendaRepository tiendas,
             TamanoPrecioBebidaEventoRepository tamanos, PrecioBebidaEventoRepository precios,
-            BebidaRepository bebidas, ServicioPermisos permisos) {
+            BebidaRepository bebidas, PrecioArticuloEventoRepository precioArticulo,
+            ArticuloInventarioRepository articulosInventario, LineaCompraEventoRepository lineasCompra,
+            ServicioPermisos permisos) {
         this.eventos = eventos;
         this.pena = pena;
         this.tiendas = tiendas;
         this.tamanos = tamanos;
         this.precios = precios;
         this.bebidas = bebidas;
+        this.precioArticulo = precioArticulo;
+        this.articulosInventario = articulosInventario;
+        this.lineasCompra = lineasCompra;
         this.permisos = permisos;
     }
 
@@ -183,5 +201,87 @@ public class PrecioBebidaService {
         tamanos.save(TamanoPrecioBebidaEvento.builder().evento(evento).tamano(tamano).orden(orden).build());
         return ordenarTamanos(tamanos.findByEventoIdOrderByOrdenAscIdAsc(eventoId).stream()
                 .map(TamanoPrecioBebidaEvento::getTamano).toList());
+    }
+
+    // --- Rejilla de artículos sin tamaños (refrescos, cerveza, limpieza, comida) ------------
+
+    /** Un nombre de artículo de una sección, con su categoría real de inventario (para guardar/buscar precio). */
+    private record NombreArticulo(String nombre, CategoriaInventario categoriaReal) {
+    }
+
+    /**
+     * El catálogo de nombres de una sección. "CERVEZA" mezcla a propósito el
+     * "Tinto de verano" (categoría real REFRESCOS en el inventario/lista de la
+     * compra) porque en la ficha de bebida se elige junto a la cerveza como
+     * alternativa al alcohol.
+     */
+    private List<NombreArticulo> nombresDe(Long eventoId, String seccion) {
+        return switch (seccion) {
+            case "REFRESCOS" -> bebidas.findByTipoAndEstadoOrderByNombreAsc(TipoBebida.REFRESCO, EstadoBebida.ACEPTADA)
+                    .stream().map(b -> new NombreArticulo(b.getNombre(), CategoriaInventario.REFRESCOS)).toList();
+            case "CERVEZA" -> List.of(
+                    new NombreArticulo("Cerveza", CategoriaInventario.CERVEZA),
+                    new NombreArticulo("Cerveza sin alcohol", CategoriaInventario.CERVEZA),
+                    new NombreArticulo("Cerveza sin gluten", CategoriaInventario.CERVEZA),
+                    new NombreArticulo("Tinto de verano", CategoriaInventario.REFRESCOS));
+            case "LIMPIEZA" -> nombresCatalogoYLista(eventoId, CategoriaInventario.LIMPIEZA, true);
+            case "COMIDA" -> nombresCatalogoYLista(eventoId, CategoriaInventario.COMIDA, false);
+            default -> throw new CategoriaArticuloNoValidaException();
+        };
+    }
+
+    /**
+     * Nombres de una categoría de inventario: los del catálogo de la peña (si
+     * {@code incluirInventario}) más los que ya haya en la lista de la compra de
+     * este evento para esa categoría, sin duplicar, alfabético.
+     */
+    private List<NombreArticulo> nombresCatalogoYLista(Long eventoId, CategoriaInventario cat,
+                                                        boolean incluirInventario) {
+        LinkedHashSet<String> nombres = new LinkedHashSet<>();
+        if (incluirInventario) {
+            articulosInventario.findByPenaIdOrderByCategoriaAscNombreAsc(penaId()).stream()
+                    .filter(a -> a.getCategoria() == cat).map(ArticuloInventario::getNombre).forEach(nombres::add);
+        }
+        lineasCompra.findByEventoIdOrderByCategoriaAscNombreAsc(eventoId).stream()
+                .filter(l -> l.getCategoria() == cat).map(LineaCompraEvento::getNombre).forEach(nombres::add);
+        return nombres.stream().sorted(String.CASE_INSENSITIVE_ORDER)
+                .map(n -> new NombreArticulo(n, cat)).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public GrillaArticuloResponse articulos(Long usuarioId, Long eventoId, String seccion) {
+        eventoAbierto(eventoId);
+        List<NombreArticulo> catalogo = nombresDe(eventoId, seccion);
+        List<String> nombresList = catalogo.stream().map(NombreArticulo::nombre).toList();
+        List<PrecioArticuloCeldaDto> listaPrecios = nombresList.isEmpty() ? List.of()
+                : precioArticulo.findByEventoIdAndNombreArticuloIn(eventoId, nombresList).stream()
+                        .map(p -> new PrecioArticuloCeldaDto(p.getNombreArticulo(), p.getTienda().getId(), p.getPrecio()))
+                        .toList();
+        boolean puedoEditar = permisos.esAdministrador(usuarioId);
+        return new GrillaArticuloResponse(puedoEditar, tiendas(), nombresList, listaPrecios);
+    }
+
+    @Transactional
+    public void guardarPrecioArticulo(Long usuarioId, Long eventoId, String seccion, GuardarPrecioArticuloRequest req) {
+        exigirAdmin(usuarioId);
+        Evento evento = eventoAbierto(eventoId);
+        NombreArticulo articulo = nombresDe(eventoId, seccion).stream()
+                .filter(n -> n.nombre().equals(req.nombreArticulo()))
+                .findFirst().orElseThrow(NombreArticuloNoValidoException::new);
+        Tienda tienda = tiendas.findById(req.tiendaId())
+                .filter(t -> t.getPena().getId().equals(penaId()))
+                .orElseThrow(TiendaNoEncontradaException::new);
+
+        var existente = precioArticulo.findByEventoIdAndCategoriaAndNombreArticuloAndTiendaId(
+                eventoId, articulo.categoriaReal(), articulo.nombre(), tienda.getId());
+        BigDecimal precio = req.precio();
+        if (precio == null) {
+            existente.ifPresent(precioArticulo::delete);
+            return;
+        }
+        PrecioArticuloEvento fila = existente.orElseGet(() -> PrecioArticuloEvento.builder()
+                .evento(evento).categoria(articulo.categoriaReal()).nombreArticulo(articulo.nombre()).tienda(tienda).build());
+        fila.setPrecio(precio);
+        precioArticulo.save(fila);
     }
 }

@@ -28,6 +28,7 @@ import { PrecioBebidasAnios } from './panel/precio-bebidas/anios/precio-bebidas-
 import { PrecioBebidasEventos } from './panel/precio-bebidas/eventos/precio-bebidas-eventos';
 import { PrecioBebidaEvento } from './panel/precio-bebidas/evento/precio-bebida-evento';
 import { PrecioBebidaAlcohol } from './panel/precio-bebidas/alcohol/precio-bebida-alcohol';
+import { PrecioArticulo } from './panel/precio-bebidas/articulo/precio-articulo';
 import { perfilCompletoGuard } from './panel/miembros/perfil-completo.guard';
 import { Registro } from './auth/registro/registro';
 import { SolicitarAcceso } from './auth/solicitar-acceso/solicitar-acceso';
@@ -82,6 +83,11 @@ export const routes: Routes = [
       {
         path: 'precio-bebidas/:anio/:id/alcohol',
         component: PrecioBebidaAlcohol,
+        canActivate: [perfilCompletoGuard],
+      },
+      {
+        path: 'precio-bebidas/:anio/:id/articulos/:categoria',
+        component: PrecioArticulo,
         canActivate: [perfilCompletoGuard],
       },
       // Índice de administración: sin areaGuard (cualquier miembro lo abre); solo

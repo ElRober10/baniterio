@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { EventoPrecioBebida, GrillaAlcohol, Tienda } from './precio-bebida.types';
+import { EventoPrecioBebida, GrillaAlcohol, GrillaArticulo, Tienda } from './precio-bebida.types';
 
 /** Llamadas de la sección Precio bebidas. */
 @Injectable({ providedIn: 'root' })
@@ -37,5 +37,22 @@ export class PrecioBebidaService {
     return this.http.post<string[]>(`${this.base}/precio-bebida/eventos/${eventoId}/alcohol/tamanos`, {
       tamano,
     });
+  }
+
+  articulos(eventoId: number, categoria: string): Observable<GrillaArticulo> {
+    return this.http.get<GrillaArticulo>(
+      `${this.base}/precio-bebida/eventos/${eventoId}/articulos/${categoria}`,
+    );
+  }
+
+  guardarPrecioArticulo(
+    eventoId: number,
+    categoria: string,
+    body: { nombreArticulo: string; tiendaId: number; precio: number | null },
+  ): Observable<void> {
+    return this.http.put<void>(
+      `${this.base}/precio-bebida/eventos/${eventoId}/articulos/${categoria}/precio`,
+      body,
+    );
   }
 }

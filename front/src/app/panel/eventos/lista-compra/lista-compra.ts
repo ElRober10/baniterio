@@ -1,4 +1,4 @@
-import { DecimalPipe } from '@angular/common';
+import { DecimalPipe, LowerCasePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Volver } from '../../../shared/volver/volver';
@@ -13,7 +13,7 @@ import { CategoriaListaCompra, LineaCompra } from './lista-compra.types';
  */
 @Component({
   selector: 'app-lista-compra',
-  imports: [Volver, RouterLink, DecimalPipe],
+  imports: [Volver, RouterLink, DecimalPipe, LowerCasePipe],
   templateUrl: './lista-compra.html',
   styleUrl: './lista-compra.css',
 })
@@ -106,6 +106,11 @@ export class ListaCompra implements OnInit {
         this.estado.set('error');
       },
     });
+  }
+
+  /** Si alguna línea de la categoría tiene precio, se pintan las columnas de precio/total. */
+  protected tienePrecios(cat: CategoriaListaCompra): boolean {
+    return cat.lineas.some((l) => l.precioUnitario != null);
   }
 
   /** Suma cantidad × precio unitario de las líneas de la categoría que tengan precio. */

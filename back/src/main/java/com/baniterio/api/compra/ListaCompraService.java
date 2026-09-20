@@ -40,6 +40,8 @@ import com.baniterio.api.inventario.CategoriaInventario;
 import com.baniterio.api.inventario.SinPermisoInventarioException;
 import com.baniterio.api.compra.OptimizadorPrecioBebida.ItemCompra;
 import com.baniterio.api.compra.OptimizadorPrecioBebida.OpcionPrecio;
+import com.baniterio.api.preciobebida.PrecioArticuloEvento;
+import com.baniterio.api.preciobebida.PrecioArticuloEventoRepository;
 import com.baniterio.api.preciobebida.PrecioBebidaEvento;
 import com.baniterio.api.preciobebida.PrecioBebidaEventoRepository;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -71,6 +73,7 @@ public class ListaCompraService {
     private final AsistenciaEventoRepository asistencias;
     private final FichaBebidaRepository fichas;
     private final PrecioBebidaEventoRepository preciosBebida;
+    private final PrecioArticuloEventoRepository preciosArticulo;
     private final PenaPilotoService pena;
     private final ServicioPermisos permisos;
 
@@ -78,6 +81,7 @@ public class ListaCompraService {
                               LineaCompraEventoRepository lineas, ArticuloEventoRepository articulosEvento,
                               EventoRepository eventos, AsistenciaEventoRepository asistencias,
                               FichaBebidaRepository fichas, PrecioBebidaEventoRepository preciosBebida,
+                              PrecioArticuloEventoRepository preciosArticulo,
                               PenaPilotoService pena, ServicioPermisos permisos) {
         this.plantilla = plantilla;
         this.reglasEvento = reglasEvento;
@@ -87,6 +91,7 @@ public class ListaCompraService {
         this.asistencias = asistencias;
         this.fichas = fichas;
         this.preciosBebida = preciosBebida;
+        this.preciosArticulo = preciosArticulo;
         this.pena = pena;
         this.permisos = permisos;
     }
@@ -248,6 +253,24 @@ public class ListaCompraService {
     }
 
     /**
+     * Precios de artículos sin tamaños (refrescos, cerveza/tinto de verano,
+     * limpieza, comida) del evento, agrupados por categoría+nombre.
+     */
+    private Map<String, List<PrecioArticuloEvento>> preciosPorArticulo(Long eventoId) {
+        Map<String, List<PrecioArticuloEvento>> out = new LinkedHashMap<>();
+        for (PrecioArticuloEvento p : preciosArticulo.findByEventoId(eventoId)) {
+            out.computeIfAbsent(claveNombre(p.getCategoria(), p.getNombreArticulo()), k -> new ArrayList<>()).add(p);
+        }
+        return out;
+    }
+
+    /** La tienda más barata para un artículo con precios metidos, o null si no hay ninguno. */
+    private PrecioArticuloEvento masBarata(List<PrecioArticuloEvento> opciones) {
+        return opciones == null || opciones.isEmpty() ? null
+                : opciones.stream().min(java.util.Comparator.comparing(PrecioArticuloEvento::getPrecio)).orElseThrow();
+    }
+
+    /**
      * Todas las líneas que el cálculo produce ahora mismo para el evento (bloque 2:
      * resta el stock ya cubierto). Lo que sobra tras restar se redondea siempre
      * hacia arriba a una unidad entera (no se compran fracciones de rollo, litro o
@@ -259,6 +282,7 @@ public class ListaCompraService {
                 .filter(ReglaCompraEvento::isActiva).toList();
         StockCubierto stock = stockCubierto(eventoId);
         Map<String, List<OpcionPrecio>> precios = preciosPorMarca(eventoId);
+        Map<String, List<PrecioArticuloEvento>> preciosArt = preciosPorArticulo(eventoId);
         List<LineaCalc> out = new ArrayList<>();
         for (ReglaCompraEvento r : activas) {
             for (LineaCalculada lc : CalculadoraListaCompra.lineasDe(r, datos)) {
@@ -275,7 +299,16 @@ public class ListaCompraService {
                                     clave(r.getCategoria(), lc.nombre(), lc.tamano()), BigDecimal.ZERO);
                     BigDecimal restante = lc.bruto().subtract(cubierto).max(BigDecimal.ZERO);
                     BigDecimal cantidad = restante.signum() > 0 ? CalculadoraListaCompra.ceil(restante) : BigDecimal.ZERO;
-                    out.add(new LineaCalc(r.getCategoria(), lc.nombre(), lc.tamano(), null, null,
+                    String tienda = null;
+                    BigDecimal precioUnitario = null;
+                    if (cantidad.signum() > 0) {
+                        PrecioArticuloEvento barata = masBarata(preciosArt.get(claveNombre(r.getCategoria(), lc.nombre())));
+                        if (barata != null) {
+                            tienda = barata.getTienda().getNombre();
+                            precioUnitario = barata.getPrecio();
+                        }
+                    }
+                    out.add(new LineaCalc(r.getCategoria(), lc.nombre(), lc.tamano(), tienda, precioUnitario,
                             cantidad, r.getOrden(), lc.dinamica(), lc.necesitaFicha(), false));
                 }
             }

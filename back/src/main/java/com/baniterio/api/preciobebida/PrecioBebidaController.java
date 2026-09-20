@@ -7,6 +7,8 @@ import com.baniterio.api.preciobebida.dto.AnadirTamanoRequest;
 import com.baniterio.api.preciobebida.dto.CrearTiendaRequest;
 import com.baniterio.api.preciobebida.dto.EventoPrecioBebidaDto;
 import com.baniterio.api.preciobebida.dto.GrillaAlcoholResponse;
+import com.baniterio.api.preciobebida.dto.GrillaArticuloResponse;
+import com.baniterio.api.preciobebida.dto.GuardarPrecioArticuloRequest;
 import com.baniterio.api.preciobebida.dto.GuardarPrecioRequest;
 import com.baniterio.api.preciobebida.dto.TiendaDto;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -73,5 +75,24 @@ public class PrecioBebidaController {
     public List<String> anadirTamano(@AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable Long eventoId, @Valid @RequestBody AnadirTamanoRequest req) {
         return service.anadirTamano(principal.id(), eventoId, req);
+    }
+
+    /**
+     * Rejilla de precios de una sección sin tamaños: "refrescos", "cerveza",
+     * "limpieza" o "comida" (en mayúsculas).
+     */
+    @GetMapping("/eventos/{eventoId}/articulos/{categoria}")
+    public GrillaArticuloResponse articulos(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long eventoId, @PathVariable String categoria) {
+        return service.articulos(principal.id(), eventoId, categoria.toUpperCase());
+    }
+
+    /** Guarda (o borra, con precio null) una celda de la rejilla de artículos. Solo admin. */
+    @PutMapping("/eventos/{eventoId}/articulos/{categoria}/precio")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void guardarPrecioArticulo(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long eventoId, @PathVariable String categoria,
+            @Valid @RequestBody GuardarPrecioArticuloRequest req) {
+        service.guardarPrecioArticulo(principal.id(), eventoId, categoria.toUpperCase(), req);
     }
 }

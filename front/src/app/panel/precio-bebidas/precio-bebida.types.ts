@@ -31,3 +31,16 @@ export interface GrillaAlcohol {
   bebidas: BebidaRef[];
   precios: PrecioCelda[];
 }
+
+export interface PrecioArticuloCelda {
+  nombreArticulo: string;
+  tiendaId: number;
+  precio: number | null;
+}
+
+export interface GrillaArticulo {
+  puedoEditar: boolean;
+  tiendas: Tienda[];
+  articulos: string[];
+  precios: PrecioArticuloCelda[];
+}

@@ -55,7 +55,7 @@
                     <th class="pb-1 pr-4">Artículo</th>
                     <th class="pb-1 pr-4">Tamaño</th>
                     <th class="pb-1 pr-4 text-right">Cantidad</th>
-                    @if (cat.categoria === 'ALCOHOL') {
+                    @if (tienePrecios(cat)) {
                       <th class="pb-1 pr-4 text-right">Precio ud.</th>
                       <th class="pb-1 pr-4 text-right">Total est.</th>
                     }
@@ -97,7 +97,7 @@
                           {{ l.cantidad }}
                         }
                       </td>
-                      @if (cat.categoria === 'ALCOHOL') {
+                      @if (tienePrecios(cat)) {
                         <td class="py-1 pr-4 text-right">
                           {{ l.precioUnitario != null ? (l.precioUnitario | number: '1.2-2') + ' €' : '—' }}
                         </td>
@@ -163,9 +163,9 @@
                 </tbody>
               </table>
             </div>
-            @if (cat.categoria === 'ALCOHOL') {
+            @if (tienePrecios(cat)) {
               <p class="mt-3 text-right text-sm font-semibold text-gold-soft">
-                Gasto estimado en alcohol: {{ totalEstimado(cat) | number: '1.2-2' }} €
+                Gasto estimado en {{ cat.etiqueta | lowercase }}: {{ totalEstimado(cat) | number: '1.2-2' }} €
               </p>
             }
           </article>
