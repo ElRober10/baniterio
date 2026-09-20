@@ -1,4 +1,4 @@
-﻿package com.baniterio.api.compra;
+package com.baniterio.api.compra;
 
 import java.math.BigDecimal;
 import java.time.temporal.ChronoUnit;
