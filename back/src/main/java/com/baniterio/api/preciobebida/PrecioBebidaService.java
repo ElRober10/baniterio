@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.baniterio.api.admin.SinPermisoException;
 import com.baniterio.api.auth.ServicioPermisos;
+import com.baniterio.api.compra.OptimizadorPrecioBebida;
 import com.baniterio.api.evento.BebidaNoEncontradaException;
 import com.baniterio.api.evento.EventoNoEncontradoException;
 import com.baniterio.api.evento.dto.BebidaRef;
@@ -58,6 +59,14 @@ public class PrecioBebidaService {
 
     private Long penaId() {
         return pena.id();
+    }
+
+    /** De más pequeño a más grande; los que no se reconocen van al final, en su orden original. */
+    private List<String> ordenarTamanos(List<String> lista) {
+        return lista.stream()
+                .sorted(java.util.Comparator.comparing(
+                        t -> OptimizadorPrecioBebida.parseCl(t).orElse(Integer.MAX_VALUE)))
+                .toList();
     }
 
     private void exigirAdmin(Long usuarioId) {
@@ -121,8 +130,8 @@ public class PrecioBebidaService {
         materializarTamanos(eventoId);
 
         List<TiendaDto> listaTiendas = tiendas();
-        List<String> listaTamanos = tamanos.findByEventoIdOrderByOrdenAscIdAsc(eventoId).stream()
-                .map(TamanoPrecioBebidaEvento::getTamano).toList();
+        List<String> listaTamanos = ordenarTamanos(tamanos.findByEventoIdOrderByOrdenAscIdAsc(eventoId).stream()
+                .map(TamanoPrecioBebidaEvento::getTamano).toList());
         List<BebidaRef> listaBebidas = bebidas.findByTipoAndEstadoOrderByNombreAsc(TipoBebida.ALCOHOL, EstadoBebida.ACEPTADA)
                 .stream().map(b -> new BebidaRef(b.getId(), b.getNombre())).toList();
         List<PrecioCeldaDto> listaPrecios = precios.findByEventoId(eventoId).stream()
@@ -172,7 +181,7 @@ public class PrecioBebidaService {
         int orden = tamanos.findByEventoIdOrderByOrdenAscIdAsc(eventoId).stream()
                 .mapToInt(TamanoPrecioBebidaEvento::getOrden).max().orElse(0) + 1;
         tamanos.save(TamanoPrecioBebidaEvento.builder().evento(evento).tamano(tamano).orden(orden).build());
-        return tamanos.findByEventoIdOrderByOrdenAscIdAsc(eventoId).stream()
-                .map(TamanoPrecioBebidaEvento::getTamano).toList();
+        return ordenarTamanos(tamanos.findByEventoIdOrderByOrdenAscIdAsc(eventoId).stream()
+                .map(TamanoPrecioBebidaEvento::getTamano).toList());
     }
 }

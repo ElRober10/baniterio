@@ -29,5 +29,8 @@ back/config/*
 # Fotos de perfil subidas (volumen de media local)
 media-baniterio/
 
+# Datos de despliegue en producción (secretos VPS, credenciales)
+docs/despliegue/*.local.md
+
 # Chuleta personal de comandos (notas de aprendizaje)
 COMANDOS.md

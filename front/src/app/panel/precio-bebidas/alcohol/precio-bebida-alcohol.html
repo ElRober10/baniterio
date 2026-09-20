@@ -65,7 +65,7 @@
                 @for (b of bebidas(); track trackBebida($index, b)) {
                   <tr class="border-t border-outline/30">
                     <td class="py-1.5 pr-4">{{ b.nombre }}</td>
-                    @for (t of tiendas(); track trackTienda($index, t)) {
+                    @for (t of tiendas(); track trackCelda($index, t)) {
                       <td class="py-1.5 pr-4 text-right">
                         @if (puedoEditar()) {
                           <input

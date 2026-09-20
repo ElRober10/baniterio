@@ -44,7 +44,7 @@ export class PrecioBebidaAlcohol implements OnInit {
         this.tamanos.set(g.tamanos);
         this.bebidas.set(g.bebidas);
         this.precios.set(g.precios);
-        if (!this.tamanos().includes(this.tamanoActivo())) {
+        if (!g.tamanos.includes(this.tamanoActivo())) {
           this.tamanoActivo.set(g.tamanos[0] ?? '');
         }
         this.estado.set('listo');
@@ -103,4 +103,6 @@ export class PrecioBebidaAlcohol implements OnInit {
   protected trackTamano = (_: number, t: string) => t;
   protected trackTienda = (_: number, t: Tienda) => t.id;
   protected trackBebida = (_: number, b: BebidaRef) => b.id;
+  /** Incluye el tamaño activo para forzar recrear el <input> al cambiar de pestaña y que no arrastre el valor anterior. */
+  protected trackCelda = (_: number, t: Tienda) => `${t.id}:${this.tamanoActivo()}`;
 }
