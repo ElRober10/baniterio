@@ -189,6 +189,52 @@ describe('ListaCompra', () => {
     http.verify();
   });
 
+  it('en el alcohol el desplegable se abre desde el tamaño, no desde la cantidad', () => {
+    const { fixture, http } = montar();
+    fixture.detectChanges();
+    http.expectOne(`${base}/eventos/7/lista-compra`).flush({
+      puedoEditar: true,
+      llevaFicha: true,
+      bloqueada: true,
+      apuntados: 4,
+      diasFiesta: 2,
+      categorias: [
+        {
+          categoria: 'ALCOHOL',
+          etiqueta: 'Alcohol',
+          lineas: [
+            {
+              id: 3,
+              nombre: 'Barceló',
+              tamano: '70 cl',
+              cantidad: 7,
+              cantidadCalculada: 7,
+              ajustada: false,
+              dinamica: true,
+              necesitaFicha: false,
+              comprada: false,
+              info: {
+                personas: 7,
+                stock: 0,
+                tamanos: [{ tamano: '1.75', tienda: 'Amazon', precio: 33.3, precioLitro: 19.03 }],
+              },
+            },
+          ],
+        },
+      ],
+    });
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(el.querySelector('[aria-label="Ajustar cantidad"]')).toBeNull();
+    (el.querySelector('[aria-label="Cambiar tamaño"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('1.75');
+    expect(el.textContent).toContain('19.03');
+    http.verify();
+  });
+
   it('sin la lista bloqueada no se ofrece "Ajustar"', () => {
     const { fixture, http } = montar();
     fixture.detectChanges();

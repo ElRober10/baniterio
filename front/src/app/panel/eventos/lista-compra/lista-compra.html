@@ -77,7 +77,19 @@
                         }
                       </td>
                       <td class="py-1 pr-4">
-                        {{ l.tamano }}
+                        @if (puedeAjustar(l) && l.info) {
+                          <button
+                            type="button"
+                            aria-label="Cambiar tamaño"
+                            [disabled]="ocupado()"
+                            (click)="alternarEdicion(l)"
+                            class="rounded-lg border border-dashed border-outline px-2 py-0.5 hover:border-gold hover:text-gold disabled:opacity-50"
+                          >
+                            {{ l.tamano }} ▾
+                          </button>
+                        } @else {
+                          {{ l.tamano }}
+                        }
                         @if (l.tienda) {
                           <span class="text-xs text-muted">· {{ l.tienda }}</span>
                         }
@@ -86,7 +98,7 @@
                         }
                       </td>
                       <td class="py-1 pr-4 text-right font-semibold">
-                        @if (bloqueada() && puedoEditar() && !l.comprada) {
+                        @if (puedeAjustar(l) && !l.info) {
                           <button
                             type="button"
                             aria-label="Ajustar cantidad"

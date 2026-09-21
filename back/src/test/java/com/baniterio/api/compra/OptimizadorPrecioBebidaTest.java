@@ -22,6 +22,9 @@ class OptimizadorPrecioBebidaTest {
         assertThat(OptimizadorPrecioBebida.parseCl("1 L")).contains(100);
         assertThat(OptimizadorPrecioBebida.parseCl("1.75 L")).contains(175);
         assertThat(OptimizadorPrecioBebida.parseCl("1,75L")).contains(175);
+        assertThat(OptimizadorPrecioBebida.parseCl("1.75")).contains(175);
+        assertThat(OptimizadorPrecioBebida.parseCl("2L")).contains(200);
+        assertThat(OptimizadorPrecioBebida.parseCl("1.5L")).contains(150);
         assertThat(OptimizadorPrecioBebida.parseCl("3 litros")).isEmpty();
         assertThat(OptimizadorPrecioBebida.parseCl(null)).isEmpty();
     }
@@ -77,5 +80,43 @@ class OptimizadorPrecioBebidaTest {
         Optional<List<ItemCompra>> resultado = OptimizadorPrecioBebida.combinacionMasBarata(70, opciones);
 
         assertThat(resultado).contains(List.of(new ItemCompra("70 cl", "Mercadona", 1, BigDecimal.valueOf(10.0))));
+    }
+
+    @Test
+    void barcelo_de_siete_personas_490_cl_dos_de_1_75_y_dos_de_70() {
+        // Precios reales de San Miguel 2026 (tienda más barata de cada tamaño).
+        List<OpcionPrecio> opciones = List.of(
+                opcion("70 cl", 70, "Alcampo", 14.99),
+                opcion("1 L", 100, "Makro", 21.18),
+                opcion("1.75", 175, "Amazon", 33.30));
+
+        Optional<List<ItemCompra>> resultado = OptimizadorPrecioBebida.combinacionMasBarata(490, opciones);
+
+        // 2 x 1,75 L + 2 x 70 cl = 490 cl exactos por 96,58 €; 7 x 70 cl cuesta 104,93 y 5 x 1 L 105,90.
+        assertThat(resultado).isPresent();
+        assertThat(resultado.get()).containsExactlyInAnyOrder(
+                new ItemCompra("1.75", "Amazon", 2, BigDecimal.valueOf(33.30)),
+                new ItemCompra("70 cl", "Alcampo", 2, BigDecimal.valueOf(14.99)));
+    }
+
+    @Test
+    void no_se_pasa_mas_de_40_cl_si_hay_una_combinacion_dentro_del_margen() {
+        // Objetivo 100 cl: la de 175 cl (barata) se pasa 75 cl; 2 x 70 = 140 cl se pasa 40 cl (justo el margen).
+        List<OpcionPrecio> opciones = List.of(
+                opcion("70 cl", 70, "A", 10),
+                opcion("1.75", 175, "A", 12));
+
+        Optional<List<ItemCompra>> resultado = OptimizadorPrecioBebida.combinacionMasBarata(100, opciones);
+
+        assertThat(resultado).contains(List.of(new ItemCompra("70 cl", "A", 2, BigDecimal.valueOf(10.0))));
+    }
+
+    @Test
+    void si_nada_cabe_en_el_margen_se_pasa_lo_minimo_necesario() {
+        List<OpcionPrecio> opciones = List.of(opcion("1.75", 175, "A", 12));
+
+        Optional<List<ItemCompra>> resultado = OptimizadorPrecioBebida.combinacionMasBarata(100, opciones);
+
+        assertThat(resultado).contains(List.of(new ItemCompra("1.75", "A", 1, BigDecimal.valueOf(12.0))));
     }
 }

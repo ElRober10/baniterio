@@ -91,6 +91,11 @@ export class ListaCompra implements OnInit {
     return precios.length > 0 ? Math.min(...precios) : null;
   }
 
+  /** Con la lista bloqueada, el admin puede ajustar las líneas aún sin comprar. */
+  protected puedeAjustar(l: LineaCompra): boolean {
+    return this.bloqueada() && this.puedoEditar() && !l.comprada;
+  }
+
   /** Pulsar la cantidad abre (o cierra) el desplegable de ajuste de esa línea. */
   protected alternarEdicion(l: LineaCompra): void {
     if (this.editandoId() === l.id) {
