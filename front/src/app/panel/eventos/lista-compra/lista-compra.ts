@@ -87,6 +87,12 @@ export class ListaCompra implements OnInit {
     this.cantidadEditada.set(l.cantidad);
   }
 
+  /** Botones − / + del desplegable de cantidad. */
+  protected sumarEdicion(delta: number): void {
+    const actual = this.cantidadEditada() ?? 0;
+    this.cantidadEditada.set(Math.max(0, actual + delta));
+  }
+
   protected cancelarEdicion(): void {
     this.editandoId.set(null);
     this.cantidadEditada.set(null);

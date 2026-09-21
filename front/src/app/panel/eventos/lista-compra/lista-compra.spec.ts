@@ -165,7 +165,7 @@ describe('ListaCompra', () => {
     const el = fixture.nativeElement as HTMLElement;
 
     const botones = Array.from(el.querySelectorAll('button'));
-    botones.find((b) => b.textContent?.includes('Ajustar'))!.click();
+    botones.find((b) => b.getAttribute('aria-label') === 'Ajustar cantidad')!.click();
     fixture.detectChanges();
 
     const input = el.querySelector('input[type="number"]') as HTMLInputElement;
@@ -219,7 +219,7 @@ describe('ListaCompra', () => {
       ],
     });
     fixture.detectChanges();
-    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Ajustar');
+    expect((fixture.nativeElement as HTMLElement).querySelector('[aria-label="Ajustar cantidad"]')).toBeNull();
     http.verify();
   });
 

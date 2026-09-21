@@ -87,15 +87,63 @@
                       </td>
                       <td class="py-1 pr-4 text-right font-semibold">
                         @if (editandoId() === l.id) {
-                          <input
-                            type="number"
-                            aria-label="Cantidad"
-                            min="0"
-                            step="0.1"
-                            [value]="cantidadEditada()"
-                            (input)="cantidadEditada.set($any($event.target).valueAsNumber)"
-                            class="w-20 rounded border border-outline bg-transparent px-1 py-0.5 text-right"
-                          />
+                          <div class="flex flex-col items-end gap-1">
+                            <div class="flex items-center gap-1">
+                              <button
+                                type="button"
+                                aria-label="Restar uno"
+                                (click)="sumarEdicion(-1)"
+                                class="h-7 w-7 rounded-lg border border-outline hover:border-gold hover:text-gold"
+                              >
+                                −
+                              </button>
+                              <input
+                                type="number"
+                                aria-label="Cantidad"
+                                min="0"
+                                step="1"
+                                [value]="cantidadEditada()"
+                                (input)="cantidadEditada.set($any($event.target).valueAsNumber)"
+                                class="w-16 rounded border border-outline bg-transparent px-1 py-0.5 text-right"
+                              />
+                              <button
+                                type="button"
+                                aria-label="Sumar uno"
+                                (click)="sumarEdicion(1)"
+                                class="h-7 w-7 rounded-lg border border-outline hover:border-gold hover:text-gold"
+                              >
+                                +
+                              </button>
+                            </div>
+                            <div class="flex gap-1">
+                              <button
+                                type="button"
+                                [disabled]="ocupado()"
+                                (click)="guardarEdicion(l)"
+                                class="whitespace-nowrap rounded-lg border border-outline px-2 py-1 text-xs font-medium hover:border-gold hover:text-gold disabled:opacity-50"
+                              >
+                                Guardar
+                              </button>
+                              <button
+                                type="button"
+                                [disabled]="ocupado()"
+                                (click)="cancelarEdicion()"
+                                class="whitespace-nowrap rounded-lg border border-outline px-2 py-1 text-xs font-medium disabled:opacity-50"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        } @else if (bloqueada() && puedoEditar() && !l.comprada) {
+                          <button
+                            type="button"
+                            aria-label="Ajustar cantidad"
+                            [disabled]="ocupado()"
+                            (click)="empezarEdicion(l)"
+                            class="rounded-lg border border-dashed border-outline px-2 py-0.5 font-semibold hover:border-gold hover:text-gold disabled:opacity-50"
+                          >
+                            {{ l.cantidad }} ▾
+                          </button>
                         } @else {
                           {{ l.cantidad }}
                         }
@@ -117,36 +165,9 @@
                           @if (l.comprada) {
                             <span class="text-xs text-gold-soft">✓ Comprada</span>
                           } @else if (editandoId() === l.id) {
-                            <div class="flex justify-end gap-1">
-                              <button
-                                type="button"
-                                [disabled]="ocupado()"
-                                (click)="guardarEdicion(l)"
-                                class="whitespace-nowrap rounded-lg border border-outline px-2 py-1 text-xs font-medium hover:border-gold hover:text-gold disabled:opacity-50"
-                              >
-                                Guardar
-                              </button>
-                              <button
-                                type="button"
-                                [disabled]="ocupado()"
-                                (click)="cancelarEdicion()"
-                                class="whitespace-nowrap rounded-lg border border-outline px-2 py-1 text-xs font-medium disabled:opacity-50"
-                              >
-                                Cancelar
-                              </button>
-                            </div>
+                            <span class="text-xs text-muted">Ajustando…</span>
                           } @else {
                             <div class="flex justify-end gap-1">
-                              @if (bloqueada()) {
-                                <button
-                                  type="button"
-                                  [disabled]="ocupado()"
-                                  (click)="empezarEdicion(l)"
-                                  class="whitespace-nowrap rounded-lg border border-outline px-2 py-1 text-xs font-medium hover:border-gold hover:text-gold disabled:opacity-50"
-                                >
-                                  Ajustar
-                                </button>
-                              }
                               @if (l.cantidad > 0) {
                                 <button
                                   type="button"
