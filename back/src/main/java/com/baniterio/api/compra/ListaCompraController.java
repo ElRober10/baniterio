@@ -59,4 +59,20 @@ public class ListaCompraController {
             @PathVariable Long eventoId, @RequestBody CambiarBloqueoRequest req) {
         service.cambiarBloqueo(principal.id(), eventoId, req.bloqueada());
     }
+
+    /** Quita la modificación a mano de la marca o artículo de una línea y lo recalcula. Área {@code INVENTARIO}. */
+    @PostMapping("/{eventoId}/lista-compra/lineas/{lineaId}/restablecer")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void restablecerLinea(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long eventoId, @PathVariable Long lineaId) {
+        service.restablecerLinea(principal.id(), eventoId, lineaId);
+    }
+
+    /** Quita todas las modificaciones a mano de la lista y recalcula. Área {@code INVENTARIO}. */
+    @PostMapping("/{eventoId}/lista-compra/restablecer")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void restablecerTodo(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long eventoId) {
+        service.restablecerTodo(principal.id(), eventoId);
+    }
 }

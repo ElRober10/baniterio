@@ -32,7 +32,8 @@ export class ListaCompra implements OnInit {
   protected readonly editandoId = signal<number | null>(null);
   protected readonly tamanoEditado = signal('');
   /** Qué se está ajustando de la línea abierta: el tamaño de la botella o la cantidad (dos botones distintos). */
-  protected readonly modoEdicion = signal<'tamano' | 'cantidad'>('cantidad');
+  protected readonly modoEdicion = signal<'tamano' | 'cantidad' | 'tienda'>('cantidad');
+  protected readonly tiendaEditada = signal('');
   /** Tamaños entre los que se puede cambiar una botella cuando la marca aún no tiene precios. */
   protected readonly TAMANOS_BASE = ['70 cl', '1 L'];
   protected readonly cantidadEditada = signal<number | null>(null);
@@ -87,6 +88,43 @@ export class ListaCompra implements OnInit {
     });
   }
 
+  /** Hay alguna línea modificada a mano (para ofrecer el restablecer general). */
+  protected hayModificadas(): boolean {
+    return this.categorias().some((c) => c.lineas.some((l) => l.modificada));
+  }
+
+  protected restablecerLinea(l: LineaCompra): void {
+    if (this.ocupado()) return;
+    this.ocupado.set(true);
+    this.service.restablecerLinea(this.eventoId, l.id).subscribe({
+      next: () => {
+        this.ocupado.set(false);
+        this.cancelarEdicion();
+        this.cargar();
+      },
+      error: () => {
+        this.ocupado.set(false);
+        this.estado.set('error');
+      },
+    });
+  }
+
+  protected restablecerTodo(): void {
+    if (this.ocupado() || !confirm('¿Quitar todas tus modificaciones y volver al cálculo automático?')) return;
+    this.ocupado.set(true);
+    this.service.restablecerTodo(this.eventoId).subscribe({
+      next: () => {
+        this.ocupado.set(false);
+        this.cancelarEdicion();
+        this.cargar();
+      },
+      error: () => {
+        this.ocupado.set(false);
+        this.estado.set('error');
+      },
+    });
+  }
+
   /** El menor precio por litro entre los tamaños de una línea de bebida (para marcar el más barato). */
   protected menorPrecioLitro(l: LineaCompra): number | null {
     const precios = l.info?.tamanos?.map((o) => o.precioLitro) ?? [];
@@ -99,7 +137,7 @@ export class ListaCompra implements OnInit {
   }
 
   /** Pulsar la cantidad abre (o cierra) el desplegable de ajuste de esa línea. */
-  protected alternarEdicion(l: LineaCompra, modo: 'tamano' | 'cantidad'): void {
+  protected alternarEdicion(l: LineaCompra, modo: 'tamano' | 'cantidad' | 'tienda'): void {
     if (this.editandoId() === l.id && this.modoEdicion() === modo) {
       this.cancelarEdicion();
     } else {
@@ -112,6 +150,7 @@ export class ListaCompra implements OnInit {
     this.editandoId.set(l.id);
     this.cantidadEditada.set(l.cantidad);
     this.tamanoEditado.set(l.tamano);
+    this.tiendaEditada.set(l.tienda ?? '');
   }
 
   /** Botones − / + del desplegable de cantidad. */
@@ -126,6 +165,10 @@ export class ListaCompra implements OnInit {
   }
 
   protected guardarEdicion(l: LineaCompra): void {
+    if (this.modoEdicion() === 'tienda') {
+      this.guardarTienda(l);
+      return;
+    }
     // Cada botón ajusta lo suyo: el de tamaño no toca la cantidad y el de cantidad no toca el tamaño.
     const soloTamano = this.modoEdicion() === 'tamano';
     const cantidad = soloTamano ? l.cantidad : this.cantidadEditada();
@@ -138,6 +181,28 @@ export class ListaCompra implements OnInit {
     }
     this.ocupado.set(true);
     this.service.ajustarLinea(this.eventoId, l.id, cantidad, tamano !== l.tamano ? tamano : undefined).subscribe({
+      next: () => {
+        this.ocupado.set(false);
+        this.cancelarEdicion();
+        this.cargar();
+      },
+      error: () => {
+        this.ocupado.set(false);
+        this.estado.set('error');
+      },
+    });
+  }
+
+  /** Cambia dónde se compra la línea (el precio pasa a ser el de esa tienda). */
+  private guardarTienda(l: LineaCompra): void {
+    const tienda = this.tiendaEditada();
+    if (this.ocupado()) return;
+    if (!tienda || tienda === l.tienda) {
+      this.cancelarEdicion();
+      return;
+    }
+    this.ocupado.set(true);
+    this.service.ajustarLinea(this.eventoId, l.id, l.cantidad, undefined, tienda).subscribe({
       next: () => {
         this.ocupado.set(false);
         this.cancelarEdicion();

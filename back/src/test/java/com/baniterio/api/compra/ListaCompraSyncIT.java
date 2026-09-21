@@ -1022,4 +1022,106 @@ class ListaCompraSyncIT extends IntegrationTest {
         assertThat(((Number) info.get("stock")).doubleValue()).isEqualTo(3.0);
         assertThat(info.get("tamanos")).isNull();
     }
+
+    void bloquear(long eventoId, String token, boolean bloqueada) {
+        http.put().uri("/api/v1/eventos/" + eventoId + "/lista-compra/bloqueo")
+                .header(AUTHORIZATION, "Bearer " + token)
+                .body(Map.of("bloqueada", bloqueada)).exchange().expectStatus().isNoContent();
+    }
+
+    void ajustarPlatos(long eventoId, String admin, int cantidad) {
+        long lineaId = idLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin), "LIMPIEZA", "Platos");
+        http.put().uri("/api/v1/eventos/" + eventoId + "/lista-compra/lineas/" + lineaId)
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("cantidad", cantidad)).exchange().expectStatus().isNoContent();
+    }
+
+    @SuppressWarnings("unchecked")
+    boolean lineaModificada(Map<String, Object> body, String categoria, String nombre) {
+        for (Map<String, Object> cat : (List<Map<String, Object>>) body.get("categorias")) {
+            if (!categoria.equals(cat.get("categoria"))) {
+                continue;
+            }
+            for (Map<String, Object> l : (List<Map<String, Object>>) cat.get("lineas")) {
+                if (nombre.equals(l.get("nombre"))) {
+                    return Boolean.TRUE.equals(l.get("modificada"));
+                }
+            }
+        }
+        return false;
+    }
+
+    @Test
+    void lo_modificado_a_mano_sobrevive_al_desbloqueo_y_se_descarta_si_se_apunta_alguien() {
+        long eventoId = crearEventoDeUnDia("Sync IT modificacion persiste");
+        apuntar(eventoId, 10); // Platos: 3 por penista = 30
+        String admin = token(RolMembresia.ADMIN, true);
+        bloquear(eventoId, admin, true);
+        ajustarPlatos(eventoId, admin, 40);
+
+        bloquear(eventoId, admin, false);
+        Map<String, Object> tras = getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin);
+        assertThat(cantidadLinea(tras, "LIMPIEZA", "Platos")).isEqualTo(40.0);
+        assertThat(lineaModificada(tras, "LIMPIEZA", "Platos")).isTrue();
+
+        apuntar(eventoId, 1); // ahora 11 penistas = 33: la necesidad cambio, se recalcula
+        Map<String, Object> despues = getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin);
+        assertThat(cantidadLinea(despues, "LIMPIEZA", "Platos")).isEqualTo(33.0);
+        assertThat(lineaModificada(despues, "LIMPIEZA", "Platos")).isFalse();
+    }
+
+    @Test
+    void restablecer_una_linea_vuelve_al_calculo() {
+        long eventoId = crearEventoDeUnDia("Sync IT restablecer linea");
+        apuntar(eventoId, 10);
+        String admin = token(RolMembresia.ADMIN, true);
+        bloquear(eventoId, admin, true);
+        ajustarPlatos(eventoId, admin, 40);
+        long lineaId = idLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin), "LIMPIEZA", "Platos");
+
+        http.post().uri("/api/v1/eventos/" + eventoId + "/lista-compra/lineas/" + lineaId + "/restablecer")
+                .header(AUTHORIZATION, "Bearer " + admin).exchange().expectStatus().isNoContent();
+
+        Map<String, Object> body = getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin);
+        assertThat(cantidadLinea(body, "LIMPIEZA", "Platos")).isEqualTo(30.0);
+        assertThat(lineaModificada(body, "LIMPIEZA", "Platos")).isFalse();
+    }
+
+    @Test
+    void restablecer_todo_quita_todas_las_modificaciones() {
+        long eventoId = crearEventoDeUnDia("Sync IT restablecer todo");
+        apuntar(eventoId, 10);
+        String admin = token(RolMembresia.ADMIN, true);
+        bloquear(eventoId, admin, true);
+        ajustarPlatos(eventoId, admin, 40);
+
+        http.post().uri("/api/v1/eventos/" + eventoId + "/lista-compra/restablecer")
+                .header(AUTHORIZATION, "Bearer " + admin).exchange().expectStatus().isNoContent();
+
+        Map<String, Object> body = getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin);
+        assertThat(cantidadLinea(body, "LIMPIEZA", "Platos")).isEqualTo(30.0);
+        assertThat(lineaModificada(body, "LIMPIEZA", "Platos")).isFalse();
+    }
+
+    @Test
+    void cambiar_de_tienda_una_linea_de_alcohol_usa_el_precio_de_esa_tienda_y_se_respeta() {
+        long eventoId = crearEventoConFicha("Sync IT cambio tienda");
+        apuntarConAlcohol(eventoId, "Legendario");
+        precioDeBotella(eventoId, "Legendario", "1 L", "Makro", "12.00");
+        precioDeBotella(eventoId, "Legendario", "1 L", "Amazon", "13.50");
+        String admin = token(RolMembresia.ADMIN, true);
+        bloquear(eventoId, admin, true);
+        Map<String, Object> antes = getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin);
+        long lineaId = idLinea(antes, "ALCOHOL", "Legendario");
+        assertThat(tiendaLinea(antes, "ALCOHOL", "Legendario")).isEqualTo("Makro");
+
+        http.put().uri("/api/v1/eventos/" + eventoId + "/lista-compra/lineas/" + lineaId)
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("cantidad", 1, "tienda", "Amazon")).exchange().expectStatus().isNoContent();
+        bloquear(eventoId, admin, false);
+
+        Map<String, Object> despues = getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin);
+        assertThat(tiendaLinea(despues, "ALCOHOL", "Legendario")).isEqualTo("Amazon");
+        assertThat(precioUnitarioLinea(despues, "ALCOHOL", "Legendario")).isEqualTo(13.5);
+    }
 }

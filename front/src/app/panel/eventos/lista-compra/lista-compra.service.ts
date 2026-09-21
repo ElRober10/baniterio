@@ -66,11 +66,24 @@ export class ListaCompraService {
     return this.http.put<void>(`${this.base}/eventos/${eventoId}/lista-compra/bloqueo`, { bloqueada });
   }
 
+  /** Quita la modificación a mano de la marca o artículo de una línea y lo recalcula. */
+  restablecerLinea(eventoId: number, lineaId: number): Observable<void> {
+    return this.http.post<void>(
+      `${this.base}/eventos/${eventoId}/lista-compra/lineas/${lineaId}/restablecer`,
+      {},
+    );
+  }
+
+  /** Quita todas las modificaciones a mano de la lista. */
+  restablecerTodo(eventoId: number): Observable<void> {
+    return this.http.post<void>(`${this.base}/eventos/${eventoId}/lista-compra/restablecer`, {});
+  }
+
   /** Ajusta a mano la cantidad de una línea; solo con la lista bloqueada. */
-  ajustarLinea(eventoId: number, lineaId: number, cantidad: number, tamano?: string): Observable<void> {
+  ajustarLinea(eventoId: number, lineaId: number, cantidad: number, tamano?: string, tienda?: string): Observable<void> {
     return this.http.put<void>(
       `${this.base}/eventos/${eventoId}/lista-compra/lineas/${lineaId}`,
-      tamano ? { cantidad, tamano } : { cantidad },
+      tienda ? { cantidad, tienda } : tamano ? { cantidad, tamano } : { cantidad },
     );
   }
 }

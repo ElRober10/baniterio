@@ -23,6 +23,7 @@ import com.baniterio.api.compra.dto.EventoListaCompraDto;
 import com.baniterio.api.compra.dto.InfoBebidaDto;
 import com.baniterio.api.compra.dto.LineaCompraDto;
 import com.baniterio.api.compra.dto.OpcionTamanoDto;
+import com.baniterio.api.compra.dto.OpcionTiendaDto;
 import com.baniterio.api.compra.dto.ListaCompraAdminResponse;
 import com.baniterio.api.compra.dto.ListaCompraResponse;
 import com.baniterio.api.compra.dto.ReglaCompraEventoDto;
@@ -193,6 +194,7 @@ public class ListaCompraService {
         Map<String, BigDecimal> personasPorRefresco = personasPorNombre(datos, PersonaCompra::refresco);
         StockCubierto stockFiesta = stockCubierto(eventoId);
         Map<String, List<OpcionPrecio>> preciosAlcohol = preciosPorMarca(eventoId);
+        Map<String, List<PrecioArticuloEvento>> preciosArticulos = preciosPorArticulo(eventoId);
 
         // "Para alternar" agrupa lo que se bebe en vez del alcohol: la cerveza (y las especiales)
         // y el tinto de verano, que en el inventario y en los precios sigue siendo un refresco.
@@ -214,7 +216,8 @@ public class ListaCompraService {
                     l.getId(), l.getNombre(), l.getTamano(), l.getTienda(), l.getPrecioUnitario(),
                     l.getCantidad(), BigDecimal.ZERO,
                     l.isAjustada(), l.isDinamica(), l.isNecesitaFicha(), l.isComprada(), l.getDetalle(),
-                    infoDe(l, personasPorMarca, personasPorRefresco, stockFiesta, preciosAlcohol)));
+                    infoDe(l, personasPorMarca, personasPorRefresco, stockFiesta, preciosAlcohol),
+                    tiendasDe(l, preciosAlcohol, preciosArticulos), l.getNecesidadBase() != null));
         }
 
         List<CategoriaListaCompraDto> categorias = new ArrayList<>();
@@ -262,6 +265,34 @@ public class ListaCompraService {
                 stock.porNombre().getOrDefault(claveNombre(l.getCategoria(), l.getNombre()), BigDecimal.ZERO)
                         .stripTrailingZeros(),
                 alcohol ? opcionesPorTamano(precios.get(l.getNombre())) : null);
+    }
+
+    /**
+     * Las tiendas con precio para una línea, de más barata a más cara: en alcohol, para el tamaño de
+     * botella de la línea; en el resto, el precio del artículo (con las unidades del pack si las hay).
+     */
+    private static List<OpcionTiendaDto> tiendasDe(LineaCompraEvento l, Map<String, List<OpcionPrecio>> alcohol,
+                                                   Map<String, List<PrecioArticuloEvento>> articulos) {
+        if (l.getCategoria() == CategoriaInventario.ALCOHOL) {
+            Map<String, OpcionPrecio> barata = new LinkedHashMap<>();
+            for (OpcionPrecio o : alcohol.getOrDefault(l.getNombre(), List.of())) {
+                if (o.tamano().equals(l.getTamano())) {
+                    barata.merge(o.tienda(), o, (a, b) -> b.precio().compareTo(a.precio()) < 0 ? b : a);
+                }
+            }
+            return barata.values().stream()
+                    .sorted(java.util.Comparator.comparing(OpcionPrecio::precio))
+                    .map(o -> new OpcionTiendaDto(o.tienda(), o.precio(), 1,
+                            o.precio().multiply(BigDecimal.valueOf(100))
+                                    .divide(BigDecimal.valueOf(o.cl()), 2, java.math.RoundingMode.HALF_UP)))
+                    .toList();
+        }
+        return articulos.getOrDefault(claveNombre(l.getCategoria(), l.getNombre()).toLowerCase(), List.of()).stream()
+                .sorted(java.util.Comparator.comparing(
+                        (PrecioArticuloEvento p) -> p.getPrecio().divide(BigDecimal.valueOf(p.getCantidad()), 4,
+                                java.math.RoundingMode.HALF_UP)))
+                .map(p -> new OpcionTiendaDto(p.getTienda().getNombre(), p.getPrecio(), p.getCantidad(), null))
+                .toList();
     }
 
     /** Por cada tamaño con precio, la tienda más barata y el precio por litro; de menor a mayor tamaño. */
@@ -502,13 +533,29 @@ public class ListaCompraService {
 
     /** Alinea linea_compra_evento con el cálculo actual. No toca las líneas compradas. */
     private void sincronizar(Evento e, DatosEvento datos) {
+        sincronizar(e, datos, null);
+    }
+
+    /**
+     * Como {@link #sincronizar(Evento, DatosEvento)}, pero respetando lo modificado a mano: una marca
+     * o artículo con líneas modificadas no se toca mientras su necesidad no haya cambiado (si se apunta
+     * alguien más, la modificación se descarta y se recalcula). Con {@code soloGrupos} solo se
+     * sincronizan esos grupos (categoría + nombre), para restablecer sin tocar el resto.
+     */
+    private void sincronizar(Evento e, DatosEvento datos, Set<String> soloGrupos) {
         List<LineaCalc> calculadas = calcular(e.getId(), datos);
         Map<String, LineaCompraEvento> existentes = new LinkedHashMap<>();
-        for (LineaCompraEvento l : lineas.findByEventoIdOrderByCategoriaAscNombreAsc(e.getId())) {
+        List<LineaCompraEvento> todas = lineas.findByEventoIdOrderByCategoriaAscNombreAsc(e.getId());
+        for (LineaCompraEvento l : todas) {
             existentes.put(claveLinea(l.getCategoria(), l.getNombre(), l.getTamano(), l.getTienda()), l);
         }
+        Set<String> protegidos = gruposProtegidos(e, datos, todas);
         Set<String> vistas = new HashSet<>();
         for (LineaCalc c : calculadas) {
+            String g = claveNombre(c.categoria(), c.nombre());
+            if (protegidos.contains(g) || (soloGrupos != null && !soloGrupos.contains(g))) {
+                continue;
+            }
             String k = claveLinea(c.categoria(), c.nombre(), c.tamano(), c.tienda());
             vistas.add(k);
             LineaCompraEvento fila = existentes.get(k);
@@ -531,10 +578,105 @@ public class ListaCompraService {
             }
         }
         for (Map.Entry<String, LineaCompraEvento> en : existentes.entrySet()) {
-            if (!vistas.contains(en.getKey()) && !en.getValue().isComprada()) {
-                lineas.delete(en.getValue());
+            LineaCompraEvento l = en.getValue();
+            String g = claveNombre(l.getCategoria(), l.getNombre());
+            if (protegidos.contains(g) || (soloGrupos != null && !soloGrupos.contains(g))) {
+                continue;
+            }
+            if (!vistas.contains(en.getKey()) && !l.isComprada()) {
+                lineas.delete(l);
             }
         }
+    }
+
+    /**
+     * Los grupos (categoría + nombre) con líneas modificadas a mano cuya necesidad no ha cambiado desde
+     * entonces. Si la necesidad sí cambió (se apuntó o se bajó alguien), la modificación se descarta.
+     */
+    private Set<String> gruposProtegidos(Evento e, DatosEvento datos, List<LineaCompraEvento> todas) {
+        Map<String, BigDecimal> necesidad = null;
+        Set<String> protegidos = new HashSet<>();
+        for (LineaCompraEvento l : todas) {
+            if (l.getNecesidadBase() == null || l.isComprada()) {
+                continue;
+            }
+            if (necesidad == null) {
+                necesidad = necesidadPorGrupo(e.getId(), datos);
+            }
+            String g = claveNombre(l.getCategoria(), l.getNombre());
+            BigDecimal ahora = necesidad.getOrDefault(g, BigDecimal.ZERO);
+            if (ahora.compareTo(l.getNecesidadBase()) == 0) {
+                protegidos.add(g);
+            } else {
+                l.setNecesidadBase(null);
+                l.setAjustada(false);
+                lineas.save(l);
+            }
+        }
+        return protegidos;
+    }
+
+    /** Lo que piden las fórmulas activas para cada marca o artículo (sin restar stock ni mirar precios). */
+    private Map<String, BigDecimal> necesidadPorGrupo(Long eventoId, DatosEvento datos) {
+        Map<String, BigDecimal> out = new LinkedHashMap<>();
+        for (ReglaCompraEvento r : reglasEvento.findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(eventoId)) {
+            if (!r.isActiva()) {
+                continue;
+            }
+            for (LineaCalculada lc : CalculadoraListaCompra.lineasDe(r, datos)) {
+                out.merge(claveNombre(r.getCategoria(), lc.nombre()), lc.bruto(), BigDecimal::add);
+            }
+        }
+        return out;
+    }
+
+    /** Marca una línea como modificada a mano, guardando la necesidad actual de su grupo. */
+    private void marcarModificada(LineaCompraEvento l, Evento e) {
+        BigDecimal necesidad = necesidadPorGrupo(e.getId(), datosDe(e))
+                .getOrDefault(claveNombre(l.getCategoria(), l.getNombre()), BigDecimal.ZERO);
+        l.setNecesidadBase(necesidad);
+        l.setAjustada(true);
+    }
+
+    /** Quita la modificación a mano de una marca o artículo y lo vuelve a calcular. */
+    @Transactional
+    public void restablecerLinea(Long usuarioId, Long eventoId, Long lineaId) {
+        exigirArea(usuarioId);
+        Evento e = eventoAbierto(eventoId);
+        LineaCompraEvento linea = lineas.findByIdAndEventoId(lineaId, eventoId)
+                .orElseThrow(LineaCompraNoEncontradaException::new);
+        if (linea.isComprada()) {
+            throw new LineaCompraNoAjustableException();
+        }
+        String grupo = claveNombre(linea.getCategoria(), linea.getNombre());
+        restablecerGrupos(e, Set.of(grupo));
+    }
+
+    /** Quita todas las modificaciones a mano de la lista y recalcula esas marcas y artículos. */
+    @Transactional
+    public void restablecerTodo(Long usuarioId, Long eventoId) {
+        exigirArea(usuarioId);
+        Evento e = eventoAbierto(eventoId);
+        Set<String> grupos = new HashSet<>();
+        for (LineaCompraEvento l : lineas.findByEventoIdOrderByCategoriaAscNombreAsc(eventoId)) {
+            if (l.getNecesidadBase() != null && !l.isComprada()) {
+                grupos.add(claveNombre(l.getCategoria(), l.getNombre()));
+            }
+        }
+        if (!grupos.isEmpty()) {
+            restablecerGrupos(e, grupos);
+        }
+    }
+
+    private void restablecerGrupos(Evento e, Set<String> grupos) {
+        for (LineaCompraEvento l : lineas.findByEventoIdOrderByCategoriaAscNombreAsc(e.getId())) {
+            if (!l.isComprada() && grupos.contains(claveNombre(l.getCategoria(), l.getNombre()))) {
+                l.setNecesidadBase(null);
+                l.setAjustada(false);
+                lineas.save(l);
+            }
+        }
+        sincronizar(e, datosDe(e), grupos);
     }
 
     private static String clave(CategoriaInventario cat, String nombre, String tamano) {
@@ -598,16 +740,73 @@ public class ListaCompraService {
         String nuevoTamano = req.tamano() == null || req.tamano().isBlank() ? linea.getTamano() : req.tamano().trim();
         boolean cambiaTamano = !nuevoTamano.equals(linea.getTamano());
         boolean cambiaCantidad = linea.getCantidad().compareTo(req.cantidad()) != 0;
+        String nuevaTienda = req.tamano() == null && req.tienda() != null && !req.tienda().isBlank()
+                ? req.tienda().trim() : null;
+        // Cambiar de tienda es otra cosa que cambiar tamaño o cantidad: se pide por separado.
+        if (nuevaTienda != null && !nuevaTienda.equals(linea.getTienda())) {
+            cambiarTienda(linea, nuevaTienda, e);
+            return;
+        }
         // Solo cuenta como ajuste si de verdad cambia algo: abrir el editor y dejarlo igual no ajusta nada.
         if (!cambiaTamano && !cambiaCantidad) {
             return;
         }
         if (cambiaTamano) {
-            cambiarTamano(linea, nuevoTamano, req.cantidad(), eventoId);
+            cambiarTamano(linea, nuevoTamano, req.cantidad(), e);
             return;
         }
         linea.setCantidad(req.cantidad());
-        linea.setAjustada(true);
+        marcarModificada(linea, e);
+        lineas.save(linea);
+    }
+
+    /**
+     * Cambia la tienda donde se compra una línea, con el precio de esa tienda según la rejilla (el de
+     * la botella del tamaño de la línea, o el del artículo). Si el artículo se vende en packs, la
+     * cantidad se ajusta a packs enteros de esa tienda. Si ya hay otra línea igual en esa tienda,
+     * se suman las cantidades.
+     */
+    private void cambiarTienda(LineaCompraEvento linea, String tienda, Evento e) {
+        Long eventoId = e.getId();
+        BigDecimal precioUnidad;
+        BigDecimal cantidad = linea.getCantidad();
+        String detalle = null;
+        if (linea.getCategoria() == CategoriaInventario.ALCOHOL) {
+            OpcionPrecio o = preciosPorMarca(eventoId).getOrDefault(linea.getNombre(), List.of()).stream()
+                    .filter(x -> x.tamano().equals(linea.getTamano()) && x.tienda().equals(tienda))
+                    .min(java.util.Comparator.comparing(OpcionPrecio::precio))
+                    .orElseThrow(LineaCompraNoAjustableException::new);
+            precioUnidad = o.precio();
+        } else {
+            PrecioArticuloEvento p = preciosPorArticulo(eventoId)
+                    .getOrDefault(claveNombre(linea.getCategoria(), linea.getNombre()).toLowerCase(), List.of())
+                    .stream().filter(x -> x.getTienda().getNombre().equals(tienda)).findFirst()
+                    .orElseThrow(LineaCompraNoAjustableException::new);
+            int pack = p.getCantidad();
+            int packs = cantidad.divide(BigDecimal.valueOf(pack), 0, java.math.RoundingMode.CEILING).intValue();
+            cantidad = BigDecimal.valueOf((long) packs * pack);
+            precioUnidad = p.getPrecio().divide(BigDecimal.valueOf(pack), 4, java.math.RoundingMode.HALF_UP);
+            if (pack > 1) {
+                detalle = packs + " × pack de " + pack;
+            }
+        }
+        LineaCompraEvento igual = lineas.findByEventoIdOrderByCategoriaAscNombreAsc(eventoId).stream()
+                .filter(o -> !o.getId().equals(linea.getId()) && !o.isComprada()
+                        && o.getCategoria() == linea.getCategoria() && o.getNombre().equals(linea.getNombre())
+                        && o.getTamano().equals(linea.getTamano()) && tienda.equals(o.getTienda()))
+                .findFirst().orElse(null);
+        if (igual != null) {
+            igual.setCantidad(igual.getCantidad().add(cantidad));
+            marcarModificada(igual, e);
+            lineas.save(igual);
+            lineas.delete(linea);
+            return;
+        }
+        linea.setTienda(tienda);
+        linea.setPrecioUnitario(precioUnidad);
+        linea.setCantidad(cantidad);
+        linea.setDetalle(detalle);
+        marcarModificada(linea, e);
         lineas.save(linea);
     }
 
@@ -616,7 +815,8 @@ public class ListaCompraService {
      * tamaño según la rejilla (sin tienda ni precio si no hay). Si ya existe otra línea de la misma
      * marca, tamaño y tienda, se suman las cantidades en esa.
      */
-    private void cambiarTamano(LineaCompraEvento linea, String nuevoTamano, BigDecimal cantidad, Long eventoId) {
+    private void cambiarTamano(LineaCompraEvento linea, String nuevoTamano, BigDecimal cantidad, Evento e) {
+        Long eventoId = e.getId();
         if (linea.getCategoria() != CategoriaInventario.ALCOHOL
                 || OptimizadorPrecioBebida.parseCl(nuevoTamano).isEmpty()) {
             throw new LineaCompraNoAjustableException();
@@ -632,7 +832,7 @@ public class ListaCompraService {
                 .findFirst().orElse(null);
         if (igual != null) {
             igual.setCantidad(igual.getCantidad().add(cantidad));
-            igual.setAjustada(true);
+            marcarModificada(igual, e);
             lineas.save(igual);
             lineas.delete(linea);
             return;
@@ -642,7 +842,7 @@ public class ListaCompraService {
         linea.setPrecioUnitario(barata == null ? null : barata.precio());
         linea.setDetalle(null);
         linea.setCantidad(cantidad);
-        linea.setAjustada(true);
+        marcarModificada(linea, e);
         lineas.save(linea);
     }
 

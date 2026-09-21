@@ -80,6 +80,13 @@ public class LineaCompraEvento {
     @Column(nullable = false)
     private boolean comprada;
 
+    /**
+     * La necesidad de la fórmula (para su marca o artículo) cuando se modificó la línea a mano; null si
+     * no está modificada. Mientras no cambie, la sincronización respeta la modificación.
+     */
+    @Column(name = "necesidad_base", precision = 10, scale = 2)
+    private BigDecimal necesidadBase;
+
     /** Nota de la compra, p. ej. "2 × pack de 50" (solo si se compra en packs). */
     @Column(length = 80)
     private String detalle;

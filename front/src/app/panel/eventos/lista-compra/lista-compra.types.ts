@@ -34,6 +34,10 @@ export interface LineaCompra {
   /** Nota de la compra en packs, p. ej. "2 × pack de 50". */
   detalle?: string | null;
   /** Solo en bebidas alcohólicas: quién la bebe y cuánto stock hay. */
+  /** Tiendas con precio para la línea, de más barata a más cara (para cambiar dónde se compra). */
+  tiendas?: { tienda: string; precio: number; unidades: number; precioLitro?: number | null }[] | null;
+  /** El admin la cambió a mano: se respeta aunque se desbloquee la lista, hasta restablecerla. */
+  modificada?: boolean;
   info?: {
     personas: number;
     stock: number;

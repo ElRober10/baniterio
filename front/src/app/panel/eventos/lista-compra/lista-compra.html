@@ -34,6 +34,16 @@
           >
             {{ bloqueada() ? 'Desbloquear lista' : 'Bloquear lista' }}
           </button>
+          @if (hayModificadas()) {
+            <button
+              type="button"
+              [disabled]="ocupado()"
+              (click)="restablecerTodo()"
+              class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-gold-soft transition hover:border-gold hover:text-gold disabled:opacity-50"
+            >
+              ↺ Restablecer todo
+            </button>
+          }
         }
         <a
           [routerLink]="['/panel/eventos', eventoId, 'inventario']"
@@ -91,7 +101,19 @@
                           {{ l.tamano }}
                         }
                         @if (l.tienda) {
-                          <span class="text-xs text-muted">· {{ l.tienda }}</span>
+                          @if (puedeAjustar(l) && l.tiendas && l.tiendas.length > 0) {
+                            <button
+                              type="button"
+                              aria-label="Cambiar tienda"
+                              [disabled]="ocupado()"
+                              (click)="alternarEdicion(l, 'tienda')"
+                              class="ml-1 rounded-lg border border-dashed border-outline px-2 py-0.5 text-xs text-muted hover:border-gold hover:text-gold disabled:opacity-50"
+                            >
+                              {{ l.tienda }} ▾
+                            </button>
+                          } @else {
+                            <span class="text-xs text-muted">· {{ l.tienda }}</span>
+                          }
                         }
                         @if (l.detalle) {
                           <span class="text-xs text-muted">· {{ l.detalle }}</span>
@@ -130,6 +152,18 @@
                             <span class="text-xs text-gold-soft">✓ Comprada</span>
                           } @else {
                             <div class="flex justify-end gap-1">
+                              @if (l.modificada) {
+                                <button
+                                  type="button"
+                                  aria-label="Restablecer"
+                                  title="Quitar mi modificación y volver al cálculo"
+                                  [disabled]="ocupado()"
+                                  (click)="restablecerLinea(l)"
+                                  class="whitespace-nowrap rounded-lg border border-outline px-2 py-1 text-xs font-medium text-gold-soft hover:border-gold hover:text-gold disabled:opacity-50"
+                                >
+                                  ↺ Restablecer
+                                </button>
+                              }
                               @if (l.cantidad > 0) {
                                 <button
                                   type="button"
@@ -160,6 +194,51 @@
                                 <span class="font-semibold">{{ l.info.stock | number: '1.0-2' }}</span>
                                 botellas
                               </p>
+                            }
+                            @if (modoEdicion() === 'tienda' && l.tiendas) {
+                              <p class="text-xs uppercase tracking-wide text-muted">
+                                Dónde comprar
+                                @if (l.info?.tamanos) { · botella de {{ l.tamano }} }
+                              </p>
+                              <table class="mt-1 text-sm">
+                                <thead>
+                                  <tr class="text-left text-xs text-muted">
+                                    <th class="pr-3"></th>
+                                    <th class="pr-3">Tienda</th>
+                                    <th class="pr-3 text-right">Precio</th>
+                                    <th class="text-right">{{ l.info?.tamanos ? '€ / litro' : 'Por unidad' }}</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  @for (o of l.tiendas; track o.tienda) {
+                                    <tr>
+                                      <td class="pr-3">
+                                        <input
+                                          type="radio"
+                                          name="tienda-{{ l.id }}"
+                                          [attr.aria-label]="'Comprar en ' + o.tienda"
+                                          [checked]="tiendaEditada() === o.tienda"
+                                          (change)="tiendaEditada.set(o.tienda)"
+                                        />
+                                      </td>
+                                      <td class="pr-3 font-semibold">{{ o.tienda }}</td>
+                                      <td class="pr-3 text-right">
+                                        {{ o.precio | number: '1.2-2' }} €
+                                        @if (o.unidades > 1) {
+                                          <span class="text-xs text-muted">/ pack de {{ o.unidades }}</span>
+                                        }
+                                      </td>
+                                      <td class="text-right">
+                                        {{
+                                          o.precioLitro != null
+                                            ? (o.precioLitro | number: '1.2-2') + ' €'
+                                            : (o.precio / o.unidades | number: '1.2-3') + ' €'
+                                        }}
+                                      </td>
+                                    </tr>
+                                  }
+                                </tbody>
+                              </table>
                             }
                             @if (l.info?.tamanos && modoEdicion() === 'tamano') {
                               <div class="mt-2">
