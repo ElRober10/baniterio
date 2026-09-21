@@ -11,6 +11,7 @@ import com.baniterio.api.auth.ServicioPermisos;
 import com.baniterio.api.compra.LineaCompraEvento;
 import com.baniterio.api.compra.LineaCompraEventoRepository;
 import com.baniterio.api.compra.OptimizadorPrecioBebida;
+import com.baniterio.api.compra.ReglaCompraEventoRepository;
 import com.baniterio.api.evento.BebidaNoEncontradaException;
 import com.baniterio.api.evento.EventoNoEncontradoException;
 import com.baniterio.api.evento.dto.BebidaRef;
@@ -65,6 +66,7 @@ public class PrecioBebidaService {
     private final ProductosPorKilo productosPorKilo;
     private final ArticuloInventarioRepository articulosInventario;
     private final LineaCompraEventoRepository lineasCompra;
+    private final ReglaCompraEventoRepository reglasCompra;
     private final ServicioPermisos permisos;
 
     public PrecioBebidaService(EventoRepository eventos, PenaPilotoService pena, TiendaRepository tiendas,
@@ -73,6 +75,7 @@ public class PrecioBebidaService {
             TamanoArticuloEventoRepository tamanosArticulo, TamanosArticulo tamanosHeredados,
             ProductoKiloEventoRepository productosKilo, ProductosPorKilo productosPorKilo,
             ArticuloInventarioRepository articulosInventario, LineaCompraEventoRepository lineasCompra,
+            ReglaCompraEventoRepository reglasCompra,
             ServicioPermisos permisos) {
         this.eventos = eventos;
         this.pena = pena;
@@ -87,6 +90,7 @@ public class PrecioBebidaService {
         this.productosPorKilo = productosPorKilo;
         this.articulosInventario = articulosInventario;
         this.lineasCompra = lineasCompra;
+        this.reglasCompra = reglasCompra;
         this.permisos = permisos;
     }
 
@@ -259,6 +263,12 @@ public class PrecioBebidaService {
         }
         lineasCompra.findByEventoIdOrderByCategoriaAscNombreAsc(eventoId).stream()
                 .filter(l -> l.getCategoria() == cat).map(LineaCompraEvento::getNombre).forEach(nombres::add);
+        // Y los de las reglas activas del evento, para que un artículo nuevo salga aquí sin haber
+        // abierto antes la lista de la compra (las líneas solo se crean al abrirla).
+        reglasCompra.findByEventoIdOrderByCategoriaAscOrdenAscNombreAsc(eventoId).stream()
+                .filter(r -> r.getCategoria() == cat && r.isActiva() && !r.getTipoFormula().esDinamica()
+                        && !r.getNombre().isBlank())
+                .map(r -> r.getNombre()).forEach(nombres::add);
         return nombres.stream().sorted(String.CASE_INSENSITIVE_ORDER)
                 .map(n -> new NombreArticulo(n, cat)).toList();
     }
