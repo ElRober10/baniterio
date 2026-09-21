@@ -805,4 +805,41 @@ class ListaCompraSyncIT extends IntegrationTest {
         assertThat(tiendaLinea(body, "PARA_ALTERNAR", "Cerveza Sin Gluten")).isEqualTo("Alcampo");
         assertThat(precioUnitarioLinea(body, "PARA_ALTERNAR", "Cerveza Sin Gluten")).isEqualTo(0.81);
     }
+
+    void precioDePack(long eventoId, String articulo, String tienda, String precio, int cantidad) {
+        Tienda t = tiendas.findByPenaIdOrderByOrdenAscNombreAsc(pena().getId()).stream()
+                .filter(x -> tienda.equals(x.getNombre())).findFirst().orElseThrow();
+        precioArticulo.save(PrecioArticuloEvento.builder()
+                .evento(eventos.findById(eventoId).orElseThrow()).categoria(CategoriaInventario.LIMPIEZA)
+                .nombreArticulo(articulo).tienda(t).precio(new BigDecimal(precio)).cantidad(cantidad).build());
+    }
+
+    @Test
+    void con_packs_elige_la_tienda_con_menor_coste_total_y_compra_packs_enteros() {
+        long eventoId = crearEventoDeUnDia("Sync IT packs");
+        apuntar(eventoId, 10); // Platos: 3 por peñista = 30 unidades
+        precioDePack(eventoId, "Platos", "Alcampo", "1.00", 10);  // 3 packs = 3,00 €
+        precioDePack(eventoId, "Platos", "Makro", "1.50", 50);    // 1 pack  = 1,50 €
+
+        Map<String, Object> body = getMap("/api/v1/eventos/" + eventoId + "/lista-compra",
+                token(RolMembresia.MIEMBRO, false));
+
+        assertThat(tiendaLinea(body, "LIMPIEZA", "Platos")).isEqualTo("Makro");
+        assertThat(cantidadLinea(body, "LIMPIEZA", "Platos")).isEqualTo(50.0);
+        assertThat(precioUnitarioLinea(body, "LIMPIEZA", "Platos")).isEqualTo(0.03);
+    }
+
+    @Test
+    void con_packs_pequenos_es_mas_barato_cuando_el_grande_sobra_demasiado() {
+        long eventoId = crearEventoDeUnDia("Sync IT packs 2");
+        apuntar(eventoId, 10); // 30 platos
+        precioDePack(eventoId, "Platos", "Alcampo", "1.00", 10);  // 3 packs = 3,00 €
+        precioDePack(eventoId, "Platos", "Makro", "4.00", 50);    // 1 pack  = 4,00 €
+
+        Map<String, Object> body = getMap("/api/v1/eventos/" + eventoId + "/lista-compra",
+                token(RolMembresia.MIEMBRO, false));
+
+        assertThat(tiendaLinea(body, "LIMPIEZA", "Platos")).isEqualTo("Alcampo");
+        assertThat(cantidadLinea(body, "LIMPIEZA", "Platos")).isEqualTo(30.0);
+    }
 }

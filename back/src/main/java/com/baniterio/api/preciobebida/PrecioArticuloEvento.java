@@ -60,4 +60,9 @@ public class PrecioArticuloEvento {
 
     @Column(nullable = false, precision = 8, scale = 2)
     private BigDecimal precio;
+
+    /** Unidades que trae el pack al que corresponde el precio (1 = se compra suelto). */
+    @Column(nullable = false)
+    @Builder.Default
+    private int cantidad = 1;
 }

@@ -66,7 +66,7 @@ export class PrecioBebidaService {
   guardarPrecioArticulo(
     eventoId: number,
     categoria: string,
-    body: { nombreArticulo: string; tiendaId: number; precio: number | null },
+    body: { nombreArticulo: string; tiendaId: number; precio: number | null; cantidad?: number },
   ): Observable<void> {
     return this.http.put<void>(
       `${this.base}/precio-bebida/eventos/${eventoId}/articulos/${categoria}/precio`,

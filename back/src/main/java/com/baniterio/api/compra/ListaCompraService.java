@@ -106,7 +106,13 @@ public class ListaCompraService {
     /** Una línea del cálculo con su clave de identidad. */
     private record LineaCalc(CategoriaInventario categoria, String nombre, String tamano, String tienda,
                              BigDecimal precioUnitario, BigDecimal cantidad, int orden, boolean dinamica,
-                             boolean necesitaFicha, boolean ajustada) {
+                             boolean necesitaFicha, boolean ajustada, String detalle) {
+        LineaCalc(CategoriaInventario categoria, String nombre, String tamano, String tienda,
+                  BigDecimal precioUnitario, BigDecimal cantidad, int orden, boolean dinamica,
+                  boolean necesitaFicha, boolean ajustada) {
+            this(categoria, nombre, tamano, tienda, precioUnitario, cantidad, orden, dinamica,
+                    necesitaFicha, ajustada, null);
+        }
     }
 
     private Long penaId() {
@@ -198,7 +204,7 @@ public class ListaCompraService {
             porSeccion.get(seccionDe(l)).add(new LineaCompraDto(
                     l.getId(), l.getNombre(), l.getTamano(), l.getTienda(), l.getPrecioUnitario(),
                     l.getCantidad(), BigDecimal.ZERO,
-                    l.isAjustada(), l.isDinamica(), l.isNecesitaFicha(), l.isComprada()));
+                    l.isAjustada(), l.isDinamica(), l.isNecesitaFicha(), l.isComprada(), l.getDetalle()));
         }
 
         List<CategoriaListaCompraDto> categorias = new ArrayList<>();
@@ -286,10 +292,16 @@ public class ListaCompraService {
         return out;
     }
 
-    /** La tienda más barata para un artículo con precios metidos, o null si no hay ninguno. */
-    private PrecioArticuloEvento masBarata(List<PrecioArticuloEvento> opciones) {
-        return opciones == null || opciones.isEmpty() ? null
-                : opciones.stream().min(java.util.Comparator.comparing(PrecioArticuloEvento::getPrecio)).orElseThrow();
+    /**
+     * La opción (tienda + pack) más barata para cubrir {@code necesarias} unidades comprando
+     * packs enteros: coste = packs × precio del pack. A igual coste, la que deja menos sobrante.
+     */
+    private PrecioArticuloEvento mejorPack(List<PrecioArticuloEvento> opciones, BigDecimal necesarias) {
+        java.util.function.ToLongFunction<PrecioArticuloEvento> packs = o -> necesarias
+                .divide(BigDecimal.valueOf(o.getCantidad()), 0, java.math.RoundingMode.CEILING).longValue();
+        return opciones.stream().min(java.util.Comparator
+                .comparing((PrecioArticuloEvento o) -> o.getPrecio().multiply(BigDecimal.valueOf(packs.applyAsLong(o))))
+                .thenComparingLong(o -> packs.applyAsLong(o) * o.getCantidad())).orElseThrow();
     }
 
     /**
@@ -336,21 +348,32 @@ public class ListaCompraService {
                     BigDecimal cantidad = restante.signum() > 0 ? CalculadoraListaCompra.ceil(restante) : BigDecimal.ZERO;
                     String tienda = null;
                     BigDecimal precioUnitario = null;
+                    String detalle = null;
                     if (cantidad.signum() > 0) {
-                        PrecioArticuloEvento barata = masBarata(preciosArt.get(claveNombre(r.getCategoria(), lc.nombre()).toLowerCase()));
+                        List<PrecioArticuloEvento> opcionesArt =
+                                preciosArt.get(claveNombre(r.getCategoria(), lc.nombre()).toLowerCase());
                         ProductosPorKilo.Kilo kilo = r.getCategoria() == CategoriaInventario.COMIDA
                                 ? porKilo.get(lc.nombre()) : null;
                         if (kilo != null) {
                             // Embutido de Jamones Duriber: no se comparan tiendas, precio = kilo x peso estimado.
                             tienda = ProductosPorKilo.PROVEEDOR;
                             precioUnitario = kilo.precioPieza();
-                        } else if (barata != null) {
-                            tienda = barata.getTienda().getNombre();
-                            precioUnitario = barata.getPrecio();
+                        } else if (opcionesArt != null && !opcionesArt.isEmpty()) {
+                            // Cada tienda puede vender un pack distinto: se elige la que sale más barata
+                            // comprando packs enteros hasta cubrir lo que falta.
+                            PrecioArticuloEvento mejor = mejorPack(opcionesArt, cantidad);
+                            int pack = mejor.getCantidad();
+                            int packs = cantidad.divide(BigDecimal.valueOf(pack), 0, java.math.RoundingMode.CEILING).intValue();
+                            tienda = mejor.getTienda().getNombre();
+                            precioUnitario = mejor.getPrecio().divide(BigDecimal.valueOf(pack), 4, java.math.RoundingMode.HALF_UP);
+                            cantidad = BigDecimal.valueOf((long) packs * pack);
+                            if (pack > 1) {
+                                detalle = packs + " × pack de " + pack;
+                            }
                         }
                     }
                     out.add(new LineaCalc(r.getCategoria(), lc.nombre(), lc.tamano(), tienda, precioUnitario,
-                            cantidad, r.getOrden(), lc.dinamica(), lc.necesitaFicha(), false));
+                            cantidad, r.getOrden(), lc.dinamica(), lc.necesitaFicha(), false, detalle));
                 }
             }
         }
@@ -423,7 +446,7 @@ public class ListaCompraService {
             if (fila == null) {
                 lineas.save(LineaCompraEvento.builder()
                         .evento(e).categoria(c.categoria()).nombre(c.nombre()).tamano(c.tamano()).tienda(c.tienda())
-                        .precioUnitario(c.precioUnitario())
+                        .precioUnitario(c.precioUnitario()).detalle(c.detalle())
                         .cantidad(c.cantidad()).orden(c.orden()).dinamica(c.dinamica())
                         .necesitaFicha(c.necesitaFicha()).ajustada(c.ajustada())
                         .comprada(false).build());
@@ -434,6 +457,7 @@ public class ListaCompraService {
                 fila.setNecesitaFicha(c.necesitaFicha());
                 fila.setAjustada(c.ajustada());
                 fila.setPrecioUnitario(c.precioUnitario());
+                fila.setDetalle(c.detalle());
                 lineas.save(fila);
             }
         }

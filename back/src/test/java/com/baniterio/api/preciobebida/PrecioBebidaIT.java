@@ -384,6 +384,25 @@ class PrecioBebidaIT extends IntegrationTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void guardar_precio_de_un_pack_guarda_y_devuelve_las_unidades() {
+        long eventoId = crearEvento("Precio articulo IT pack", LocalDate.of(2026, 9, 25), false);
+        String admin = token(RolMembresia.ADMIN);
+        long tiendaId = idDeTienda(articulos(eventoId, "COMIDA", admin), "Alcampo");
+
+        http.put().uri("/api/v1/precio-bebida/eventos/" + eventoId + "/articulos/LIMPIEZA/precio")
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("nombreArticulo", "Platos", "tiendaId", tiendaId, "precio", 1.5, "cantidad", 50))
+                .exchange().expectStatus().isNoContent();
+
+        List<Map<String, Object>> precios = (List<Map<String, Object>>) articulos(eventoId, "LIMPIEZA", admin).get("precios");
+        assertThat(precios).anySatisfy(p -> {
+            assertThat(p.get("nombreArticulo")).isEqualTo("Platos");
+            assertThat(((Number) p.get("cantidad")).intValue()).isEqualTo(50);
+        });
+    }
+
+    @Test
     void articulos_cerveza_incluye_tinto_de_verano_fijo() {
         long eventoId = crearEvento("Precio articulo IT cerveza", LocalDate.of(2026, 9, 25), false);
         Map<String, Object> grilla = articulos(eventoId, "CERVEZA", token());

@@ -81,6 +81,9 @@
                         @if (l.tienda) {
                           <span class="text-xs text-muted">· {{ l.tienda }}</span>
                         }
+                        @if (l.detalle) {
+                          <span class="text-xs text-muted">· {{ l.detalle }}</span>
+                        }
                       </td>
                       <td class="py-1 pr-4 text-right font-semibold">
                         @if (editandoId() === l.id) {

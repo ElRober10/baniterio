@@ -59,7 +59,7 @@ public class LineaCompraEvento {
     @Column(length = 120)
     private String tienda;
 
-    @Column(name = "precio_unitario", precision = 8, scale = 2)
+    @Column(name = "precio_unitario", precision = 10, scale = 4)
     private BigDecimal precioUnitario;
 
     @Column(nullable = false, precision = 8, scale = 2)
@@ -79,6 +79,10 @@ public class LineaCompraEvento {
 
     @Column(nullable = false)
     private boolean comprada;
+
+    /** Nota de la compra, p. ej. "2 × pack de 50" (solo si se compra en packs). */
+    @Column(length = 80)
+    private String detalle;
 
     @Column(name = "articulo_evento_id")
     private Long articuloEventoId;

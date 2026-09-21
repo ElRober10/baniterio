@@ -69,8 +69,27 @@
                             (change)="guardarPrecio(a, t.id, $any($event.target).value)"
                             class="w-20 rounded border border-outline bg-transparent px-1 py-0.5 text-right"
                           />
+                          @if (conPacks) {
+                            <label class="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted">
+                              pack de
+                              <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                placeholder="1"
+                                [attr.aria-label]="'Unidades del pack de ' + a + ' en ' + t.nombre"
+                                [disabled]="precioDe(a, t.id) === null"
+                                [value]="cantidadDe(a, t.id) === 1 ? null : cantidadDe(a, t.id)"
+                                (change)="guardarCantidad(a, t.id, $any($event.target).value)"
+                                class="w-12 rounded border border-outline bg-transparent px-1 py-0.5 text-right text-xs disabled:opacity-40"
+                              />
+                            </label>
+                          }
                         } @else {
                           {{ precioDe(a, t.id) ?? '—' }}
+                          @if (conPacks && cantidadDe(a, t.id) > 1) {
+                            <span class="text-[10px] text-muted">/ pack de {{ cantidadDe(a, t.id) }}</span>
+                          }
                         }
                       </td>
                     }

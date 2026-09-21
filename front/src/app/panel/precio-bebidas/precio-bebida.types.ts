@@ -36,6 +36,8 @@ export interface PrecioArticuloCelda {
   nombreArticulo: string;
   tiendaId: number;
   precio: number | null;
+  /** Unidades que trae el pack al que corresponde el precio (1 = suelto). */
+  cantidad: number;
 }
 
 export interface GrillaArticulo {

@@ -92,6 +92,27 @@ describe('FichaBebida', () => {
     });
   });
 
+  it('"Cerveza sin gluten" se guarda como cerveza especial con ese texto', () => {
+    crear(['2026-09-25']);
+    elegir('#fb-alt', 'SIN_GLUTEN');
+    enviar();
+    expect(emitido?.alternativa).toBe('CERVEZA_ESPECIAL');
+    expect(emitido?.cervezaEspecial).toBe('sin gluten');
+  });
+
+  it('una ficha con cerveza especial "sin alcohol" precarga esa opción', () => {
+    crear(['2026-09-25']);
+    fixture.componentRef.setInput('fichaActual', {
+      alcoholBebidaId: null, alcohol: null, refrescoBebidaId: null, refresco: null,
+      alternativa: 'CERVEZA_ESPECIAL', cervezaEspecial: 'Sin alcohol', embarazada: false,
+      asisteDia1: true, asisteDia2: true, modalidad: 'COMPLETA', cuota: 16,
+    });
+    fixture.componentInstance.ngOnInit();
+    fixture.detectChanges();
+    const sel = (fixture.nativeElement as HTMLElement).querySelector('#fb-alt') as HTMLSelectElement;
+    expect(sel.value).toBe('SIN_ALCOHOL');
+  });
+
   it('sin refresco emite igualmente (es opcional)', () => {
     crear(['2026-09-25']);
     enviar();

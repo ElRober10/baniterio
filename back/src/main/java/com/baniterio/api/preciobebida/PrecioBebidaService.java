@@ -270,7 +270,7 @@ public class PrecioBebidaService {
         List<String> nombresList = catalogo.stream().map(NombreArticulo::nombre).toList();
         List<PrecioArticuloCeldaDto> listaPrecios = nombresList.isEmpty() ? List.of()
                 : precioArticulo.findByEventoIdAndNombreArticuloIn(eventoId, nombresList).stream()
-                        .map(p -> new PrecioArticuloCeldaDto(p.getNombreArticulo(), p.getTienda().getId(), p.getPrecio()))
+                        .map(p -> new PrecioArticuloCeldaDto(p.getNombreArticulo(), p.getTienda().getId(), p.getPrecio(), p.getCantidad()))
                         .toList();
         boolean puedoEditar = permisos.esAdministrador(usuarioId);
         List<TamanoArticuloDto> listaTamanos = tamanosHeredados.apuntados(eventoId).entrySet().stream()
@@ -307,6 +307,7 @@ public class PrecioBebidaService {
         PrecioArticuloEvento fila = existente.orElseGet(() -> PrecioArticuloEvento.builder()
                 .evento(evento).categoria(articulo.categoriaReal()).nombreArticulo(articulo.nombre()).tienda(tienda).build());
         fila.setPrecio(precio);
+        fila.setCantidad(req.cantidad() == null ? 1 : req.cantidad());
         precioArticulo.save(fila);
     }
 

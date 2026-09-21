@@ -39,7 +39,9 @@ export class PrecioArticulo implements OnInit {
   protected readonly puedoEditar = signal(false);
   protected readonly tiendas = signal<Tienda[]>([]);
   protected readonly articulos = signal<string[]>([]);
-  protected readonly precios = signal<{ nombreArticulo: string; tiendaId: number; precio: number | null }[]>([]);
+  protected readonly precios = signal<{ nombreArticulo: string; tiendaId: number; precio: number | null; cantidad: number }[]>([]);
+  /** Limpieza y comida se venden en packs (platos, vasos, papel...): se apunta cuántas unidades trae. */
+  protected readonly conPacks = this.categoria === 'LIMPIEZA' || this.categoria === 'COMIDA';
 
   protected readonly tamanosLitros = TAMANOS_LITROS;
   protected readonly porKilo = signal<{ nombreArticulo: string; precioKilo: number | null; pesoKg: number | null }[]>([]);
@@ -132,20 +134,41 @@ export class PrecioArticulo implements OnInit {
     });
   }
 
+  protected cantidadDe(nombreArticulo: string, tiendaId: number): number {
+    const celda = this.precios().find((p) => p.nombreArticulo === nombreArticulo && p.tiendaId === tiendaId);
+    return celda ? celda.cantidad : 1;
+  }
+
   protected guardarPrecio(nombreArticulo: string, tiendaId: number, valor: string): void {
     const precio = valor.trim() === '' ? null : Number(valor.replace(',', '.'));
     if (precio !== null && (Number.isNaN(precio) || precio < 0)) {
       return;
     }
-    this.service.guardarPrecioArticulo(this.eventoId, this.categoria, { nombreArticulo, tiendaId, precio }).subscribe({
-      next: () => {
-        this.precios.update((lista) => {
-          const resto = lista.filter((p) => !(p.nombreArticulo === nombreArticulo && p.tiendaId === tiendaId));
-          return precio === null ? resto : [...resto, { nombreArticulo, tiendaId, precio }];
-        });
-      },
-      error: () => this.estado.set('error'),
-    });
+    this.enviarPrecio(nombreArticulo, tiendaId, precio, this.cantidadDe(nombreArticulo, tiendaId));
+  }
+
+  /** Unidades del pack; solo tiene sentido con un precio ya apuntado en esa celda. */
+  protected guardarCantidad(nombreArticulo: string, tiendaId: number, valor: string): void {
+    const cantidad = valor.trim() === '' ? 1 : Number(valor);
+    const precio = this.precioDe(nombreArticulo, tiendaId);
+    if (precio === null || !Number.isInteger(cantidad) || cantidad < 1) {
+      return;
+    }
+    this.enviarPrecio(nombreArticulo, tiendaId, precio, cantidad);
+  }
+
+  private enviarPrecio(nombreArticulo: string, tiendaId: number, precio: number | null, cantidad: number): void {
+    this.service
+      .guardarPrecioArticulo(this.eventoId, this.categoria, { nombreArticulo, tiendaId, precio, cantidad })
+      .subscribe({
+        next: () => {
+          this.precios.update((lista) => {
+            const resto = lista.filter((p) => !(p.nombreArticulo === nombreArticulo && p.tiendaId === tiendaId));
+            return precio === null ? resto : [...resto, { nombreArticulo, tiendaId, precio, cantidad }];
+          });
+        },
+        error: () => this.estado.set('error'),
+      });
   }
 
   protected anadirTienda(): void {

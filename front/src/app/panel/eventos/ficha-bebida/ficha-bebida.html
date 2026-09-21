@@ -45,16 +45,18 @@
         <label class="text-xs text-muted" for="fb-alt">Para alternar</label>
         <select
           id="fb-alt"
-          [value]="alternativa()"
+          [value]="eleccion()"
           (change)="setAlternativa($event)"
           class="mt-1 w-full rounded-xl border border-outline bg-transparent px-3 py-2 text-sm"
         >
           <option value="NADA">Nada</option>
           <option value="CERVEZA">Cerveza</option>
+          <option value="SIN_ALCOHOL">Cerveza sin alcohol</option>
+          <option value="SIN_GLUTEN">Cerveza sin gluten</option>
           <option value="TINTO_VERANO">Tinto de verano</option>
-          <option value="CERVEZA_ESPECIAL">Cerveza especial</option>
+          <option value="CERVEZA_ESPECIAL">Otra cerveza especial</option>
         </select>
-        @if (alternativa() === 'CERVEZA_ESPECIAL') {
+        @if (eleccion() === 'CERVEZA_ESPECIAL') {
           <input
             type="text"
             [value]="cervezaEspecial()"

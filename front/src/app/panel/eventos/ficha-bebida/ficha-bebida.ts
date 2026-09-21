@@ -65,8 +65,30 @@ export class FichaBebida implements OnInit {
     return valorSel === String(id);
   }
 
+  /**
+   * Lo que muestra el desplegable "Para alternar". "Sin alcohol" y "sin gluten" no son
+   * alternativas propias en el backend: se guardan como cerveza especial con ese texto
+   * (así entran en la lista de la compra y toman el precio de la rejilla).
+   */
+  protected readonly eleccion = computed<string>(() => {
+    if (this.alternativa() !== 'CERVEZA_ESPECIAL') {
+      return this.alternativa();
+    }
+    const texto = this.cervezaEspecial().trim().toLowerCase().replace(/^cerveza\s+/, '');
+    return texto === 'sin alcohol' ? 'SIN_ALCOHOL' : texto === 'sin gluten' ? 'SIN_GLUTEN' : 'CERVEZA_ESPECIAL';
+  });
+
   protected setAlternativa(e: Event): void {
-    this.alternativa.set((e.target as HTMLSelectElement).value as Alternativa);
+    const valor = (e.target as HTMLSelectElement).value;
+    if (valor === 'SIN_ALCOHOL' || valor === 'SIN_GLUTEN') {
+      this.alternativa.set('CERVEZA_ESPECIAL');
+      this.cervezaEspecial.set(valor === 'SIN_ALCOHOL' ? 'sin alcohol' : 'sin gluten');
+      return;
+    }
+    if (valor === 'CERVEZA_ESPECIAL' && this.eleccion() !== 'CERVEZA_ESPECIAL') {
+      this.cervezaEspecial.set('');
+    }
+    this.alternativa.set(valor as Alternativa);
   }
 
   protected toggleEmbarazada(e: Event): void {
