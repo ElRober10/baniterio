@@ -220,10 +220,13 @@ export class ListaCompra implements OnInit {
     return cat.lineas.some((l) => l.precioUnitario != null);
   }
 
-  /** Suma cantidad × precio unitario de las líneas de la categoría que tengan precio. */
+  /**
+   * Suma cantidad × precio unitario de las líneas de la categoría que tengan precio y aún no estén
+   * compradas: lo ya comprado tiene un coste real (el ticket que se mete en Cuentas) y ya no es estimado.
+   */
   protected totalEstimado(cat: CategoriaListaCompra): number {
     return cat.lineas.reduce(
-      (total, l) => total + (l.precioUnitario != null ? l.cantidad * l.precioUnitario : 0),
+      (total, l) => total + (!l.comprada && l.precioUnitario != null ? l.cantidad * l.precioUnitario : 0),
       0,
     );
   }
@@ -233,6 +236,11 @@ export class ListaCompra implements OnInit {
     return this.categorias().reduce((total, cat) => total + this.totalEstimado(cat), 0);
   }
 
+  /** Líneas ya compradas: no cuentan en el gasto estimado (su coste real va en Cuentas). */
+  protected lineasCompradas(): number {
+    return this.categorias().reduce((n, cat) => n + cat.lineas.filter((l) => l.comprada).length, 0);
+  }
+
   protected hayPrecios(): boolean {
     return this.categorias().some((cat) => this.tienePrecios(cat));
   }
@@ -240,7 +248,7 @@ export class ListaCompra implements OnInit {
   /** Líneas que hay que comprar pero aún no tienen precio (no entran en el total). */
   protected lineasSinPrecio(): number {
     return this.categorias().reduce(
-      (n, cat) => n + cat.lineas.filter((l) => l.cantidad > 0 && l.precioUnitario == null && !l.necesitaFicha).length,
+      (n, cat) => n + cat.lineas.filter((l) => !l.comprada && l.cantidad > 0 && l.precioUnitario == null && !l.necesitaFicha).length,
       0,
     );
   }

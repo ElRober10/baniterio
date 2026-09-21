@@ -333,6 +333,11 @@
             <p class="font-display text-xl font-bold text-gold-soft">
               Gasto estimado total: {{ totalGeneral() | number: '1.2-2' }} €
             </p>
+            @if (lineasCompradas() > 0) {
+              <p class="text-xs text-muted">
+                Pendiente de comprar: las {{ lineasCompradas() }} ya compradas no cuentan; su coste real va en Cuentas.
+              </p>
+            }
             @if (presupuesto() !== null) {
               <p class="mt-2 text-sm text-muted">
                 Presupuesto (saldo de la cuenta): {{ presupuesto() | number: '1.2-2' }} €

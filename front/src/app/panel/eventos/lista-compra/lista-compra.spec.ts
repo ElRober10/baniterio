@@ -236,6 +236,29 @@ describe('ListaCompra', () => {
     http.verify();
   });
 
+  it('lo ya comprado no cuenta en el gasto estimado', () => {
+    const { fixture, http } = montar();
+    fixture.detectChanges();
+    const linea = (id: number, nombre: string, comprada: boolean) => ({
+      id, nombre, tamano: 'unidad', cantidad: 2, cantidadCalculada: 2, precioUnitario: 5,
+      ajustada: false, dinamica: false, necesitaFicha: false, comprada,
+    });
+    http.expectOne(`${base}/eventos/7/lista-compra`).flush({
+      puedoEditar: true, llevaFicha: false, bloqueada: false, apuntados: 4, diasFiesta: 1, presupuesto: 100,
+      categorias: [
+        { categoria: 'LIMPIEZA', etiqueta: 'Limpieza y utensilios',
+          lineas: [linea(1, 'Platos', false), linea(2, 'Vasos', true)] },
+      ],
+    });
+    fixture.detectChanges();
+    const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
+
+    // 2 x 5 € pendientes; los 10 € de lo comprado no entran.
+    expect(texto).toContain('Gasto estimado total: 10.00');
+    expect(texto).toContain('Quedarían 90.00');
+    http.verify();
+  });
+
   it('sin la lista bloqueada no se ofrece "Ajustar"', () => {
     const { fixture, http } = montar();
     fixture.detectChanges();
