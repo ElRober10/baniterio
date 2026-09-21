@@ -173,6 +173,19 @@
             }
           </article>
         }
+        @if (hayPrecios()) {
+          <article class="carta-relieve mt-4 rounded-2xl p-5 text-right">
+            <p class="font-display text-xl font-bold text-gold-soft">
+              Gasto estimado total: {{ totalGeneral() | number: '1.2-2' }} €
+            </p>
+            @if (lineasSinPrecio() > 0) {
+              <p class="mt-1 text-xs text-muted">
+                No incluye {{ lineasSinPrecio() }}
+                {{ lineasSinPrecio() === 1 ? 'línea sin precio' : 'líneas sin precio' }}.
+              </p>
+            }
+          </article>
+        }
       }
     }
   }

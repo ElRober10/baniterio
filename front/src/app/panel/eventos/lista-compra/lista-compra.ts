@@ -121,5 +121,22 @@ export class ListaCompra implements OnInit {
     );
   }
 
+  /** Suma del gasto estimado de todas las categorías. */
+  protected totalGeneral(): number {
+    return this.categorias().reduce((total, cat) => total + this.totalEstimado(cat), 0);
+  }
+
+  protected hayPrecios(): boolean {
+    return this.categorias().some((cat) => this.tienePrecios(cat));
+  }
+
+  /** Líneas que hay que comprar pero aún no tienen precio (no entran en el total). */
+  protected lineasSinPrecio(): number {
+    return this.categorias().reduce(
+      (n, cat) => n + cat.lineas.filter((l) => l.cantidad > 0 && l.precioUnitario == null && !l.necesitaFicha).length,
+      0,
+    );
+  }
+
   protected trackCat = (_: number, c: CategoriaListaCompra) => c.categoria;
 }
