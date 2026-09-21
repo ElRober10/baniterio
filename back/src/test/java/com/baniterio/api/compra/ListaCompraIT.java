@@ -298,6 +298,29 @@ class ListaCompraIT extends IntegrationTest {
     }
 
     @Test
+    void ajustar_linea_dejando_la_misma_cantidad_no_la_marca_como_ajustada() {
+        long eventoId = crearEventoDeUnDia("Lista compra IT ajuste sin cambio");
+        String admin = token(RolMembresia.ADMIN, false);
+        long lineaId = crearLineaFija(eventoId, admin, "Hielo");
+        Map<String, Object> antes = lineaDe(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
+                "COMIDA", "Hielo");
+        Number cantidad = (Number) antes.get("cantidad");
+
+        http.put().uri("/api/v1/eventos/" + eventoId + "/lista-compra/bloqueo")
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("bloqueada", true))
+                .exchange().expectStatus().isNoContent();
+        http.put().uri("/api/v1/eventos/" + eventoId + "/lista-compra/lineas/" + lineaId)
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("cantidad", cantidad))
+                .exchange().expectStatus().isNoContent();
+
+        Map<String, Object> despues = lineaDe(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
+                "COMIDA", "Hielo");
+        assertThat(despues.get("ajustada")).isEqualTo(antes.get("ajustada"));
+    }
+
+    @Test
     void ajustar_linea_ya_comprada_es_409() {
         long eventoId = crearEventoDeUnDia("Lista compra IT ajuste linea comprada");
         String admin = token(RolMembresia.ADMIN, false);

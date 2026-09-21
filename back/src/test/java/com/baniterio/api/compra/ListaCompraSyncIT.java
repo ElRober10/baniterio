@@ -851,4 +851,35 @@ class ListaCompraSyncIT extends IntegrationTest {
         // Cuenta recién creada, sin movimientos: saldo 0.
         assertThat(((Number) body.get("presupuesto")).doubleValue()).isEqualTo(0.0);
     }
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> infoLinea(Map<String, Object> body, String categoria, String nombre) {
+        for (Map<String, Object> cat : (List<Map<String, Object>>) body.get("categorias")) {
+            if (!categoria.equals(cat.get("categoria"))) {
+                continue;
+            }
+            for (Map<String, Object> l : (List<Map<String, Object>>) cat.get("lineas")) {
+                if (nombre.equals(l.get("nombre"))) {
+                    return (Map<String, Object>) l.get("info");
+                }
+            }
+        }
+        return null;
+    }
+
+    @Test
+    void las_lineas_de_alcohol_traen_personas_que_la_beben_y_stock() {
+        long eventoId = crearEventoConFicha("Sync IT info alcohol");
+        apuntarConAlcohol(eventoId, "Brugal");     // 2 días de 2 = 1 persona
+        apuntarConAlcohol(eventoId, "Brugal");
+        sumarInventarioFiesta(eventoId, "Brugal", CategoriaInventario.ALCOHOL, new BigDecimal("2"));
+
+        Map<String, Object> body = getMap("/api/v1/eventos/" + eventoId + "/lista-compra",
+                token(RolMembresia.MIEMBRO, false));
+        Map<String, Object> info = infoLinea(body, "ALCOHOL", "Brugal");
+
+        assertThat(info).isNotNull();
+        assertThat(((Number) info.get("personas")).doubleValue()).isEqualTo(2.0);
+        assertThat(((Number) info.get("stock")).doubleValue()).isEqualTo(2.0);
+    }
 }

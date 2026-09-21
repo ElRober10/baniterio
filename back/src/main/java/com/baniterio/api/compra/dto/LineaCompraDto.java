@@ -10,5 +10,5 @@ import java.math.BigDecimal;
  */
 public record LineaCompraDto(long id, String nombre, String tamano, String tienda, BigDecimal precioUnitario,
                              BigDecimal cantidad, BigDecimal cantidadCalculada, boolean ajustada, boolean dinamica,
-                             boolean necesitaFicha, boolean comprada, String detalle) {
+                             boolean necesitaFicha, boolean comprada, String detalle, InfoBebidaDto info) {
 }

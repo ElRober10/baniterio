@@ -86,60 +86,12 @@
                         }
                       </td>
                       <td class="py-1 pr-4 text-right font-semibold">
-                        @if (editandoId() === l.id) {
-                          <div class="flex flex-col items-end gap-1">
-                            <div class="flex items-center gap-1">
-                              <button
-                                type="button"
-                                aria-label="Restar uno"
-                                (click)="sumarEdicion(-1)"
-                                class="h-7 w-7 rounded-lg border border-outline hover:border-gold hover:text-gold"
-                              >
-                                −
-                              </button>
-                              <input
-                                type="number"
-                                aria-label="Cantidad"
-                                min="0"
-                                step="1"
-                                [value]="cantidadEditada()"
-                                (input)="cantidadEditada.set($any($event.target).valueAsNumber)"
-                                class="w-16 rounded border border-outline bg-transparent px-1 py-0.5 text-right"
-                              />
-                              <button
-                                type="button"
-                                aria-label="Sumar uno"
-                                (click)="sumarEdicion(1)"
-                                class="h-7 w-7 rounded-lg border border-outline hover:border-gold hover:text-gold"
-                              >
-                                +
-                              </button>
-                            </div>
-                            <div class="flex gap-1">
-                              <button
-                                type="button"
-                                [disabled]="ocupado()"
-                                (click)="guardarEdicion(l)"
-                                class="whitespace-nowrap rounded-lg border border-outline px-2 py-1 text-xs font-medium hover:border-gold hover:text-gold disabled:opacity-50"
-                              >
-                                Guardar
-                              </button>
-                              <button
-                                type="button"
-                                [disabled]="ocupado()"
-                                (click)="cancelarEdicion()"
-                                class="whitespace-nowrap rounded-lg border border-outline px-2 py-1 text-xs font-medium disabled:opacity-50"
-                              >
-                                Cancelar
-                              </button>
-                            </div>
-                          </div>
-                        } @else if (bloqueada() && puedoEditar() && !l.comprada) {
+                        @if (bloqueada() && puedoEditar() && !l.comprada) {
                           <button
                             type="button"
                             aria-label="Ajustar cantidad"
                             [disabled]="ocupado()"
-                            (click)="empezarEdicion(l)"
+                            (click)="alternarEdicion(l)"
                             class="rounded-lg border border-dashed border-outline px-2 py-0.5 font-semibold hover:border-gold hover:text-gold disabled:opacity-50"
                           >
                             {{ l.cantidad }} ▾
@@ -164,8 +116,6 @@
                         <td class="py-1 text-right">
                           @if (l.comprada) {
                             <span class="text-xs text-gold-soft">✓ Comprada</span>
-                          } @else if (editandoId() === l.id) {
-                            <span class="text-xs text-muted">Ajustando…</span>
                           } @else {
                             <div class="flex justify-end gap-1">
                               @if (l.cantidad > 0) {
@@ -183,6 +133,46 @@
                         </td>
                       }
                     </tr>
+                    @if (editandoId() === l.id) {
+                      <tr>
+                        <td colspan="6" class="pb-3 pt-1">
+                          <div class="rounded-xl border border-outline bg-brand/10 p-3 text-left text-sm">
+                            @if (l.info) {
+                              <p class="text-muted">
+                                Personas que beben {{ l.nombre }}:
+                                <span class="font-semibold">{{ l.info.personas | number: '1.0-2' }}</span>
+                                <span class="text-xs">(dos días = 1, un día = 0,5)</span>
+                              </p>
+                              <p class="text-muted">
+                                En stock:
+                                <span class="font-semibold">{{ l.info.stock | number: '1.0-2' }}</span>
+                                botellas
+                              </p>
+                            }
+                            <div class="mt-2 flex flex-wrap items-center gap-2">
+                              <span class="text-muted">Cantidad que se pide:</span>
+                              <button type="button" aria-label="Restar uno" (click)="sumarEdicion(-1)"
+                                class="h-7 w-7 rounded-lg border border-outline hover:border-gold hover:text-gold">−</button>
+                              <input
+                                type="number"
+                                aria-label="Cantidad"
+                                min="0"
+                                step="1"
+                                [value]="cantidadEditada()"
+                                (input)="cantidadEditada.set($any($event.target).valueAsNumber)"
+                                class="w-16 rounded border border-outline bg-transparent px-1 py-0.5 text-right"
+                              />
+                              <button type="button" aria-label="Sumar uno" (click)="sumarEdicion(1)"
+                                class="h-7 w-7 rounded-lg border border-outline hover:border-gold hover:text-gold">+</button>
+                              <button type="button" [disabled]="ocupado()" (click)="guardarEdicion(l)"
+                                class="whitespace-nowrap rounded-lg border border-outline px-2 py-1 text-xs font-medium hover:border-gold hover:text-gold disabled:opacity-50">Guardar</button>
+                              <button type="button" [disabled]="ocupado()" (click)="cancelarEdicion()"
+                                class="whitespace-nowrap rounded-lg border border-outline px-2 py-1 text-xs font-medium disabled:opacity-50">Cancelar</button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    }
                   }
                 </tbody>
               </table>

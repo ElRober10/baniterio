@@ -82,6 +82,15 @@ export class ListaCompra implements OnInit {
     });
   }
 
+  /** Pulsar la cantidad abre (o cierra) el desplegable de ajuste de esa línea. */
+  protected alternarEdicion(l: LineaCompra): void {
+    if (this.editandoId() === l.id) {
+      this.cancelarEdicion();
+    } else {
+      this.empezarEdicion(l);
+    }
+  }
+
   protected empezarEdicion(l: LineaCompra): void {
     this.editandoId.set(l.id);
     this.cantidadEditada.set(l.cantidad);
@@ -100,7 +109,12 @@ export class ListaCompra implements OnInit {
 
   protected guardarEdicion(l: LineaCompra): void {
     const cantidad = this.cantidadEditada();
-    if (this.ocupado() || cantidad === null || cantidad < 0) return;
+    if (this.ocupado() || cantidad === null || Number.isNaN(cantidad) || cantidad < 0) return;
+    if (cantidad === l.cantidad) {
+      // No ha cambiado nada: se cierra sin marcar la línea como ajustada.
+      this.cancelarEdicion();
+      return;
+    }
     this.ocupado.set(true);
     this.service.ajustarLinea(this.eventoId, l.id, cantidad).subscribe({
       next: () => {

@@ -20,6 +20,7 @@ import com.baniterio.api.compra.dto.AjustarReglaRequest;
 import com.baniterio.api.compra.dto.CategoriaListaCompraDto;
 import com.baniterio.api.compra.dto.CrearReglaRequest;
 import com.baniterio.api.compra.dto.EventoListaCompraDto;
+import com.baniterio.api.compra.dto.InfoBebidaDto;
 import com.baniterio.api.compra.dto.LineaCompraDto;
 import com.baniterio.api.compra.dto.ListaCompraAdminResponse;
 import com.baniterio.api.compra.dto.ListaCompraResponse;
@@ -187,6 +188,8 @@ public class ListaCompraService {
             sincronizar(e, datos);
         }
         boolean puedoEditar = permisos.puede(usuarioId, AreaProtegida.INVENTARIO);
+        Map<String, BigDecimal> personasPorMarca = personasPorMarcaAlcohol(datos);
+        StockCubierto stockFiesta = stockCubierto(eventoId);
 
         // "Para alternar" agrupa lo que se bebe en vez del alcohol: la cerveza (y las especiales)
         // y el tinto de verano, que en el inventario y en los precios sigue siendo un refresco.
@@ -207,7 +210,8 @@ public class ListaCompraService {
             porSeccion.get(seccionDe(l)).add(new LineaCompraDto(
                     l.getId(), l.getNombre(), l.getTamano(), l.getTienda(), l.getPrecioUnitario(),
                     l.getCantidad(), BigDecimal.ZERO,
-                    l.isAjustada(), l.isDinamica(), l.isNecesitaFicha(), l.isComprada(), l.getDetalle()));
+                    l.isAjustada(), l.isDinamica(), l.isNecesitaFicha(), l.isComprada(), l.getDetalle(),
+                    infoDe(l, personasPorMarca, stockFiesta)));
         }
 
         List<CategoriaListaCompraDto> categorias = new ArrayList<>();
@@ -219,6 +223,34 @@ public class ListaCompraService {
         return new ListaCompraResponse(puedoEditar, datos.llevaFicha(), e.isListaCompraBloqueada(),
                 datos.apuntados(), datos.diasFiesta(), categorias,
                 movimientosCuenta.sumImporteAnio(e.getCuenta().getId(), e.getCuenta().getAnioActual()));
+    }
+
+    /** Personas que beben cada marca de alcohol, cada una como fracción de los días de la fiesta. */
+    private static Map<String, BigDecimal> personasPorMarcaAlcohol(DatosEvento datos) {
+        Map<String, BigDecimal> out = new LinkedHashMap<>();
+        if (datos.diasFiesta() <= 0) {
+            return out;
+        }
+        for (PersonaCompra p : datos.personas()) {
+            if (p.tieneFicha() && p.alcohol() != null) {
+                out.merge(p.alcohol(), BigDecimal.valueOf(p.diasQueVa())
+                        .divide(BigDecimal.valueOf(datos.diasFiesta()), 2, java.math.RoundingMode.HALF_UP),
+                        BigDecimal::add);
+            }
+        }
+        return out;
+    }
+
+    /** Solo las líneas de alcohol (de momento) llevan información para ajustar. */
+    private static InfoBebidaDto infoDe(LineaCompraEvento l, Map<String, BigDecimal> personasPorMarca,
+                                        StockCubierto stock) {
+        if (l.getCategoria() != CategoriaInventario.ALCOHOL || !l.isDinamica()) {
+            return null;
+        }
+        return new InfoBebidaDto(
+                personasPorMarca.getOrDefault(l.getNombre(), BigDecimal.ZERO).stripTrailingZeros(),
+                stock.porNombre().getOrDefault(claveNombre(l.getCategoria(), l.getNombre()), BigDecimal.ZERO)
+                        .stripTrailingZeros());
     }
 
     private static final String SECCION_PARA_ALTERNAR = "PARA_ALTERNAR";
@@ -530,9 +562,12 @@ public class ListaCompraService {
         if (linea.isComprada()) {
             throw new LineaCompraNoAjustableException();
         }
-        linea.setCantidad(req.cantidad());
-        linea.setAjustada(true);
-        lineas.save(linea);
+        // Solo cuenta como ajuste si de verdad cambia la cantidad: abrir el editor y dejarla igual no ajusta nada.
+        if (linea.getCantidad().compareTo(req.cantidad()) != 0) {
+            linea.setCantidad(req.cantidad());
+            linea.setAjustada(true);
+            lineas.save(linea);
+        }
     }
 
     /** Bloquea o desbloquea el auto-calculo de la lista. Al bloquear, sincroniza una ultima vez. */

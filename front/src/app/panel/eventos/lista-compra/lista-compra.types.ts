@@ -33,6 +33,8 @@ export interface LineaCompra {
   comprada: boolean;
   /** Nota de la compra en packs, p. ej. "2 × pack de 50". */
   detalle?: string | null;
+  /** Solo en bebidas alcohólicas: quién la bebe y cuánto stock hay. */
+  info?: { personas: number; stock: number } | null;
 }
 
 export interface CategoriaListaCompra {
