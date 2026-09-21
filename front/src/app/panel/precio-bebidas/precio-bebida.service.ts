@@ -45,6 +45,24 @@ export class PrecioBebidaService {
     );
   }
 
+  guardarTamanoArticulo(
+    eventoId: number,
+    categoria: string,
+    body: { nombreArticulo: string; litros: number },
+  ): Observable<void> {
+    return this.http.put<void>(
+      `${this.base}/precio-bebida/eventos/${eventoId}/articulos/${categoria}/tamano`,
+      body,
+    );
+  }
+
+  guardarProductoKilo(
+    eventoId: number,
+    body: { nombreArticulo: string; precioKilo: number; pesoKg: number },
+  ): Observable<void> {
+    return this.http.put<void>(`${this.base}/precio-bebida/eventos/${eventoId}/articulos/COMIDA/kilo`, body);
+  }
+
   guardarPrecioArticulo(
     eventoId: number,
     categoria: string,

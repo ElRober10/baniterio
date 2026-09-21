@@ -35,9 +35,28 @@
                 </tr>
               </thead>
               <tbody>
-                @for (a of articulos(); track trackArticulo($index, a)) {
+                @for (a of articulosTienda(); track trackArticulo($index, a)) {
                   <tr class="border-t border-outline/30">
-                    <td class="py-1.5 pr-4">{{ a }}</td>
+                    <td class="py-1.5 pr-4">
+                     <div class="flex items-center justify-between gap-3">
+                      <span>{{ a }}</span>
+                      @if (llevaTamano(a)) {
+                        @if (puedoEditar()) {
+                          <select
+                            [attr.aria-label]="'Tamaño de ' + a"
+                            (change)="guardarTamano(a, $any($event.target).value)"
+                            class="rounded border border-outline bg-transparent px-1 py-0.5 text-xs"
+                          >
+                            @for (l of tamanosLitros; track l) {
+                              <option [value]="l" [selected]="tamanoDe(a) === l">{{ l }} L</option>
+                            }
+                          </select>
+                        } @else {
+                          <span class="text-xs text-muted">{{ tamanoDe(a) }} L</span>
+                        }
+                      }
+                     </div>
+                    </td>
                     @for (t of tiendas(); track trackTienda($index, t)) {
                       <td class="py-1.5 pr-4 text-right">
                         @if (puedoEditar()) {
@@ -60,6 +79,59 @@
               </tbody>
             </table>
           </div>
+
+          @if (porKilo().length > 0) {
+            <div class="mt-6 border-t-2 border-gold/40 pt-4">
+              <h2 class="text-sm font-bold text-gold">Jamones Duriber</h2>
+              <p class="mt-0.5 text-xs text-muted">Se compra allí, al peso: precio por kilo × peso estimado de la pieza.</p>
+              <div class="mt-3 overflow-x-auto">
+                <table class="w-full min-w-max whitespace-nowrap text-sm">
+                  <thead>
+                    <tr class="text-left text-xs uppercase tracking-wide text-muted">
+                      <th class="pb-2 pr-4">Artículo</th>
+                      <th class="pb-2 pr-4 text-right">€ / kg</th>
+                      <th class="pb-2 pr-4 text-right">Peso estimado (kg)</th>
+                      <th class="pb-2 text-right">Precio pieza</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (k of porKilo(); track k.nombreArticulo) {
+                      <tr class="border-t border-outline/30">
+                        <td class="py-1.5 pr-4">{{ k.nombreArticulo }}</td>
+                        <td class="py-1.5 pr-4 text-right">
+                          @if (puedoEditar()) {
+                            <input
+                              type="number" min="0" step="0.01"
+                              [attr.aria-label]="'Precio por kilo de ' + k.nombreArticulo"
+                              [value]="k.precioKilo"
+                              (change)="guardarKilo(k.nombreArticulo, 'precioKilo', $any($event.target).value)"
+                              class="w-20 rounded border border-outline bg-transparent px-1 py-0.5 text-right"
+                            />
+                          } @else {
+                            {{ k.precioKilo ?? '—' }}
+                          }
+                        </td>
+                        <td class="py-1.5 pr-4 text-right">
+                          @if (puedoEditar()) {
+                            <input
+                              type="number" min="0" step="0.1"
+                              [attr.aria-label]="'Peso estimado de ' + k.nombreArticulo"
+                              [value]="k.pesoKg"
+                              (change)="guardarKilo(k.nombreArticulo, 'pesoKg', $any($event.target).value)"
+                              class="w-20 rounded border border-outline bg-transparent px-1 py-0.5 text-right"
+                            />
+                          } @else {
+                            {{ k.pesoKg ?? '—' }}
+                          }
+                        </td>
+                        <td class="py-1.5 text-right font-bold">{{ precioPieza(k.nombreArticulo) ?? '—' }} €</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
         </article>
       }
 

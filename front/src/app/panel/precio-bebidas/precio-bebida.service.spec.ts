@@ -46,7 +46,7 @@ describe('PrecioBebidaService', () => {
     service.alcohol(7).subscribe();
     const req = http.expectOne(`${base}/precio-bebida/eventos/7/alcohol`);
     expect(req.request.method).toBe('GET');
-    req.flush({ puedoEditar: false, tiendas: [], tamanos: [], bebidas: [], precios: [] });
+    req.flush({ puedoEditar: false, tiendas: [], tamanos: [], porKilo: [], bebidas: [], precios: [] });
   });
 
   it('guardarPrecio() hace PUT con la celda', () => {

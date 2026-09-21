@@ -37,6 +37,10 @@ import com.baniterio.api.inventario.ArticuloInventarioRepository;
 import com.baniterio.api.inventario.CategoriaInventario;
 import com.baniterio.api.preciobebida.PrecioArticuloEvento;
 import com.baniterio.api.preciobebida.PrecioArticuloEventoRepository;
+import com.baniterio.api.preciobebida.ProductoKiloEvento;
+import com.baniterio.api.preciobebida.ProductoKiloEventoRepository;
+import com.baniterio.api.preciobebida.TamanoArticuloEvento;
+import com.baniterio.api.preciobebida.TamanoArticuloEventoRepository;
 import com.baniterio.api.preciobebida.Tienda;
 import com.baniterio.api.preciobebida.TiendaRepository;
 import com.baniterio.api.support.IntegrationTest;
@@ -74,6 +78,8 @@ class ListaCompraSyncIT extends IntegrationTest {
     @Autowired ArticuloEventoRepository articulosEvento;
     @Autowired TiendaRepository tiendas;
     @Autowired PrecioArticuloEventoRepository precioArticulo;
+    @Autowired TamanoArticuloEventoRepository tamanosArticulo;
+    @Autowired ProductoKiloEventoRepository productosKilo;
     @Autowired PasswordEncoder passwordEncoder;
 
     RestTestClient http;
@@ -123,6 +129,10 @@ class ListaCompraSyncIT extends IntegrationTest {
 
     /** Apunta una persona los 2 días que bebe {@code marcaAlcohol} (rellena su ficha de bebida). */
     void apuntarConAlcohol(long eventoId, String marcaAlcohol) {
+        apuntarConAlcohol(eventoId, marcaAlcohol, "Coca-Cola");
+    }
+
+    void apuntarConAlcohol(long eventoId, String marcaAlcohol, String nombreRefresco) {
         Evento evento = eventos.findById(eventoId).orElseThrow();
         String tel = "6" + String.format("%08d", ThreadLocalRandom.current().nextInt(100_000_000));
         Usuario u = usuarios.save(Usuario.builder()
@@ -132,7 +142,7 @@ class ListaCompraSyncIT extends IntegrationTest {
         AsistenciaEvento a = asistencias.save(AsistenciaEvento.builder()
                 .evento(evento).usuario(u).estado(EstadoAsistencia.APUNTADO).build());
         Bebida alcohol = bebidas.findByTipoAndNombreIgnoreCase(TipoBebida.ALCOHOL, marcaAlcohol).orElseThrow();
-        Bebida refresco = bebidas.findByTipoAndNombreIgnoreCase(TipoBebida.REFRESCO, "Coca-Cola").orElseThrow();
+        Bebida refresco = bebidas.findByTipoAndNombreIgnoreCase(TipoBebida.REFRESCO, nombreRefresco).orElseThrow();
         fichas.save(FichaBebida.builder()
                 .asistencia(a).alcohol(alcohol).refresco(refresco)
                 .alternativa(Alternativa.NADA).modalidad(Modalidad.COMPLETA)
@@ -677,5 +687,61 @@ class ListaCompraSyncIT extends IntegrationTest {
 
         assertThat(tiendaLinea(body, "CERVEZA", "Cerveza")).isEqualTo("Alcampo");
         assertThat(precioUnitarioLinea(body, "CERVEZA", "Cerveza")).isEqualTo(0.90);
+    }
+
+    void apuntarTamano(long eventoId, String refresco, String litros) {
+        tamanosArticulo.save(TamanoArticuloEvento.builder().evento(eventos.findById(eventoId).orElseThrow())
+                .nombreArticulo(refresco).litros(new BigDecimal(litros)).build());
+    }
+
+    @Test
+    void refresco_pide_botellas_enteras_segun_el_tamano_de_la_rejilla() {
+        String tok = token(RolMembresia.MIEMBRO, false);
+
+        // 1 persona x 2 días = 4 L de refresco. Sin tamaño apuntado: botellas de 2 L.
+        long porDefecto = crearEventoConFicha("Sync IT refresco defecto");
+        apuntarConAlcohol(porDefecto, "Barceló", "Sprite");
+        assertThat(cantidadLinea(getMap("/api/v1/eventos/" + porDefecto + "/lista-compra", tok),
+                "REFRESCOS", "Sprite")).isEqualTo(2.0);
+
+        long litro = crearEventoConFicha("Sync IT refresco 1L");
+        apuntarConAlcohol(litro, "Barceló", "Nestea");
+        apuntarTamano(litro, "Nestea", "1");
+        assertThat(cantidadLinea(getMap("/api/v1/eventos/" + litro + "/lista-compra", tok),
+                "REFRESCOS", "Nestea")).isEqualTo(4.0);
+
+        // 4 L / 1,5 L = 2,67 botellas: se sube a la siguiente entera.
+        long litroYMedio = crearEventoConFicha("Sync IT refresco 1,5L");
+        apuntarConAlcohol(litroYMedio, "Barceló", "Tónica");
+        apuntarTamano(litroYMedio, "Tónica", "1.5");
+        assertThat(cantidadLinea(getMap("/api/v1/eventos/" + litroYMedio + "/lista-compra", tok),
+                "REFRESCOS", "Tónica")).isEqualTo(3.0);
+    }
+
+    @Test
+    void el_tamano_apuntado_en_un_evento_se_hereda_en_el_siguiente() {
+        String tok = token(RolMembresia.MIEMBRO, false);
+        long anterior = crearEventoConFicha("Sync IT refresco herencia 1");
+        apuntarTamano(anterior, "Trina Naranja", "1");
+
+        long nuevo = crearEventoConFicha("Sync IT refresco herencia 2");
+        apuntarConAlcohol(nuevo, "Barceló", "Trina Naranja");
+        // Sin apuntar nada en este evento, la Trina usa el 1 L del evento anterior: 4 botellas.
+        assertThat(cantidadLinea(getMap("/api/v1/eventos/" + nuevo + "/lista-compra", tok),
+                "REFRESCOS", "Trina Naranja")).isEqualTo(4.0);
+    }
+
+    @Test
+    void los_embutidos_de_duriber_salen_a_precio_kilo_por_peso_estimado() {
+        long eventoId = crearEventoConFicha("Sync IT duriber");
+        productosKilo.save(ProductoKiloEvento.builder().evento(eventos.findById(eventoId).orElseThrow())
+                .nombreArticulo("Paletilla ibérica").precioKilo(new BigDecimal("18.50"))
+                .pesoKg(new BigDecimal("5")).build());
+
+        Map<String, Object> body = getMap("/api/v1/eventos/" + eventoId + "/lista-compra",
+                token(RolMembresia.MIEMBRO, false));
+
+        assertThat(tiendaLinea(body, "COMIDA", "Paletilla ibérica")).isEqualTo("Jamones Duriber");
+        assertThat(precioUnitarioLinea(body, "COMIDA", "Paletilla ibérica")).isEqualTo(92.5);
     }
 }

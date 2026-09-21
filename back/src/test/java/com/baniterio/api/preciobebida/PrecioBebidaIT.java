@@ -309,6 +309,81 @@ class PrecioBebidaIT extends IntegrationTest {
     }
 
     @Test
+    void articulos_refrescos_ya_no_incluye_sprite_zero() {
+        long eventoId = crearEvento("Precio articulo IT sin sprite zero", LocalDate.of(2026, 9, 25), false);
+        Map<String, Object> grilla = articulos(eventoId, "REFRESCOS", token());
+        assertThat((List<String>) grilla.get("articulos")).contains("Sprite").doesNotContain("Sprite Zero");
+    }
+
+    @Test
+    void guardar_tamano_articulo_admin_lo_refleja_y_valida_litros() {
+        long eventoId = crearEvento("Precio articulo IT tamano", LocalDate.of(2026, 9, 25), false);
+        String admin = token(RolMembresia.ADMIN);
+        String uri = "/api/v1/precio-bebida/eventos/" + eventoId + "/articulos/REFRESCOS/tamano";
+
+        http.put().uri(uri).header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("nombreArticulo", "Fanta Limón", "litros", 1.5))
+                .exchange().expectStatus().isNoContent();
+
+        List<Map<String, Object>> tamanos = (List<Map<String, Object>>) articulos(eventoId, "REFRESCOS", admin).get("tamanos");
+        assertThat(tamanos).anySatisfy(t -> {
+            assertThat(t.get("nombreArticulo")).isEqualTo("Fanta Limón");
+            assertThat(((Number) t.get("litros")).doubleValue()).isEqualTo(1.5);
+        });
+
+        http.put().uri(uri).header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("nombreArticulo", "Fanta Limón", "litros", 3))
+                .exchange().expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.codigo").isEqualTo("TAMANO_ARTICULO_NO_VALIDO");
+    }
+
+    @Test
+    void el_tamano_apuntado_pasa_por_defecto_a_los_eventos_siguientes() {
+        String admin = token(RolMembresia.ADMIN);
+        long primero = crearEvento("Precio articulo IT herencia 1", LocalDate.of(2026, 9, 25), false);
+        http.put().uri("/api/v1/precio-bebida/eventos/" + primero + "/articulos/REFRESCOS/tamano")
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("nombreArticulo", "Nestea", "litros", 1))
+                .exchange().expectStatus().isNoContent();
+
+        long segundo = crearEvento("Precio articulo IT herencia 2", LocalDate.of(2026, 9, 26), false);
+        List<Map<String, Object>> tamanos = (List<Map<String, Object>>) articulos(segundo, "REFRESCOS", admin).get("tamanos");
+        assertThat(tamanos).anySatisfy(t -> {
+            assertThat(t.get("nombreArticulo")).isEqualTo("Nestea");
+            assertThat(((Number) t.get("litros")).doubleValue()).isEqualTo(1.0);
+        });
+    }
+
+    @Test
+    void el_tinto_de_verano_admite_tamano_pero_la_cerveza_no() {
+        long eventoId = crearEvento("Precio articulo IT tinto", LocalDate.of(2026, 9, 25), false);
+        String admin = token(RolMembresia.ADMIN);
+        String uri = "/api/v1/precio-bebida/eventos/" + eventoId + "/articulos/CERVEZA/tamano";
+
+        http.put().uri(uri).header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("nombreArticulo", "Tinto de verano", "litros", 1.5))
+                .exchange().expectStatus().isNoContent();
+        http.put().uri(uri).header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("nombreArticulo", "Cerveza", "litros", 1.5))
+                .exchange().expectStatus().isBadRequest();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void guardar_kilo_de_un_embutido_lo_refleja_en_la_rejilla_de_comida() {
+        long eventoId = crearEvento("Precio articulo IT kilo", LocalDate.of(2026, 9, 25), false);
+        String admin = token(RolMembresia.ADMIN);
+        String uri = "/api/v1/precio-bebida/eventos/" + eventoId + "/articulos/COMIDA/kilo";
+
+        http.put().uri(uri).header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("nombreArticulo", "Chorizo ibérico", "precioKilo", 14.9, "pesoKg", 1.2))
+                .exchange().expectStatus().isNoContent();
+        http.put().uri(uri).header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("nombreArticulo", "Picos", "precioKilo", 1, "pesoKg", 1))
+                .exchange().expectStatus().isBadRequest();
+    }
+
+    @Test
     void articulos_cerveza_incluye_tinto_de_verano_fijo() {
         long eventoId = crearEvento("Precio articulo IT cerveza", LocalDate.of(2026, 9, 25), false);
         Map<String, Object> grilla = articulos(eventoId, "CERVEZA", token());

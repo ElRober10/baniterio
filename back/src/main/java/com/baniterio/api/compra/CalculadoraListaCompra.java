@@ -7,7 +7,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Predicate;
 
 import com.baniterio.api.identidad.Alternativa;
@@ -89,13 +88,6 @@ public final class CalculadoraListaCompra {
     }
 
     /**
-     * Refrescos cuyo envase real en el inventario es una lata, no la "botella" que
-     * usa por defecto la regla REFRESCO_SELECCIONADO. Sin esto, la línea generada
-     * nunca casa con el artículo de inventario y no se resta el stock ya comprado.
-     */
-    private static final Set<String> REFRESCOS_EN_LATA = Set.of("Gin-tonic Tanqueray", "Red Bull");
-
-    /**
      * Reglas ALCOHOL/REFRESCO_SELECCIONADO: una línea por marca elegida, orden
      * alfabético. Sin ficha en el evento, una única línea a 0 con necesitaFicha y
      * nombre "Alcohol" / "Refrescos".
@@ -124,8 +116,6 @@ public final class CalculadoraListaCompra {
                     String tamano = r.getTamano();
                     if (esAlcohol) {
                         tamano = n.compareTo(BigDecimal.ONE) == 0 ? "1 L" : "70 cl";
-                    } else if (REFRESCOS_EN_LATA.contains(e.getKey())) {
-                        tamano = "lata";
                     }
                     out.add(new LineaCalculada(cat, e.getKey(), tamano, n, true, false, r.getOrden()));
                 });

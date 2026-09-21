@@ -2,6 +2,7 @@ package com.baniterio.api.preciobebida;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 import com.baniterio.api.admin.SinPermisoException;
 import java.util.LinkedHashSet;
@@ -30,7 +31,11 @@ import com.baniterio.api.preciobebida.dto.GrillaAlcoholResponse;
 import com.baniterio.api.preciobebida.dto.GrillaArticuloResponse;
 import com.baniterio.api.preciobebida.dto.GuardarPrecioArticuloRequest;
 import com.baniterio.api.preciobebida.dto.GuardarPrecioRequest;
+import com.baniterio.api.preciobebida.dto.GuardarTamanoArticuloRequest;
+import com.baniterio.api.preciobebida.dto.GuardarProductoKiloRequest;
 import com.baniterio.api.preciobebida.dto.PrecioArticuloCeldaDto;
+import com.baniterio.api.preciobebida.dto.ProductoKiloDto;
+import com.baniterio.api.preciobebida.dto.TamanoArticuloDto;
 import com.baniterio.api.preciobebida.dto.PrecioCeldaDto;
 import com.baniterio.api.preciobebida.dto.TiendaDto;
 import org.springframework.stereotype.Service;
@@ -54,6 +59,10 @@ public class PrecioBebidaService {
     private final PrecioBebidaEventoRepository precios;
     private final BebidaRepository bebidas;
     private final PrecioArticuloEventoRepository precioArticulo;
+    private final TamanoArticuloEventoRepository tamanosArticulo;
+    private final TamanosArticulo tamanosHeredados;
+    private final ProductoKiloEventoRepository productosKilo;
+    private final ProductosPorKilo productosPorKilo;
     private final ArticuloInventarioRepository articulosInventario;
     private final LineaCompraEventoRepository lineasCompra;
     private final ServicioPermisos permisos;
@@ -61,6 +70,8 @@ public class PrecioBebidaService {
     public PrecioBebidaService(EventoRepository eventos, PenaPilotoService pena, TiendaRepository tiendas,
             TamanoPrecioBebidaEventoRepository tamanos, PrecioBebidaEventoRepository precios,
             BebidaRepository bebidas, PrecioArticuloEventoRepository precioArticulo,
+            TamanoArticuloEventoRepository tamanosArticulo, TamanosArticulo tamanosHeredados,
+            ProductoKiloEventoRepository productosKilo, ProductosPorKilo productosPorKilo,
             ArticuloInventarioRepository articulosInventario, LineaCompraEventoRepository lineasCompra,
             ServicioPermisos permisos) {
         this.eventos = eventos;
@@ -70,6 +81,10 @@ public class PrecioBebidaService {
         this.precios = precios;
         this.bebidas = bebidas;
         this.precioArticulo = precioArticulo;
+        this.tamanosArticulo = tamanosArticulo;
+        this.tamanosHeredados = tamanosHeredados;
+        this.productosKilo = productosKilo;
+        this.productosPorKilo = productosPorKilo;
         this.articulosInventario = articulosInventario;
         this.lineasCompra = lineasCompra;
         this.permisos = permisos;
@@ -258,7 +273,17 @@ public class PrecioBebidaService {
                         .map(p -> new PrecioArticuloCeldaDto(p.getNombreArticulo(), p.getTienda().getId(), p.getPrecio()))
                         .toList();
         boolean puedoEditar = permisos.esAdministrador(usuarioId);
-        return new GrillaArticuloResponse(puedoEditar, tiendas(), nombresList, listaPrecios);
+        List<TamanoArticuloDto> listaTamanos = tamanosHeredados.apuntados(eventoId).entrySet().stream()
+                .filter(t -> nombresList.contains(t.getKey()))
+                .map(t -> new TamanoArticuloDto(t.getKey(), t.getValue())).toList();
+        Map<String, ProductosPorKilo.Kilo> kilos = productosPorKilo.apuntados(eventoId);
+        List<ProductoKiloDto> listaKilo = !"COMIDA".equals(seccion) ? List.of()
+                : nombresList.stream().filter(ProductosPorKilo.NOMBRES::contains)
+                        .map(n -> new ProductoKiloDto(n,
+                                kilos.containsKey(n) ? kilos.get(n).precioKilo() : null,
+                                kilos.containsKey(n) ? kilos.get(n).pesoKg() : null))
+                        .toList();
+        return new GrillaArticuloResponse(puedoEditar, tiendas(), nombresList, listaPrecios, listaTamanos, listaKilo);
     }
 
     @Transactional
@@ -284,4 +309,41 @@ public class PrecioBebidaService {
         fila.setPrecio(precio);
         precioArticulo.save(fila);
     }
+
+    /** Apunta el tamaño de botella de un refresco (1, 1,5 o 2 litros). Solo admin. */
+    @Transactional
+    public void guardarTamanoArticulo(Long usuarioId, Long eventoId, String seccion, GuardarTamanoArticuloRequest req) {
+        exigirAdmin(usuarioId);
+        Evento evento = eventoAbierto(eventoId);
+        boolean admiteTamano = "REFRESCOS".equals(seccion)
+                || ("CERVEZA".equals(seccion) && "Tinto de verano".equals(req.nombreArticulo()));
+        if (!admiteTamano || TAMANOS_ARTICULO.stream().noneMatch(t -> t.compareTo(req.litros()) == 0)) {
+            throw new TamanoArticuloNoValidoException();
+        }
+        NombreArticulo articulo = nombresDe(eventoId, seccion).stream()
+                .filter(n -> n.nombre().equals(req.nombreArticulo()))
+                .findFirst().orElseThrow(NombreArticuloNoValidoException::new);
+        TamanoArticuloEvento fila = tamanosArticulo.findByEventoIdAndNombreArticulo(eventoId, articulo.nombre())
+                .orElseGet(() -> TamanoArticuloEvento.builder().evento(evento).nombreArticulo(articulo.nombre()).build());
+        fila.setLitros(req.litros());
+        tamanosArticulo.save(fila);
+    }
+
+    /** Apunta precio por kilo y peso estimado de un embutido de Jamones Duriber. Solo admin. */
+    @Transactional
+    public void guardarProductoKilo(Long usuarioId, Long eventoId, GuardarProductoKiloRequest req) {
+        exigirAdmin(usuarioId);
+        Evento evento = eventoAbierto(eventoId);
+        if (!ProductosPorKilo.NOMBRES.contains(req.nombreArticulo())) {
+            throw new NombreArticuloNoValidoException();
+        }
+        ProductoKiloEvento fila = productosKilo.findByEventoIdAndNombreArticulo(eventoId, req.nombreArticulo())
+                .orElseGet(() -> ProductoKiloEvento.builder().evento(evento).nombreArticulo(req.nombreArticulo()).build());
+        fila.setPrecioKilo(req.precioKilo());
+        fila.setPesoKg(req.pesoKg());
+        productosKilo.save(fila);
+    }
+
+    private static final List<BigDecimal> TAMANOS_ARTICULO =
+            List.of(new BigDecimal("1"), new BigDecimal("1.5"), new BigDecimal("2"));
 }

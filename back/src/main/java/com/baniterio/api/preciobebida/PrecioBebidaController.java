@@ -9,6 +9,8 @@ import com.baniterio.api.preciobebida.dto.EventoPrecioBebidaDto;
 import com.baniterio.api.preciobebida.dto.GrillaAlcoholResponse;
 import com.baniterio.api.preciobebida.dto.GrillaArticuloResponse;
 import com.baniterio.api.preciobebida.dto.GuardarPrecioArticuloRequest;
+import com.baniterio.api.preciobebida.dto.GuardarProductoKiloRequest;
+import com.baniterio.api.preciobebida.dto.GuardarTamanoArticuloRequest;
 import com.baniterio.api.preciobebida.dto.GuardarPrecioRequest;
 import com.baniterio.api.preciobebida.dto.TiendaDto;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -94,5 +96,22 @@ public class PrecioBebidaController {
             @PathVariable Long eventoId, @PathVariable String categoria,
             @Valid @RequestBody GuardarPrecioArticuloRequest req) {
         service.guardarPrecioArticulo(principal.id(), eventoId, categoria.toUpperCase(), req);
+    }
+
+    /** Apunta el tamaño de botella (1, 1.5 o 2 litros) de un refresco. Solo admin. */
+    @PutMapping("/eventos/{eventoId}/articulos/{categoria}/tamano")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void guardarTamanoArticulo(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long eventoId, @PathVariable String categoria,
+            @Valid @RequestBody GuardarTamanoArticuloRequest req) {
+        service.guardarTamanoArticulo(principal.id(), eventoId, categoria.toUpperCase(), req);
+    }
+
+    /** Apunta precio por kilo y peso estimado de un embutido de Jamones Duriber. Solo admin. */
+    @PutMapping("/eventos/{eventoId}/articulos/COMIDA/kilo")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void guardarProductoKilo(@AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long eventoId, @Valid @RequestBody GuardarProductoKiloRequest req) {
+        service.guardarProductoKilo(principal.id(), eventoId, req);
     }
 }

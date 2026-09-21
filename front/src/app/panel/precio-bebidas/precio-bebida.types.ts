@@ -43,4 +43,8 @@ export interface GrillaArticulo {
   tiendas: Tienda[];
   articulos: string[];
   precios: PrecioArticuloCelda[];
+  /** Solo los tamaños apuntados a mano; el resto se entiende de 2 litros. */
+  tamanos: { nombreArticulo: string; litros: number }[];
+  /** Solo en comida: los embutidos de Jamones Duriber (precio/kg y peso, nulos si no se ha apuntado). */
+  porKilo: { nombreArticulo: string; precioKilo: number | null; pesoKg: number | null }[];
 }

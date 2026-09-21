@@ -43,6 +43,8 @@ import com.baniterio.api.compra.OptimizadorPrecioBebida.OpcionPrecio;
 import com.baniterio.api.preciobebida.PrecioArticuloEvento;
 import com.baniterio.api.preciobebida.PrecioArticuloEventoRepository;
 import com.baniterio.api.preciobebida.PrecioBebidaEvento;
+import com.baniterio.api.preciobebida.ProductosPorKilo;
+import com.baniterio.api.preciobebida.TamanosArticulo;
 import com.baniterio.api.preciobebida.PrecioBebidaEventoRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -74,6 +76,8 @@ public class ListaCompraService {
     private final FichaBebidaRepository fichas;
     private final PrecioBebidaEventoRepository preciosBebida;
     private final PrecioArticuloEventoRepository preciosArticulo;
+    private final TamanosArticulo tamanosArticulo;
+    private final ProductosPorKilo productosPorKilo;
     private final PenaPilotoService pena;
     private final ServicioPermisos permisos;
 
@@ -81,7 +85,8 @@ public class ListaCompraService {
                               LineaCompraEventoRepository lineas, ArticuloEventoRepository articulosEvento,
                               EventoRepository eventos, AsistenciaEventoRepository asistencias,
                               FichaBebidaRepository fichas, PrecioBebidaEventoRepository preciosBebida,
-                              PrecioArticuloEventoRepository preciosArticulo,
+                              PrecioArticuloEventoRepository preciosArticulo, TamanosArticulo tamanosArticulo,
+                              ProductosPorKilo productosPorKilo,
                               PenaPilotoService pena, ServicioPermisos permisos) {
         this.plantilla = plantilla;
         this.reglasEvento = reglasEvento;
@@ -92,6 +97,8 @@ public class ListaCompraService {
         this.fichas = fichas;
         this.preciosBebida = preciosBebida;
         this.preciosArticulo = preciosArticulo;
+        this.tamanosArticulo = tamanosArticulo;
+        this.productosPorKilo = productosPorKilo;
         this.pena = pena;
         this.permisos = permisos;
     }
@@ -283,6 +290,8 @@ public class ListaCompraService {
         StockCubierto stock = stockCubierto(eventoId);
         Map<String, List<OpcionPrecio>> precios = preciosPorMarca(eventoId);
         Map<String, List<PrecioArticuloEvento>> preciosArt = preciosPorArticulo(eventoId);
+        Map<String, BigDecimal> litrosBotella = tamanosArticulo.apuntados(eventoId);
+        Map<String, ProductosPorKilo.Kilo> porKilo = productosPorKilo.apuntados(eventoId);
         List<LineaCalc> out = new ArrayList<>();
         for (ReglaCompraEvento r : activas) {
             for (LineaCalculada lc : CalculadoraListaCompra.lineasDe(r, datos)) {
@@ -297,13 +306,29 @@ public class ListaCompraService {
                             ? stock.porCategoria().getOrDefault(CategoriaInventario.CERVEZA, BigDecimal.ZERO)
                             : stock.porClave().getOrDefault(
                                     clave(r.getCategoria(), lc.nombre(), lc.tamano()), BigDecimal.ZERO);
-                    BigDecimal restante = lc.bruto().subtract(cubierto).max(BigDecimal.ZERO);
+                    BigDecimal bruto = lc.bruto();
+                    boolean esBotellaDeLitros = (r.getTipoFormula() == TipoFormulaCompra.REFRESCO_SELECCIONADO
+                            || r.getTipoFormula() == TipoFormulaCompra.TINTO_ALTERNATIVA) && "botella".equals(lc.tamano());
+                    if (esBotellaDeLitros) {
+                        // El rango son botellas de 2 L por peñista y día: se pasa a litros y se
+                        // pide el número entero de botellas del tamaño que hay en la rejilla de precios.
+                        BigDecimal litros = bruto.multiply(TamanosArticulo.POR_DEFECTO);
+                        bruto = CalculadoraListaCompra.ceil(
+                                litros.divide(tamanosArticulo.de(litrosBotella, lc.nombre()), 0, java.math.RoundingMode.CEILING));
+                    }
+                    BigDecimal restante = bruto.subtract(cubierto).max(BigDecimal.ZERO);
                     BigDecimal cantidad = restante.signum() > 0 ? CalculadoraListaCompra.ceil(restante) : BigDecimal.ZERO;
                     String tienda = null;
                     BigDecimal precioUnitario = null;
                     if (cantidad.signum() > 0) {
                         PrecioArticuloEvento barata = masBarata(preciosArt.get(claveNombre(r.getCategoria(), lc.nombre())));
-                        if (barata != null) {
+                        ProductosPorKilo.Kilo kilo = r.getCategoria() == CategoriaInventario.COMIDA
+                                ? porKilo.get(lc.nombre()) : null;
+                        if (kilo != null) {
+                            // Embutido de Jamones Duriber: no se comparan tiendas, precio = kilo x peso estimado.
+                            tienda = ProductosPorKilo.PROVEEDOR;
+                            precioUnitario = kilo.precioPieza();
+                        } else if (barata != null) {
                             tienda = barata.getTienda().getNombre();
                             precioUnitario = barata.getPrecio();
                         }

@@ -16,4 +16,17 @@ export class PrecioBebidaEvento {
 
   protected readonly anio = Number(this.ruta.snapshot.paramMap.get('anio'));
   protected readonly id = Number(this.ruta.snapshot.paramMap.get('id'));
+
+  protected readonly categorias = [
+    { etiqueta: 'Bebidas alcohólicas', ruta: ['/panel/precio-bebidas', this.anio, this.id, 'alcohol'] },
+    ...[
+      ['Refrescos', 'refrescos'],
+      ['Cerveza', 'cerveza'],
+      ['Limpieza y utensilios', 'limpieza'],
+      ['Comida', 'comida'],
+    ].map(([etiqueta, slug]) => ({
+      etiqueta,
+      ruta: ['/panel/precio-bebidas', this.anio, this.id, 'articulos', slug],
+    })),
+  ];
 }

@@ -366,6 +366,11 @@ public class ApiExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, "NOMBRE_ARTICULO_NO_VALIDO");
     }
 
+    @ExceptionHandler(com.baniterio.api.preciobebida.TamanoArticuloNoValidoException.class)
+    ResponseEntity<Map<String, Object>> tamanoArticuloNoValido() {
+        return error(HttpStatus.BAD_REQUEST, "TAMANO_ARTICULO_NO_VALIDO");
+    }
+
     @ExceptionHandler(com.baniterio.api.inventario.NadaQueDevolverException.class)
     ResponseEntity<Map<String, Object>> nadaQueDevolver() {
         return error(HttpStatus.BAD_REQUEST, "NADA_QUE_DEVOLVER");

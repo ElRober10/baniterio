@@ -1,40 +1,21 @@
-<section class="mx-auto w-full max-w-5xl">
-  <div class="mb-4">
+<section class="mx-auto w-full text-center">
+  <div class="mb-4 text-left">
     <app-volver [destino]="'/panel/precio-bebidas/' + anio" etiqueta="Precio bebidas" />
   </div>
 
   <h1 class="font-display text-2xl font-extrabold leading-tight">Precio de las bebidas</h1>
+  <p class="mt-2 text-sm text-muted">Elige una categoría.</p>
 
-  <div class="mt-4 grid gap-2 grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
-    <a
-      [routerLink]="['/panel/precio-bebidas', anio, id, 'alcohol']"
-      class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark"
-    >
-      Bebidas alcohólicas
-    </a>
-    <a
-      [routerLink]="['/panel/precio-bebidas', anio, id, 'articulos', 'refrescos']"
-      class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark"
-    >
-      Refrescos
-    </a>
-    <a
-      [routerLink]="['/panel/precio-bebidas', anio, id, 'articulos', 'cerveza']"
-      class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark"
-    >
-      Cerveza
-    </a>
-    <a
-      [routerLink]="['/panel/precio-bebidas', anio, id, 'articulos', 'limpieza']"
-      class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark"
-    >
-      Limpieza y utensilios
-    </a>
-    <a
-      [routerLink]="['/panel/precio-bebidas', anio, id, 'articulos', 'comida']"
-      class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark"
-    >
-      Comida
-    </a>
-  </div>
+  <ul class="mx-auto mt-6 flex max-w-186 flex-wrap justify-center gap-3">
+    @for (c of categorias; track c.etiqueta) {
+      <li>
+        <a
+          [routerLink]="c.ruta"
+          class="carta-relieve flex h-20 w-60 items-center justify-center rounded-2xl px-4 text-center font-display text-lg font-bold transition hover:brightness-110"
+        >
+          {{ c.etiqueta }}
+        </a>
+      </li>
+    }
+  </ul>
 </section>
