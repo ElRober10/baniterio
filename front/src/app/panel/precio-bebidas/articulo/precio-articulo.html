@@ -69,7 +69,7 @@
                             (change)="guardarPrecio(a, t.id, $any($event.target).value)"
                             class="w-20 rounded border border-outline bg-transparent px-1 py-0.5 text-right"
                           />
-                          @if (conPacks) {
+                          @if (conPacks(a)) {
                             <label class="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted">
                               pack de
                               <input
@@ -87,7 +87,7 @@
                           }
                         } @else {
                           {{ precioDe(a, t.id) ?? '—' }}
-                          @if (conPacks && cantidadDe(a, t.id) > 1) {
+                          @if (conPacks(a) && cantidadDe(a, t.id) > 1) {
                             <span class="text-[10px] text-muted">/ pack de {{ cantidadDe(a, t.id) }}</span>
                           }
                         }

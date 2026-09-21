@@ -40,8 +40,18 @@ export class PrecioArticulo implements OnInit {
   protected readonly tiendas = signal<Tienda[]>([]);
   protected readonly articulos = signal<string[]>([]);
   protected readonly precios = signal<{ nombreArticulo: string; tiendaId: number; precio: number | null; cantidad: number }[]>([]);
-  /** Limpieza y comida se venden en packs (platos, vasos, papel...): se apunta cuántas unidades trae. */
-  protected readonly conPacks = this.categoria === 'LIMPIEZA' || this.categoria === 'COMIDA';
+  /** Los platos y los vasos se venden en packs: se apunta cuántas unidades trae. */
+  private readonly ARTICULOS_EN_PACK = new Set([
+    'Platos',
+    'Vasos de chupito',
+    'Vasos de invitar',
+    'Vasos de mini',
+    'Vasos de sidra',
+  ]);
+
+  protected conPacks(nombreArticulo: string): boolean {
+    return this.categoria === 'LIMPIEZA' && this.ARTICULOS_EN_PACK.has(nombreArticulo);
+  }
 
   protected readonly tamanosLitros = TAMANOS_LITROS;
   protected readonly porKilo = signal<{ nombreArticulo: string; precioKilo: number | null; pesoKg: number | null }[]>([]);
