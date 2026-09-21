@@ -842,4 +842,13 @@ class ListaCompraSyncIT extends IntegrationTest {
         assertThat(tiendaLinea(body, "LIMPIEZA", "Platos")).isEqualTo("Alcampo");
         assertThat(cantidadLinea(body, "LIMPIEZA", "Platos")).isEqualTo(30.0);
     }
+
+    @Test
+    void la_lista_trae_el_presupuesto_de_la_cuenta_del_evento() {
+        long eventoId = crearEventoDeUnDia("Sync IT presupuesto");
+        Map<String, Object> body = getMap("/api/v1/eventos/" + eventoId + "/lista-compra",
+                token(RolMembresia.MIEMBRO, false));
+        // Cuenta recién creada, sin movimientos: saldo 0.
+        assertThat(((Number) body.get("presupuesto")).doubleValue()).isEqualTo(0.0);
+    }
 }

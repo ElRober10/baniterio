@@ -33,6 +33,7 @@ import com.baniterio.api.identidad.Evento;
 import com.baniterio.api.identidad.EventoRepository;
 import com.baniterio.api.identidad.FichaBebida;
 import com.baniterio.api.identidad.FichaBebidaRepository;
+import com.baniterio.api.identidad.MovimientoCuentaRepository;
 import com.baniterio.api.identidad.PenaPilotoService;
 import com.baniterio.api.inventario.ArticuloEvento;
 import com.baniterio.api.inventario.ArticuloEventoRepository;
@@ -78,6 +79,7 @@ public class ListaCompraService {
     private final PrecioArticuloEventoRepository preciosArticulo;
     private final TamanosArticulo tamanosArticulo;
     private final ProductosPorKilo productosPorKilo;
+    private final MovimientoCuentaRepository movimientosCuenta;
     private final PenaPilotoService pena;
     private final ServicioPermisos permisos;
 
@@ -86,7 +88,7 @@ public class ListaCompraService {
                               EventoRepository eventos, AsistenciaEventoRepository asistencias,
                               FichaBebidaRepository fichas, PrecioBebidaEventoRepository preciosBebida,
                               PrecioArticuloEventoRepository preciosArticulo, TamanosArticulo tamanosArticulo,
-                              ProductosPorKilo productosPorKilo,
+                              ProductosPorKilo productosPorKilo, MovimientoCuentaRepository movimientosCuenta,
                               PenaPilotoService pena, ServicioPermisos permisos) {
         this.plantilla = plantilla;
         this.reglasEvento = reglasEvento;
@@ -99,6 +101,7 @@ public class ListaCompraService {
         this.preciosArticulo = preciosArticulo;
         this.tamanosArticulo = tamanosArticulo;
         this.productosPorKilo = productosPorKilo;
+        this.movimientosCuenta = movimientosCuenta;
         this.pena = pena;
         this.permisos = permisos;
     }
@@ -214,7 +217,8 @@ public class ListaCompraService {
             }
         });
         return new ListaCompraResponse(puedoEditar, datos.llevaFicha(), e.isListaCompraBloqueada(),
-                datos.apuntados(), datos.diasFiesta(), categorias);
+                datos.apuntados(), datos.diasFiesta(), categorias,
+                movimientosCuenta.sumImporteAnio(e.getCuenta().getId(), e.getCuenta().getAnioActual()));
     }
 
     private static final String SECCION_PARA_ALTERNAR = "PARA_ALTERNAR";

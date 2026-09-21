@@ -49,6 +49,8 @@ export interface ListaCompraResponse {
   apuntados: number;
   diasFiesta: number;
   categorias: CategoriaListaCompra[];
+  /** Saldo de la cuenta del evento en su año en curso (lo que hay para gastar). */
+  presupuesto?: number | null;
 }
 
 export interface EventoListaCompra {

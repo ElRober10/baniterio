@@ -43,6 +43,7 @@ export class ListaCompra implements OnInit {
         this.apuntados.set(d.apuntados);
         this.diasFiesta.set(d.diasFiesta);
         this.categorias.set(d.categorias);
+        this.presupuesto.set(d.presupuesto ?? null);
         this.puedoEditar.set(d.puedoEditar);
         this.bloqueada.set(d.bloqueada);
         this.estado.set('listo');
@@ -136,6 +137,13 @@ export class ListaCompra implements OnInit {
       (n, cat) => n + cat.lineas.filter((l) => l.cantidad > 0 && l.precioUnitario == null && !l.necesitaFicha).length,
       0,
     );
+  }
+
+  protected readonly presupuesto = signal<number | null>(null);
+
+  /** Lo que queda del presupuesto tras el gasto estimado (negativo = nos pasamos). */
+  protected restante(): number {
+    return (this.presupuesto() ?? 0) - this.totalGeneral();
   }
 
   protected trackCat = (_: number, c: CategoriaListaCompra) => c.categoria;
