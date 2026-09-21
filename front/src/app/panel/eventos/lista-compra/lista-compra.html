@@ -77,15 +77,15 @@
                         }
                       </td>
                       <td class="py-1 pr-4">
-                        @if (puedeAjustar(l) && l.info) {
+                        @if (puedeAjustar(l) && l.info?.tamanos) {
                           <button
                             type="button"
                             aria-label="Cambiar tamaño"
                             [disabled]="ocupado()"
-                            (click)="alternarEdicion(l)"
-                            class="rounded-lg border border-dashed border-outline px-2 py-0.5 hover:border-gold hover:text-gold disabled:opacity-50"
+                            (click)="alternarEdicion(l, 'tamano')"
+                            class="inline-flex w-24 items-center justify-between rounded-lg border border-dashed border-outline px-2 py-0.5 font-semibold hover:border-gold hover:text-gold disabled:opacity-50"
                           >
-                            {{ l.tamano }} ▾
+                            <span>{{ l.tamano }}</span><span>▾</span>
                           </button>
                         } @else {
                           {{ l.tamano }}
@@ -98,15 +98,15 @@
                         }
                       </td>
                       <td class="py-1 pr-4 text-right font-semibold">
-                        @if (puedeAjustar(l) && !l.info) {
+                        @if (puedeAjustar(l)) {
                           <button
                             type="button"
                             aria-label="Ajustar cantidad"
                             [disabled]="ocupado()"
-                            (click)="alternarEdicion(l)"
-                            class="rounded-lg border border-dashed border-outline px-2 py-0.5 font-semibold hover:border-gold hover:text-gold disabled:opacity-50"
+                            (click)="alternarEdicion(l, 'cantidad')"
+                            class="inline-flex w-24 items-center justify-between rounded-lg border border-dashed border-outline px-2 py-0.5 font-semibold hover:border-gold hover:text-gold disabled:opacity-50"
                           >
-                            {{ l.cantidad }} ▾
+                            <span>{{ l.cantidad }}</span><span>▾</span>
                           </button>
                         } @else {
                           {{ l.cantidad }}
@@ -149,7 +149,7 @@
                       <tr>
                         <td colspan="6" class="pb-3 pt-1">
                           <div class="rounded-xl border border-outline bg-brand/10 p-3 text-left text-sm">
-                            @if (l.info) {
+                            @if (l.info && modoEdicion() === 'cantidad') {
                               <p class="text-muted">
                                 Personas que beben {{ l.nombre }}:
                                 <span class="font-semibold">{{ l.info.personas | number: '1.0-2' }}</span>
@@ -161,10 +161,10 @@
                                 botellas
                               </p>
                             }
-                            @if (l.info) {
+                            @if (l.info?.tamanos && modoEdicion() === 'tamano') {
                               <div class="mt-2">
                                 <p class="text-xs uppercase tracking-wide text-muted">Tamaño de la botella</p>
-                                @if (l.info.tamanos.length > 0) {
+                                @if (l.info!.tamanos!.length > 0) {
                                   <table class="mt-1 text-sm">
                                     <thead>
                                       <tr class="text-left text-xs text-muted">
@@ -176,7 +176,7 @@
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      @for (o of l.info.tamanos; track o.tamano) {
+                                      @for (o of l.info!.tamanos!; track o.tamano) {
                                         <tr>
                                           <td class="pr-3">
                                             <input
@@ -213,6 +213,7 @@
                               </div>
                             }
                             <div class="mt-2 flex flex-wrap items-center gap-2">
+                              @if (modoEdicion() === 'cantidad') {
                               <span class="text-muted">Cantidad que se pide:</span>
                               <button type="button" aria-label="Restar uno" (click)="sumarEdicion(-1)"
                                 class="h-7 w-7 rounded-lg border border-outline hover:border-gold hover:text-gold">−</button>
@@ -227,6 +228,7 @@
                               />
                               <button type="button" aria-label="Sumar uno" (click)="sumarEdicion(1)"
                                 class="h-7 w-7 rounded-lg border border-outline hover:border-gold hover:text-gold">+</button>
+                              }
                               <button type="button" [disabled]="ocupado()" (click)="guardarEdicion(l)"
                                 class="whitespace-nowrap rounded-lg border border-outline px-2 py-1 text-xs font-medium hover:border-gold hover:text-gold disabled:opacity-50">Guardar</button>
                               <button type="button" [disabled]="ocupado()" (click)="cancelarEdicion()"

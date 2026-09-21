@@ -947,4 +947,79 @@ class ListaCompraSyncIT extends IntegrationTest {
         assertThat(tiendaLinea(body, "ALCOHOL", "JB")).isEqualTo("Makro");
         assertThat(cantidadLinea(body, "ALCOHOL", "JB")).isEqualTo(1.0);
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void siete_personas_de_barcelo_con_los_precios_reales_piden_dos_de_1_75_y_dos_de_70() {
+        long eventoId = crearEventoConFicha("Sync IT barcelo real");
+        for (int i = 0; i < 7; i++) {
+            apuntarConAlcohol(eventoId, "Barceló");
+        }
+        precioDeBotella(eventoId, "Barceló", "70 cl", "Alcampo", "14.99");
+        precioDeBotella(eventoId, "Barceló", "70 cl", "Hipercor", "15.45");
+        precioDeBotella(eventoId, "Barceló", "1 L", "Makro", "21.18");
+        precioDeBotella(eventoId, "Barceló", "1.75", "Amazon", "33.30");
+        precioDeBotella(eventoId, "Barceló", "1.75", "Carrefour", "36.30");
+
+        Map<String, Object> body = getMap("/api/v1/eventos/" + eventoId + "/lista-compra",
+                token(RolMembresia.MIEMBRO, false));
+
+        double total = 0;
+        StringBuilder detalle = new StringBuilder();
+        for (Map<String, Object> cat : (List<Map<String, Object>>) body.get("categorias")) {
+            if (!"ALCOHOL".equals(cat.get("categoria"))) {
+                continue;
+            }
+            for (Map<String, Object> l : (List<Map<String, Object>>) cat.get("lineas")) {
+                if ("Barceló".equals(l.get("nombre"))) {
+                    double cantidad = ((Number) l.get("cantidad")).doubleValue();
+                    total += cantidad * ((Number) l.get("precioUnitario")).doubleValue();
+                    detalle.append(cantidad).append("x").append(l.get("tamano")).append(" ");
+                }
+            }
+        }
+        assertThat(detalle.toString()).contains("2.0x1.75").contains("2.0x70 cl");
+        assertThat(total).isEqualTo(96.58, org.assertj.core.data.Offset.offset(0.005));
+    }
+
+    void stockDeBotella(long eventoId, String marca, String tamano, String cantidad) {
+        articulosEvento.save(ArticuloEvento.builder()
+                .evento(eventos.findById(eventoId).orElseThrow()).categoria(CategoriaInventario.ALCOHOL)
+                .nombre(marca).tamano(tamano).cantidad(new BigDecimal(cantidad))
+                .cantidadComprada(BigDecimal.ZERO).orden(998).build());
+    }
+
+    @Test
+    void el_stock_en_botellas_abiertas_cuenta_a_fraccion_y_una_persona_con_080_l_compra_70_cl() {
+        long eventoId = crearEventoConFicha("Sync IT stock fraccion");
+        apuntarConAlcohol(eventoId, "Beefeater");           // una persona: hace falta 1 L en total
+        stockDeBotella(eventoId, "Beefeater", "1 L", "0.8"); // ya hay 80 cl
+        precioDeBotella(eventoId, "Beefeater", "70 cl", "Alcampo", "13.17");
+        precioDeBotella(eventoId, "Beefeater", "1 L", "Alcampo", "18.10");
+        precioDeBotella(eventoId, "Beefeater", "1.5L", "Alcampo", "26.81");
+
+        Map<String, Object> body = getMap("/api/v1/eventos/" + eventoId + "/lista-compra",
+                token(RolMembresia.MIEMBRO, false));
+
+        // Faltan 20 cl: la botella más barata que los cubra es la de 70 cl.
+        assertThat(cantidadLinea(body, "ALCOHOL", "Beefeater")).isEqualTo(1.0);
+        assertThat(precioUnitarioLinea(body, "ALCOHOL", "Beefeater")).isEqualTo(13.17);
+    }
+
+    @Test
+    void las_lineas_de_refresco_traen_personas_y_stock_pero_sin_tamanos() {
+        long eventoId = crearEventoConFicha("Sync IT info refresco");
+        apuntarConAlcohol(eventoId, "Barceló", "Nestea");
+        apuntarConAlcohol(eventoId, "Barceló", "Nestea");
+        sumarInventarioFiesta(eventoId, "Nestea", CategoriaInventario.REFRESCOS, new BigDecimal("3"));
+
+        Map<String, Object> body = getMap("/api/v1/eventos/" + eventoId + "/lista-compra",
+                token(RolMembresia.MIEMBRO, false));
+        Map<String, Object> info = infoLinea(body, "REFRESCOS", "Nestea");
+
+        assertThat(info).isNotNull();
+        assertThat(((Number) info.get("personas")).doubleValue()).isEqualTo(2.0);
+        assertThat(((Number) info.get("stock")).doubleValue()).isEqualTo(3.0);
+        assertThat(info.get("tamanos")).isNull();
+    }
 }

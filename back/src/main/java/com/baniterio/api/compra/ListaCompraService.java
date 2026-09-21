@@ -189,7 +189,8 @@ public class ListaCompraService {
             sincronizar(e, datos);
         }
         boolean puedoEditar = permisos.puede(usuarioId, AreaProtegida.INVENTARIO);
-        Map<String, BigDecimal> personasPorMarca = personasPorMarcaAlcohol(datos);
+        Map<String, BigDecimal> personasPorMarca = personasPorNombre(datos, PersonaCompra::alcohol);
+        Map<String, BigDecimal> personasPorRefresco = personasPorNombre(datos, PersonaCompra::refresco);
         StockCubierto stockFiesta = stockCubierto(eventoId);
         Map<String, List<OpcionPrecio>> preciosAlcohol = preciosPorMarca(eventoId);
 
@@ -213,7 +214,7 @@ public class ListaCompraService {
                     l.getId(), l.getNombre(), l.getTamano(), l.getTienda(), l.getPrecioUnitario(),
                     l.getCantidad(), BigDecimal.ZERO,
                     l.isAjustada(), l.isDinamica(), l.isNecesitaFicha(), l.isComprada(), l.getDetalle(),
-                    infoDe(l, personasPorMarca, stockFiesta, preciosAlcohol)));
+                    infoDe(l, personasPorMarca, personasPorRefresco, stockFiesta, preciosAlcohol)));
         }
 
         List<CategoriaListaCompraDto> categorias = new ArrayList<>();
@@ -227,15 +228,16 @@ public class ListaCompraService {
                 movimientosCuenta.sumImporteAnio(e.getCuenta().getId(), e.getCuenta().getAnioActual()));
     }
 
-    /** Personas que beben cada marca de alcohol, cada una como fracción de los días de la fiesta. */
-    private static Map<String, BigDecimal> personasPorMarcaAlcohol(DatosEvento datos) {
+    /** Personas que beben cada marca (de alcohol o de refresco), cada una como fracción de los días de la fiesta. */
+    private static Map<String, BigDecimal> personasPorNombre(DatosEvento datos,
+                                                             java.util.function.Function<PersonaCompra, String> marca) {
         Map<String, BigDecimal> out = new LinkedHashMap<>();
         if (datos.diasFiesta() <= 0) {
             return out;
         }
         for (PersonaCompra p : datos.personas()) {
-            if (p.tieneFicha() && p.alcohol() != null) {
-                out.merge(p.alcohol(), BigDecimal.valueOf(p.diasQueVa())
+            if (p.tieneFicha() && marca.apply(p) != null) {
+                out.merge(marca.apply(p), BigDecimal.valueOf(p.diasQueVa())
                         .divide(BigDecimal.valueOf(datos.diasFiesta()), 2, java.math.RoundingMode.HALF_UP),
                         BigDecimal::add);
             }
@@ -243,17 +245,23 @@ public class ListaCompraService {
         return out;
     }
 
-    /** Solo las líneas de alcohol (de momento) llevan información para ajustar. */
+    /**
+     * Las líneas de bebida elegida en la ficha (alcohol y refrescos) llevan quién la bebe y el stock
+     * para ajustar la cantidad; solo el alcohol lleva además los tamaños de botella con precio.
+     */
     private static InfoBebidaDto infoDe(LineaCompraEvento l, Map<String, BigDecimal> personasPorMarca,
-                                        StockCubierto stock, Map<String, List<OpcionPrecio>> precios) {
-        if (l.getCategoria() != CategoriaInventario.ALCOHOL || !l.isDinamica()) {
+                                        Map<String, BigDecimal> personasPorRefresco, StockCubierto stock,
+                                        Map<String, List<OpcionPrecio>> precios) {
+        boolean alcohol = l.getCategoria() == CategoriaInventario.ALCOHOL;
+        if (!l.isDinamica() || (!alcohol && l.getCategoria() != CategoriaInventario.REFRESCOS)) {
             return null;
         }
         return new InfoBebidaDto(
-                personasPorMarca.getOrDefault(l.getNombre(), BigDecimal.ZERO).stripTrailingZeros(),
+                (alcohol ? personasPorMarca : personasPorRefresco)
+                        .getOrDefault(l.getNombre(), BigDecimal.ZERO).stripTrailingZeros(),
                 stock.porNombre().getOrDefault(claveNombre(l.getCategoria(), l.getNombre()), BigDecimal.ZERO)
                         .stripTrailingZeros(),
-                opcionesPorTamano(precios.get(l.getNombre())));
+                alcohol ? opcionesPorTamano(precios.get(l.getNombre())) : null);
     }
 
     /** Por cada tamaño con precio, la tienda más barata y el precio por litro; de menor a mayor tamaño. */
@@ -318,8 +326,10 @@ public class ListaCompraService {
             porCategoria.merge(a.getCategoria(), total, BigDecimal::add);
             porNombre.merge(claveNombre(a.getCategoria(), a.getNombre()), total, BigDecimal::add);
             if (a.getCategoria() == CategoriaInventario.ALCOHOL) {
+                // Botellas abiertas cuentan a fracción (0,8 de 1 L = 80 cl): nada de truncar a enteros.
                 OptimizadorPrecioBebida.parseCl(a.getTamano()).ifPresent(cl -> clPorMarcaAlcohol.merge(
-                        a.getNombre(), cl * total.intValue(), Integer::sum));
+                        a.getNombre(), BigDecimal.valueOf(cl).multiply(total)
+                                .setScale(0, java.math.RoundingMode.HALF_UP).intValue(), Integer::sum));
             }
         }
         return new StockCubierto(porClave, porCategoria, porNombre, clPorMarcaAlcohol);

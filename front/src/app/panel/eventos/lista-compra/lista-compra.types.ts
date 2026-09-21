@@ -37,7 +37,8 @@ export interface LineaCompra {
   info?: {
     personas: number;
     stock: number;
-    tamanos: { tamano: string; tienda: string; precio: number; precioLitro: number }[];
+    /** Solo alcohol; en refrescos viene null y no hay botón de tamaño. */
+    tamanos?: { tamano: string; tienda: string; precio: number; precioLitro: number }[] | null;
   } | null;
 }
 

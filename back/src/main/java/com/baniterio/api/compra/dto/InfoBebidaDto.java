@@ -8,7 +8,7 @@ import java.util.List;
  * son las personas que la beben contando cada una como fracción de los días de la fiesta
  * (dos días = 1, un día de dos = 0,5) y {@code stock} las botellas de esa marca que ya
  * hay en el inventario de la fiesta. {@code tamanos} son los tamaños con precio en la rejilla,
- * cada uno con su tienda más barata y lo que sale el litro.
+ * cada uno con su tienda más barata y lo que sale el litro (solo alcohol; {@code null} en refrescos).
  */
 public record InfoBebidaDto(BigDecimal personas, BigDecimal stock, List<OpcionTamanoDto> tamanos) {
 }

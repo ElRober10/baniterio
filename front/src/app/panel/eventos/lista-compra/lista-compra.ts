@@ -31,6 +31,8 @@ export class ListaCompra implements OnInit {
   protected readonly ocupado = signal(false);
   protected readonly editandoId = signal<number | null>(null);
   protected readonly tamanoEditado = signal('');
+  /** Qué se está ajustando de la línea abierta: el tamaño de la botella o la cantidad (dos botones distintos). */
+  protected readonly modoEdicion = signal<'tamano' | 'cantidad'>('cantidad');
   /** Tamaños entre los que se puede cambiar una botella cuando la marca aún no tiene precios. */
   protected readonly TAMANOS_BASE = ['70 cl', '1 L'];
   protected readonly cantidadEditada = signal<number | null>(null);
@@ -87,7 +89,7 @@ export class ListaCompra implements OnInit {
 
   /** El menor precio por litro entre los tamaños de una línea de bebida (para marcar el más barato). */
   protected menorPrecioLitro(l: LineaCompra): number | null {
-    const precios = l.info?.tamanos.map((o) => o.precioLitro) ?? [];
+    const precios = l.info?.tamanos?.map((o) => o.precioLitro) ?? [];
     return precios.length > 0 ? Math.min(...precios) : null;
   }
 
@@ -97,11 +99,12 @@ export class ListaCompra implements OnInit {
   }
 
   /** Pulsar la cantidad abre (o cierra) el desplegable de ajuste de esa línea. */
-  protected alternarEdicion(l: LineaCompra): void {
-    if (this.editandoId() === l.id) {
+  protected alternarEdicion(l: LineaCompra, modo: 'tamano' | 'cantidad'): void {
+    if (this.editandoId() === l.id && this.modoEdicion() === modo) {
       this.cancelarEdicion();
     } else {
       this.empezarEdicion(l);
+      this.modoEdicion.set(modo);
     }
   }
 
@@ -123,9 +126,11 @@ export class ListaCompra implements OnInit {
   }
 
   protected guardarEdicion(l: LineaCompra): void {
-    const cantidad = this.cantidadEditada();
+    // Cada botón ajusta lo suyo: el de tamaño no toca la cantidad y el de cantidad no toca el tamaño.
+    const soloTamano = this.modoEdicion() === 'tamano';
+    const cantidad = soloTamano ? l.cantidad : this.cantidadEditada();
     if (this.ocupado() || cantidad === null || Number.isNaN(cantidad) || cantidad < 0) return;
-    const tamano = this.tamanoEditado() || l.tamano;
+    const tamano = soloTamano ? this.tamanoEditado() || l.tamano : l.tamano;
     if (cantidad === l.cantidad && tamano === l.tamano) {
       // No ha cambiado nada: se cierra sin marcar la línea como ajustada.
       this.cancelarEdicion();

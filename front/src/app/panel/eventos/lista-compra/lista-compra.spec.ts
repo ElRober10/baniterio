@@ -189,7 +189,7 @@ describe('ListaCompra', () => {
     http.verify();
   });
 
-  it('en el alcohol el desplegable se abre desde el tamaño, no desde la cantidad', () => {
+  it('en el alcohol hay un botón para el tamaño y otro para la cantidad', () => {
     const { fixture, http } = montar();
     fixture.detectChanges();
     http.expectOne(`${base}/eventos/7/lista-compra`).flush({
@@ -226,7 +226,8 @@ describe('ListaCompra', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
 
-    expect(el.querySelector('[aria-label="Ajustar cantidad"]')).toBeNull();
+    // Dos botones distintos: uno para el tamaño y otro para la cantidad.
+    expect(el.querySelector('[aria-label="Ajustar cantidad"]')).not.toBeNull();
     (el.querySelector('[aria-label="Cambiar tamaño"]') as HTMLButtonElement).click();
     fixture.detectChanges();
 
