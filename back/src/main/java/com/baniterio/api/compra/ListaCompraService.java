@@ -281,7 +281,7 @@ public class ListaCompraService {
     private Map<String, List<PrecioArticuloEvento>> preciosPorArticulo(Long eventoId) {
         Map<String, List<PrecioArticuloEvento>> out = new LinkedHashMap<>();
         for (PrecioArticuloEvento p : preciosArticulo.findByEventoId(eventoId)) {
-            out.computeIfAbsent(claveNombre(p.getCategoria(), p.getNombreArticulo()), k -> new ArrayList<>()).add(p);
+            out.computeIfAbsent(claveNombre(p.getCategoria(), p.getNombreArticulo()).toLowerCase(), k -> new ArrayList<>()).add(p);
         }
         return out;
     }
@@ -337,7 +337,7 @@ public class ListaCompraService {
                     String tienda = null;
                     BigDecimal precioUnitario = null;
                     if (cantidad.signum() > 0) {
-                        PrecioArticuloEvento barata = masBarata(preciosArt.get(claveNombre(r.getCategoria(), lc.nombre())));
+                        PrecioArticuloEvento barata = masBarata(preciosArt.get(claveNombre(r.getCategoria(), lc.nombre()).toLowerCase()));
                         ProductosPorKilo.Kilo kilo = r.getCategoria() == CategoriaInventario.COMIDA
                                 ? porKilo.get(lc.nombre()) : null;
                         if (kilo != null) {

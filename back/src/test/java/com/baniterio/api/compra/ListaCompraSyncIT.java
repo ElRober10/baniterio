@@ -787,4 +787,22 @@ class ListaCompraSyncIT extends IntegrationTest {
         assertThat(cantidadLinea(body, "PARA_ALTERNAR", "Cerveza sin alcohol")).isEqualTo(10.0);
         assertThat(seccionDeLinea(body, "Cerveza sin gluten")).isEqualTo("PARA_ALTERNAR");
     }
+
+    @Test
+    void la_cerveza_especial_toma_el_precio_de_la_rejilla_aunque_se_escriba_con_otras_mayusculas() {
+        long eventoId = crearEventoConFicha("Sync IT especial precio");
+        apuntarConCervezaEspecial(eventoId, "Sin Gluten");
+        Evento evento = eventos.findById(eventoId).orElseThrow();
+        Tienda barata = tiendas.findByPenaIdOrderByOrdenAscNombreAsc(pena().getId()).stream()
+                .filter(t -> "Alcampo".equals(t.getNombre())).findFirst().orElseThrow();
+        precioArticulo.save(PrecioArticuloEvento.builder()
+                .evento(evento).categoria(CategoriaInventario.CERVEZA).nombreArticulo("Cerveza sin gluten")
+                .tienda(barata).precio(new BigDecimal("0.81")).build());
+
+        Map<String, Object> body = getMap("/api/v1/eventos/" + eventoId + "/lista-compra",
+                token(RolMembresia.MIEMBRO, false));
+
+        assertThat(tiendaLinea(body, "PARA_ALTERNAR", "Cerveza Sin Gluten")).isEqualTo("Alcampo");
+        assertThat(precioUnitarioLinea(body, "PARA_ALTERNAR", "Cerveza Sin Gluten")).isEqualTo(0.81);
+    }
 }
