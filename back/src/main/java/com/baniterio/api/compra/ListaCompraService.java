@@ -163,7 +163,8 @@ public class ListaCompraService {
                     f != null,
                     f != null && f.getAlcohol() != null ? f.getAlcohol().getNombre() : null,
                     f != null && f.getRefresco() != null ? f.getRefresco().getNombre() : null,
-                    f != null ? f.getAlternativa() : null));
+                    f != null ? f.getAlternativa() : null,
+                    f != null ? f.getCervezaEspecial() : null));
         }
         return new DatosEvento(apuntadas.size(), diasFiesta, llevaFicha, personas);
     }
@@ -178,9 +179,15 @@ public class ListaCompraService {
         }
         boolean puedoEditar = permisos.puede(usuarioId, AreaProtegida.INVENTARIO);
 
-        Map<CategoriaInventario, List<LineaCompraDto>> porCategoria = new LinkedHashMap<>();
+        // "Para alternar" agrupa lo que se bebe en vez del alcohol: la cerveza (y las especiales)
+        // y el tinto de verano, que en el inventario y en los precios sigue siendo un refresco.
+        // Es solo una agrupación para mostrar: cada línea conserva su categoría real.
+        Map<String, List<LineaCompraDto>> porSeccion = new LinkedHashMap<>();
+        Map<String, String> etiquetas = new LinkedHashMap<>();
         for (CategoriaInventario cat : CategoriaInventario.values()) {
-            porCategoria.put(cat, new ArrayList<>());
+            String clave = cat == CategoriaInventario.CERVEZA ? SECCION_PARA_ALTERNAR : cat.name();
+            porSeccion.put(clave, new ArrayList<>());
+            etiquetas.put(clave, cat == CategoriaInventario.CERVEZA ? "Para alternar" : cat.etiqueta());
         }
         for (LineaCompraEvento l : lineas.findByEventoIdOrderByCategoriaAscNombreAsc(eventoId)) {
             // Si no hace falta comprar nada (cantidad 0), no se muestra; salvo la línea
@@ -188,20 +195,28 @@ public class ListaCompraService {
             if (l.getCantidad().signum() == 0 && !l.isNecesitaFicha()) {
                 continue;
             }
-            porCategoria.get(l.getCategoria()).add(new LineaCompraDto(
+            porSeccion.get(seccionDe(l)).add(new LineaCompraDto(
                     l.getId(), l.getNombre(), l.getTamano(), l.getTienda(), l.getPrecioUnitario(),
                     l.getCantidad(), BigDecimal.ZERO,
                     l.isAjustada(), l.isDinamica(), l.isNecesitaFicha(), l.isComprada()));
         }
 
         List<CategoriaListaCompraDto> categorias = new ArrayList<>();
-        porCategoria.forEach((cat, ls) -> {
+        porSeccion.forEach((clave, ls) -> {
             if (!ls.isEmpty()) {
-                categorias.add(new CategoriaListaCompraDto(cat.name(), cat.etiqueta(), ls));
+                categorias.add(new CategoriaListaCompraDto(clave, etiquetas.get(clave), ls));
             }
         });
         return new ListaCompraResponse(puedoEditar, datos.llevaFicha(), e.isListaCompraBloqueada(),
                 datos.apuntados(), datos.diasFiesta(), categorias);
+    }
+
+    private static final String SECCION_PARA_ALTERNAR = "PARA_ALTERNAR";
+
+    private static String seccionDe(LineaCompraEvento l) {
+        boolean esTinto = l.getCategoria() == CategoriaInventario.REFRESCOS && "Tinto de verano".equals(l.getNombre());
+        return l.getCategoria() == CategoriaInventario.CERVEZA || esTinto
+                ? SECCION_PARA_ALTERNAR : l.getCategoria().name();
     }
 
     /**
@@ -303,6 +318,7 @@ public class ListaCompraService {
                     out.addAll(lineasAlcohol(r, lc, stock, precios.get(lc.nombre())));
                 } else {
                     BigDecimal cubierto = r.getCategoria() == CategoriaInventario.CERVEZA
+                            && r.getTipoFormula() != TipoFormulaCompra.CERVEZA_ESPECIAL_SELECCIONADA
                             ? stock.porCategoria().getOrDefault(CategoriaInventario.CERVEZA, BigDecimal.ZERO)
                             : stock.porClave().getOrDefault(
                                     clave(r.getCategoria(), lc.nombre(), lc.tamano()), BigDecimal.ZERO);

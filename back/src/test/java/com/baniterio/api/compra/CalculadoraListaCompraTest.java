@@ -24,7 +24,7 @@ class CalculadoraListaCompraTest {
     }
 
     private static PersonaCompra p(int dias, boolean ficha, String alcohol, String refresco, Alternativa alt) {
-        return new PersonaCompra(dias, ficha, alcohol, refresco, alt);
+        return new PersonaCompra(dias, ficha, alcohol, refresco, alt, null);
     }
 
     private static DatosEvento sanMiguel(List<PersonaCompra> personas) {

@@ -21,7 +21,7 @@ export class PrecioBebidaEvento {
     { etiqueta: 'Bebidas alcohólicas', ruta: ['/panel/precio-bebidas', this.anio, this.id, 'alcohol'] },
     ...[
       ['Refrescos', 'refrescos'],
-      ['Cerveza', 'cerveza'],
+      ['Para alternar', 'cerveza'],
       ['Limpieza y utensilios', 'limpieza'],
       ['Comida', 'comida'],
     ].map(([etiqueta, slug]) => ({

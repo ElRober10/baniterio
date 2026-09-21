@@ -16,7 +16,8 @@ export type TipoFormula =
   | 'CERVEZA_ALTERNATIVA'
   | 'TINTO_ALTERNATIVA'
   | 'ALCOHOL_SELECCIONADO'
-  | 'REFRESCO_SELECCIONADO';
+  | 'REFRESCO_SELECCIONADO'
+  | 'CERVEZA_ESPECIAL_SELECCIONADA';
 
 export interface LineaCompra {
   id: number;
@@ -33,7 +34,8 @@ export interface LineaCompra {
 }
 
 export interface CategoriaListaCompra {
-  categoria: CategoriaClave;
+  /** Una categoría, o "PARA_ALTERNAR" (cerveza, cervezas especiales y tinto de verano). */
+  categoria: CategoriaClave | 'PARA_ALTERNAR';
   etiqueta: string;
   lineas: LineaCompra[];
 }

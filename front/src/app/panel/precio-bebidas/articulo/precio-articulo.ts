@@ -9,7 +9,7 @@ const TAMANOS_LITROS = [2, 1.5, 1];
 
 const ETIQUETAS: Record<string, string> = {
   REFRESCOS: 'Refrescos',
-  CERVEZA: 'Cerveza',
+  CERVEZA: 'Para alternar',
   LIMPIEZA: 'Limpieza y utensilios',
   COMIDA: 'Comida',
 };

@@ -3,7 +3,8 @@ package com.baniterio.api.compra;
 /**
  * Forma de la fórmula de una regla de la lista de la compra. El motor
  * ({@link CalculadoraListaCompra}) hace un {@code switch} sobre este valor.
- * {@link #ALCOHOL_SELECCIONADO} y {@link #REFRESCO_SELECCIONADO} son dinámicas:
+ * {@link #ALCOHOL_SELECCIONADO}, {@link #REFRESCO_SELECCIONADO} y
+ * {@link #CERVEZA_ESPECIAL_SELECCIONADA} son dinámicas:
  * una fila de regla se expande en varias líneas, una por marca elegida en la
  * ficha de bebida, y no se pueden crear a mano ni ajustar con cantidad fija.
  */
@@ -17,9 +18,11 @@ public enum TipoFormulaCompra {
     CERVEZA_ALTERNATIVA,
     TINTO_ALTERNATIVA,
     ALCOHOL_SELECCIONADO,
-    REFRESCO_SELECCIONADO;
+    REFRESCO_SELECCIONADO,
+    CERVEZA_ESPECIAL_SELECCIONADA;
 
     public boolean esDinamica() {
-        return this == ALCOHOL_SELECCIONADO || this == REFRESCO_SELECCIONADO;
+        return this == ALCOHOL_SELECCIONADO || this == REFRESCO_SELECCIONADO
+                || this == CERVEZA_ESPECIAL_SELECCIONADA;
     }
 }

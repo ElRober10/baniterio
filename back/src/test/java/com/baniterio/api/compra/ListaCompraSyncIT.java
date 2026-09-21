@@ -642,12 +642,12 @@ class ListaCompraSyncIT extends IntegrationTest {
         String admin = token(RolMembresia.ADMIN, false);
         long reglaId = crearReglaPorEvento(eventoId, admin, "CERVEZA", "Cerveza especial evento", 10);
         assertThat(cantidadLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
-                "CERVEZA", "Cerveza especial evento")).isEqualTo(10.0);
+                "PARA_ALTERNAR", "Cerveza especial evento")).isEqualTo(10.0);
 
         sumarInventarioFiesta(eventoId, "Marca A", CategoriaInventario.CERVEZA, new BigDecimal("3"));
         sumarInventarioFiesta(eventoId, "Marca B", CategoriaInventario.CERVEZA, new BigDecimal("4"));
         assertThat(cantidadLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
-                "CERVEZA", "Cerveza especial evento")).isEqualTo(3.0);
+                "PARA_ALTERNAR", "Cerveza especial evento")).isEqualTo(3.0);
 
         http.delete().uri("/api/v1/admin/lista-compra/eventos/" + eventoId + "/reglas/" + reglaId)
                 .header(AUTHORIZATION, "Bearer " + admin)
@@ -685,8 +685,8 @@ class ListaCompraSyncIT extends IntegrationTest {
         String tok = token(RolMembresia.MIEMBRO, false);
         Map<String, Object> body = getMap("/api/v1/eventos/" + eventoId + "/lista-compra", tok);
 
-        assertThat(tiendaLinea(body, "CERVEZA", "Cerveza")).isEqualTo("Alcampo");
-        assertThat(precioUnitarioLinea(body, "CERVEZA", "Cerveza")).isEqualTo(0.90);
+        assertThat(tiendaLinea(body, "PARA_ALTERNAR", "Cerveza")).isEqualTo("Alcampo");
+        assertThat(precioUnitarioLinea(body, "PARA_ALTERNAR", "Cerveza")).isEqualTo(0.90);
     }
 
     void apuntarTamano(long eventoId, String refresco, String litros) {
@@ -743,5 +743,48 @@ class ListaCompraSyncIT extends IntegrationTest {
 
         assertThat(tiendaLinea(body, "COMIDA", "Paletilla ibérica")).isEqualTo("Jamones Duriber");
         assertThat(precioUnitarioLinea(body, "COMIDA", "Paletilla ibérica")).isEqualTo(92.5);
+    }
+
+    void apuntarConCervezaEspecial(long eventoId, String texto) {
+        Evento evento = eventos.findById(eventoId).orElseThrow();
+        String tel = "6" + String.format("%08d", ThreadLocalRandom.current().nextInt(100_000_000));
+        Usuario u = usuarios.save(Usuario.builder()
+                .telefono(tel).email(tel + "@sync.test")
+                .passwordHash(passwordEncoder.encode("secreto1"))
+                .nombre("E" + tel).apellidos("S").esSuperadmin(false).activo(true).build());
+        AsistenciaEvento a = asistencias.save(AsistenciaEvento.builder()
+                .evento(evento).usuario(u).estado(EstadoAsistencia.APUNTADO).build());
+        fichas.save(FichaBebida.builder()
+                .asistencia(a).alcohol(null).refresco(null)
+                .alternativa(Alternativa.CERVEZA_ESPECIAL).cervezaEspecial(texto).modalidad(Modalidad.COMPLETA)
+                .asisteDia1(true).asisteDia2(true).embarazada(false).build());
+    }
+
+    @SuppressWarnings("unchecked")
+    String seccionDeLinea(Map<String, Object> body, String nombre) {
+        for (Map<String, Object> cat : (List<Map<String, Object>>) body.get("categorias")) {
+            for (Map<String, Object> l : (List<Map<String, Object>>) cat.get("lineas")) {
+                if (nombre.equals(l.get("nombre"))) {
+                    return (String) cat.get("categoria");
+                }
+            }
+        }
+        return null;
+    }
+
+    @Test
+    void las_cervezas_especiales_de_la_ficha_salen_en_para_alternar_con_el_tinto_de_verano() {
+        long eventoId = crearEventoConFicha("Sync IT para alternar");
+        apuntarConCervezaEspecial(eventoId, "sin gluten");
+        apuntarConCervezaEspecial(eventoId, "Sin gluten ");
+        apuntarConCervezaEspecial(eventoId, "sin alcohol");
+
+        Map<String, Object> body = getMap("/api/v1/eventos/" + eventoId + "/lista-compra",
+                token(RolMembresia.MIEMBRO, false));
+
+        // 2 personas x 2 días x 5 latas = 20; 1 persona x 2 días x 5 = 10.
+        assertThat(cantidadLinea(body, "PARA_ALTERNAR", "Cerveza sin gluten")).isEqualTo(20.0);
+        assertThat(cantidadLinea(body, "PARA_ALTERNAR", "Cerveza sin alcohol")).isEqualTo(10.0);
+        assertThat(seccionDeLinea(body, "Cerveza sin gluten")).isEqualTo("PARA_ALTERNAR");
     }
 }

@@ -95,7 +95,9 @@ export class ListaCompraAdminEvento implements OnInit {
       case 'ALCOHOL_SELECCIONADO':
         return '0,5 botellas por peñista y día, por marca elegida';
       case 'REFRESCO_SELECCIONADO':
-        return '1 botella por peñista y día, por marca elegida';
+        return '2 litros por peñista y día, por refresco elegido';
+      case 'CERVEZA_ESPECIAL_SELECCIONADA':
+        return `${r.factor} por peñista y día, por cerveza especial escrita en la ficha`;
     }
   }
 

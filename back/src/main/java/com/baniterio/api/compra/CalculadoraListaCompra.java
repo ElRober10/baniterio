@@ -26,7 +26,7 @@ public final class CalculadoraListaCompra {
 
     /** Una persona apuntada al evento, con lo que hace falta para las fórmulas. */
     public record PersonaCompra(int diasQueVa, boolean tieneFicha, String alcohol, String refresco,
-                                Alternativa alternativa) {
+                                Alternativa alternativa, String cervezaEspecial) {
     }
 
     /** Datos agregados del evento para una tanda de cálculo. */
@@ -67,6 +67,7 @@ public final class CalculadoraListaCompra {
                     sumaDias(d.personas(), p -> p.tieneFicha() && p.alternativa() == Alternativa.TINTO_VERANO))));
             case ALCOHOL_SELECCIONADO -> dinamica(r, d, cat, true);
             case REFRESCO_SELECCIONADO -> dinamica(r, d, cat, false);
+            case CERVEZA_ESPECIAL_SELECCIONADA -> cervezasEspeciales(r, d, cat);
         };
     }
 
@@ -85,6 +86,41 @@ public final class CalculadoraListaCompra {
 
     private static int sumaDias(List<PersonaCompra> personas, Predicate<PersonaCompra> filtro) {
         return personas.stream().filter(filtro).mapToInt(PersonaCompra::diasQueVa).sum();
+    }
+
+    /**
+     * Cervezas "especiales" que la gente escribe a mano en la ficha (sin gluten, sin
+     * alcohol...): una línea por cada nombre distinto, {@code factor} latas por
+     * peñista y día. Sin ficha en el evento no hay nada que calcular, así que no
+     * sale ninguna línea.
+     */
+    private static List<LineaCalculada> cervezasEspeciales(ReglaCompraEvento r, DatosEvento d, String cat) {
+        Map<String, Integer> diasPorNombre = new LinkedHashMap<>();
+        Map<String, String> nombrePorClave = new LinkedHashMap<>();
+        for (PersonaCompra p : d.personas()) {
+            if (!p.tieneFicha() || p.alternativa() != Alternativa.CERVEZA_ESPECIAL
+                    || p.cervezaEspecial() == null || p.cervezaEspecial().isBlank()) {
+                continue;
+            }
+            String nombre = nombreCerveza(p.cervezaEspecial());
+            String clave = nombre.toLowerCase();
+            nombrePorClave.putIfAbsent(clave, nombre);
+            diasPorNombre.merge(clave, p.diasQueVa(), Integer::sum);
+        }
+        List<LineaCalculada> out = new ArrayList<>();
+        diasPorNombre.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(e ->
+                out.add(new LineaCalculada(cat, nombrePorClave.get(e.getKey()), r.getTamano(),
+                        ceil(r.getFactor().multiply(BigDecimal.valueOf(e.getValue()))), true, false, r.getOrden())));
+        return out;
+    }
+
+    /** "sin gluten" -> "Cerveza sin gluten"; si ya empieza por "cerveza" se deja tal cual. */
+    private static String nombreCerveza(String escrito) {
+        String limpio = escrito.trim();
+        if (limpio.toLowerCase().startsWith("cerveza")) {
+            return Character.toUpperCase(limpio.charAt(0)) + limpio.substring(1);
+        }
+        return "Cerveza " + limpio;
     }
 
     /**
