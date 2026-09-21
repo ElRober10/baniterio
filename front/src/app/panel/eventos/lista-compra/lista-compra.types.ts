@@ -34,7 +34,11 @@ export interface LineaCompra {
   /** Nota de la compra en packs, p. ej. "2 × pack de 50". */
   detalle?: string | null;
   /** Solo en bebidas alcohólicas: quién la bebe y cuánto stock hay. */
-  info?: { personas: number; stock: number } | null;
+  info?: {
+    personas: number;
+    stock: number;
+    tamanos: { tamano: string; tienda: string; precio: number; precioLitro: number }[];
+  } | null;
 }
 
 export interface CategoriaListaCompra {

@@ -37,6 +37,8 @@ import com.baniterio.api.inventario.ArticuloInventarioRepository;
 import com.baniterio.api.inventario.CategoriaInventario;
 import com.baniterio.api.preciobebida.PrecioArticuloEvento;
 import com.baniterio.api.preciobebida.PrecioArticuloEventoRepository;
+import com.baniterio.api.preciobebida.PrecioBebidaEvento;
+import com.baniterio.api.preciobebida.PrecioBebidaEventoRepository;
 import com.baniterio.api.preciobebida.ProductoKiloEvento;
 import com.baniterio.api.preciobebida.ProductoKiloEventoRepository;
 import com.baniterio.api.preciobebida.TamanoArticuloEvento;
@@ -80,6 +82,7 @@ class ListaCompraSyncIT extends IntegrationTest {
     @Autowired PrecioArticuloEventoRepository precioArticulo;
     @Autowired TamanoArticuloEventoRepository tamanosArticulo;
     @Autowired ProductoKiloEventoRepository productosKilo;
+    @Autowired PrecioBebidaEventoRepository preciosBebida;
     @Autowired PasswordEncoder passwordEncoder;
 
     RestTestClient http;
@@ -881,5 +884,67 @@ class ListaCompraSyncIT extends IntegrationTest {
         assertThat(info).isNotNull();
         assertThat(((Number) info.get("personas")).doubleValue()).isEqualTo(2.0);
         assertThat(((Number) info.get("stock")).doubleValue()).isEqualTo(2.0);
+    }
+
+    void precioDeBotella(long eventoId, String marca, String tamano, String tienda, String precio) {
+        Tienda t = tiendas.findByPenaIdOrderByOrdenAscNombreAsc(pena().getId()).stream()
+                .filter(x -> tienda.equals(x.getNombre())).findFirst().orElseThrow();
+        preciosBebida.save(PrecioBebidaEvento.builder()
+                .evento(eventos.findById(eventoId).orElseThrow())
+                .bebida(bebidas.findByTipoAndNombreIgnoreCase(TipoBebida.ALCOHOL, marca).orElseThrow())
+                .tamano(tamano).tienda(t).precio(new BigDecimal(precio)).build());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void se_puede_cambiar_el_tamano_de_la_botella_y_la_lista_ofrece_precio_por_litro() {
+        long eventoId = crearEventoConFicha("Sync IT cambio tamano");
+        apuntarConAlcohol(eventoId, "Legendario");
+        precioDeBotella(eventoId, "Legendario", "70 cl", "Alcampo", "10.00");
+        precioDeBotella(eventoId, "Legendario", "70 cl", "Makro", "11.00");
+        precioDeBotella(eventoId, "Legendario", "1 L", "Makro", "12.00");
+        String admin = token(RolMembresia.ADMIN, true);
+
+        Map<String, Object> body = getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin);
+        Map<String, Object> info = infoLinea(body, "ALCOHOL", "Legendario");
+        List<Map<String, Object>> tamanos = (List<Map<String, Object>>) info.get("tamanos");
+        // Por tamaño, la tienda más barata y lo que sale el litro (10 € / 0,7 L = 14,29 €/L).
+        assertThat(tamanos).extracting(t -> t.get("tamano")).containsExactly("70 cl", "1 L");
+        assertThat(tamanos.get(0).get("tienda")).isEqualTo("Alcampo");
+        assertThat(((Number) tamanos.get(0).get("precioLitro")).doubleValue()).isEqualTo(14.29);
+        assertThat(((Number) tamanos.get(1).get("precioLitro")).doubleValue()).isEqualTo(12.0);
+
+        http.put().uri("/api/v1/eventos/" + eventoId + "/lista-compra/bloqueo")
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("bloqueada", true)).exchange().expectStatus().isNoContent();
+        long lineaId = idLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
+                "ALCOHOL", "Legendario");
+        double cantidad = cantidadLinea(getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin),
+                "ALCOHOL", "Legendario");
+
+        http.put().uri("/api/v1/eventos/" + eventoId + "/lista-compra/lineas/" + lineaId)
+                .header(AUTHORIZATION, "Bearer " + admin)
+                .body(Map.of("cantidad", cantidad, "tamano", "70 cl"))
+                .exchange().expectStatus().isNoContent();
+
+        Map<String, Object> despues = getMap("/api/v1/eventos/" + eventoId + "/lista-compra", admin);
+        assertThat(tiendaLinea(despues, "ALCOHOL", "Legendario")).isEqualTo("Alcampo");
+        assertThat(precioUnitarioLinea(despues, "ALCOHOL", "Legendario")).isEqualTo(10.0);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void una_sola_persona_con_precios_compra_al_menos_un_litro() {
+        long eventoId = crearEventoConFicha("Sync IT un litro con precios");
+        apuntarConAlcohol(eventoId, "JB");
+        precioDeBotella(eventoId, "JB", "70 cl", "Amazon", "10.29");
+        precioDeBotella(eventoId, "JB", "1 L", "Makro", "12.00");
+
+        Map<String, Object> body = getMap("/api/v1/eventos/" + eventoId + "/lista-compra",
+                token(RolMembresia.MIEMBRO, false));
+
+        // Una botella de 70 cl no llega al litro: sale la de 1 L (o dos de 70 si fueran más baratas).
+        assertThat(tiendaLinea(body, "ALCOHOL", "JB")).isEqualTo("Makro");
+        assertThat(cantidadLinea(body, "ALCOHOL", "JB")).isEqualTo(1.0);
     }
 }

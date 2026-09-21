@@ -22,6 +22,7 @@ import com.baniterio.api.compra.dto.CrearReglaRequest;
 import com.baniterio.api.compra.dto.EventoListaCompraDto;
 import com.baniterio.api.compra.dto.InfoBebidaDto;
 import com.baniterio.api.compra.dto.LineaCompraDto;
+import com.baniterio.api.compra.dto.OpcionTamanoDto;
 import com.baniterio.api.compra.dto.ListaCompraAdminResponse;
 import com.baniterio.api.compra.dto.ListaCompraResponse;
 import com.baniterio.api.compra.dto.ReglaCompraEventoDto;
@@ -190,6 +191,7 @@ public class ListaCompraService {
         boolean puedoEditar = permisos.puede(usuarioId, AreaProtegida.INVENTARIO);
         Map<String, BigDecimal> personasPorMarca = personasPorMarcaAlcohol(datos);
         StockCubierto stockFiesta = stockCubierto(eventoId);
+        Map<String, List<OpcionPrecio>> preciosAlcohol = preciosPorMarca(eventoId);
 
         // "Para alternar" agrupa lo que se bebe en vez del alcohol: la cerveza (y las especiales)
         // y el tinto de verano, que en el inventario y en los precios sigue siendo un refresco.
@@ -211,7 +213,7 @@ public class ListaCompraService {
                     l.getId(), l.getNombre(), l.getTamano(), l.getTienda(), l.getPrecioUnitario(),
                     l.getCantidad(), BigDecimal.ZERO,
                     l.isAjustada(), l.isDinamica(), l.isNecesitaFicha(), l.isComprada(), l.getDetalle(),
-                    infoDe(l, personasPorMarca, stockFiesta)));
+                    infoDe(l, personasPorMarca, stockFiesta, preciosAlcohol)));
         }
 
         List<CategoriaListaCompraDto> categorias = new ArrayList<>();
@@ -243,14 +245,32 @@ public class ListaCompraService {
 
     /** Solo las líneas de alcohol (de momento) llevan información para ajustar. */
     private static InfoBebidaDto infoDe(LineaCompraEvento l, Map<String, BigDecimal> personasPorMarca,
-                                        StockCubierto stock) {
+                                        StockCubierto stock, Map<String, List<OpcionPrecio>> precios) {
         if (l.getCategoria() != CategoriaInventario.ALCOHOL || !l.isDinamica()) {
             return null;
         }
         return new InfoBebidaDto(
                 personasPorMarca.getOrDefault(l.getNombre(), BigDecimal.ZERO).stripTrailingZeros(),
                 stock.porNombre().getOrDefault(claveNombre(l.getCategoria(), l.getNombre()), BigDecimal.ZERO)
-                        .stripTrailingZeros());
+                        .stripTrailingZeros(),
+                opcionesPorTamano(precios.get(l.getNombre())));
+    }
+
+    /** Por cada tamaño con precio, la tienda más barata y el precio por litro; de menor a mayor tamaño. */
+    private static List<OpcionTamanoDto> opcionesPorTamano(List<OpcionPrecio> opciones) {
+        if (opciones == null) {
+            return List.of();
+        }
+        Map<String, OpcionPrecio> barata = new LinkedHashMap<>();
+        for (OpcionPrecio o : opciones) {
+            barata.merge(o.tamano(), o, (a, b) -> b.precio().compareTo(a.precio()) < 0 ? b : a);
+        }
+        return barata.values().stream()
+                .sorted(java.util.Comparator.comparingInt(OpcionPrecio::cl))
+                .map(o -> new OpcionTamanoDto(o.tamano(), o.tienda(), o.precio(),
+                        o.precio().multiply(BigDecimal.valueOf(100))
+                                .divide(BigDecimal.valueOf(o.cl()), 2, java.math.RoundingMode.HALF_UP)))
+                .toList();
     }
 
     private static final String SECCION_PARA_ALTERNAR = "PARA_ALTERNAR";
@@ -427,7 +447,10 @@ public class ListaCompraService {
                                           List<OpcionPrecio> opciones) {
         if (opciones != null && !opciones.isEmpty()) {
             int stockCl = stock.clPorMarcaAlcohol().getOrDefault(lc.nombre(), 0);
-            int targetCl = lc.bruto().multiply(BigDecimal.valueOf(CL_POR_UNIDAD)).intValue();
+            // Una sola botella de referencia (una persona) equivale a 1 L, no a 70 cl: como en el
+            // aviso sin precios, hace falta al menos un litro entre lo que hay y lo que se compre.
+            int targetCl = "1 L".equals(lc.tamano()) ? 100
+                    : lc.bruto().multiply(BigDecimal.valueOf(CL_POR_UNIDAD)).intValue();
             int restanteCl = Math.max(0, targetCl - stockCl);
             var combinacion = OptimizadorPrecioBebida.combinacionMasBarata(restanteCl, opciones);
             if (combinacion.isPresent()) {
@@ -562,12 +585,55 @@ public class ListaCompraService {
         if (linea.isComprada()) {
             throw new LineaCompraNoAjustableException();
         }
-        // Solo cuenta como ajuste si de verdad cambia la cantidad: abrir el editor y dejarla igual no ajusta nada.
-        if (linea.getCantidad().compareTo(req.cantidad()) != 0) {
-            linea.setCantidad(req.cantidad());
-            linea.setAjustada(true);
-            lineas.save(linea);
+        String nuevoTamano = req.tamano() == null || req.tamano().isBlank() ? linea.getTamano() : req.tamano().trim();
+        boolean cambiaTamano = !nuevoTamano.equals(linea.getTamano());
+        boolean cambiaCantidad = linea.getCantidad().compareTo(req.cantidad()) != 0;
+        // Solo cuenta como ajuste si de verdad cambia algo: abrir el editor y dejarlo igual no ajusta nada.
+        if (!cambiaTamano && !cambiaCantidad) {
+            return;
         }
+        if (cambiaTamano) {
+            cambiarTamano(linea, nuevoTamano, req.cantidad(), eventoId);
+            return;
+        }
+        linea.setCantidad(req.cantidad());
+        linea.setAjustada(true);
+        lineas.save(linea);
+    }
+
+    /**
+     * Cambia el tamaño de la botella de una línea de alcohol: pasa a la tienda más barata de ese
+     * tamaño según la rejilla (sin tienda ni precio si no hay). Si ya existe otra línea de la misma
+     * marca, tamaño y tienda, se suman las cantidades en esa.
+     */
+    private void cambiarTamano(LineaCompraEvento linea, String nuevoTamano, BigDecimal cantidad, Long eventoId) {
+        if (linea.getCategoria() != CategoriaInventario.ALCOHOL
+                || OptimizadorPrecioBebida.parseCl(nuevoTamano).isEmpty()) {
+            throw new LineaCompraNoAjustableException();
+        }
+        OpcionPrecio barata = preciosPorMarca(eventoId).getOrDefault(linea.getNombre(), List.of()).stream()
+                .filter(o -> o.tamano().equals(nuevoTamano))
+                .min(java.util.Comparator.comparing(OpcionPrecio::precio)).orElse(null);
+        String tienda = barata == null ? null : barata.tienda();
+        LineaCompraEvento igual = lineas.findByEventoIdOrderByCategoriaAscNombreAsc(eventoId).stream()
+                .filter(o -> !o.getId().equals(linea.getId()) && !o.isComprada()
+                        && o.getCategoria() == linea.getCategoria() && o.getNombre().equals(linea.getNombre())
+                        && o.getTamano().equals(nuevoTamano) && java.util.Objects.equals(o.getTienda(), tienda))
+                .findFirst().orElse(null);
+        if (igual != null) {
+            igual.setCantidad(igual.getCantidad().add(cantidad));
+            igual.setAjustada(true);
+            lineas.save(igual);
+            lineas.delete(linea);
+            return;
+        }
+        linea.setTamano(nuevoTamano);
+        linea.setTienda(tienda);
+        linea.setPrecioUnitario(barata == null ? null : barata.precio());
+        linea.setDetalle(null);
+        linea.setCantidad(cantidad);
+        linea.setAjustada(true);
+        lineas.save(linea);
     }
 
     /** Bloquea o desbloquea el auto-calculo de la lista. Al bloquear, sincroniza una ultima vez. */

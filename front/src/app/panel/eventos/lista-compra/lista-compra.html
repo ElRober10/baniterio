@@ -149,6 +149,57 @@
                                 botellas
                               </p>
                             }
+                            @if (l.info) {
+                              <div class="mt-2">
+                                <p class="text-xs uppercase tracking-wide text-muted">Tamaño de la botella</p>
+                                @if (l.info.tamanos.length > 0) {
+                                  <table class="mt-1 text-sm">
+                                    <thead>
+                                      <tr class="text-left text-xs text-muted">
+                                        <th class="pr-3"></th>
+                                        <th class="pr-3">Tamaño</th>
+                                        <th class="pr-3">Más barato</th>
+                                        <th class="pr-3 text-right">Precio</th>
+                                        <th class="text-right">€ / litro</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      @for (o of l.info.tamanos; track o.tamano) {
+                                        <tr>
+                                          <td class="pr-3">
+                                            <input
+                                              type="radio"
+                                              name="tamano-{{ l.id }}"
+                                              [attr.aria-label]="'Tamaño ' + o.tamano"
+                                              [checked]="tamanoEditado() === o.tamano"
+                                              (change)="tamanoEditado.set(o.tamano)"
+                                            />
+                                          </td>
+                                          <td class="pr-3 font-semibold">{{ o.tamano }}</td>
+                                          <td class="pr-3 text-muted">{{ o.tienda }}</td>
+                                          <td class="pr-3 text-right">{{ o.precio | number: '1.2-2' }} €</td>
+                                          <td class="text-right" [class.text-gold-soft]="o.precioLitro === menorPrecioLitro(l)">
+                                            {{ o.precioLitro | number: '1.2-2' }} €
+                                            @if (o.precioLitro === menorPrecioLitro(l)) { <span class="text-xs">★</span> }
+                                          </td>
+                                        </tr>
+                                      }
+                                    </tbody>
+                                  </table>
+                                } @else {
+                                  <select
+                                    aria-label="Tamaño de la botella"
+                                    (change)="tamanoEditado.set($any($event.target).value)"
+                                    class="mt-1 rounded border border-outline bg-transparent px-2 py-1 text-sm"
+                                  >
+                                    @for (t of TAMANOS_BASE; track t) {
+                                      <option [value]="t" [selected]="tamanoEditado() === t">{{ t }}</option>
+                                    }
+                                  </select>
+                                  <span class="ml-2 text-xs text-muted">Sin precios apuntados para esta marca.</span>
+                                }
+                              </div>
+                            }
                             <div class="mt-2 flex flex-wrap items-center gap-2">
                               <span class="text-muted">Cantidad que se pide:</span>
                               <button type="button" aria-label="Restar uno" (click)="sumarEdicion(-1)"

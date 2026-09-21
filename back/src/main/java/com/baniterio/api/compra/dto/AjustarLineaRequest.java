@@ -5,6 +5,9 @@ import java.math.BigDecimal;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 
-/** Ajuste manual de la cantidad final de una línea, con la lista bloqueada. */
-public record AjustarLineaRequest(@NotNull @PositiveOrZero BigDecimal cantidad) {
+/**
+ * Ajuste manual de la cantidad final de una línea, con la lista bloqueada. {@code tamano}
+ * (opcional, solo bebidas alcohólicas) cambia el tamaño de la botella de la línea.
+ */
+public record AjustarLineaRequest(@NotNull @PositiveOrZero BigDecimal cantidad, String tamano) {
 }

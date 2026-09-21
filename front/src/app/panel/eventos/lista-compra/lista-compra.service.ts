@@ -67,10 +67,10 @@ export class ListaCompraService {
   }
 
   /** Ajusta a mano la cantidad de una línea; solo con la lista bloqueada. */
-  ajustarLinea(eventoId: number, lineaId: number, cantidad: number): Observable<void> {
+  ajustarLinea(eventoId: number, lineaId: number, cantidad: number, tamano?: string): Observable<void> {
     return this.http.put<void>(
       `${this.base}/eventos/${eventoId}/lista-compra/lineas/${lineaId}`,
-      { cantidad },
+      tamano ? { cantidad, tamano } : { cantidad },
     );
   }
 }
