@@ -42,8 +42,14 @@ export class ListaCompra implements OnInit {
     this.cargar();
   }
 
-  protected cargar(): void {
-    this.estado.set('cargando');
+  /**
+   * Carga la lista. Con `silencioso` (tras guardar, comprar, bloquear...) no se pasa por el estado
+   * "cargando": si no, la página se vacía un momento y el scroll vuelve arriba.
+   */
+  protected cargar(silencioso = false): void {
+    if (!silencioso) {
+      this.estado.set('cargando');
+    }
     this.service.lista(this.eventoId).subscribe({
       next: (d) => {
         this.apuntados.set(d.apuntados);
@@ -64,7 +70,7 @@ export class ListaCompra implements OnInit {
     this.service.comprado(this.eventoId, l.id).subscribe({
       next: () => {
         this.ocupado.set(false);
-        this.cargar();
+        this.cargar(true);
       },
       error: () => {
         this.ocupado.set(false);
@@ -79,7 +85,7 @@ export class ListaCompra implements OnInit {
     this.service.bloqueo(this.eventoId, !this.bloqueada()).subscribe({
       next: () => {
         this.ocupado.set(false);
-        this.cargar();
+        this.cargar(true);
       },
       error: () => {
         this.ocupado.set(false);
@@ -100,7 +106,7 @@ export class ListaCompra implements OnInit {
       next: () => {
         this.ocupado.set(false);
         this.cancelarEdicion();
-        this.cargar();
+        this.cargar(true);
       },
       error: () => {
         this.ocupado.set(false);
@@ -116,7 +122,7 @@ export class ListaCompra implements OnInit {
       next: () => {
         this.ocupado.set(false);
         this.cancelarEdicion();
-        this.cargar();
+        this.cargar(true);
       },
       error: () => {
         this.ocupado.set(false);
@@ -184,7 +190,7 @@ export class ListaCompra implements OnInit {
       next: () => {
         this.ocupado.set(false);
         this.cancelarEdicion();
-        this.cargar();
+        this.cargar(true);
       },
       error: () => {
         this.ocupado.set(false);
@@ -206,7 +212,7 @@ export class ListaCompra implements OnInit {
       next: () => {
         this.ocupado.set(false);
         this.cancelarEdicion();
-        this.cargar();
+        this.cargar(true);
       },
       error: () => {
         this.ocupado.set(false);
