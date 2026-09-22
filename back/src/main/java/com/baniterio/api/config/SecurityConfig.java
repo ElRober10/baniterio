@@ -41,6 +41,12 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  *       Spring devolvería 403 a una petición sin token; forzamos 401.
  *   <li>{@code addFilterBefore(jwtFilter, ...)}: mete nuestro filtro JWT en la
  *       cadena, antes del filtro de login por usuario/contraseña.
+ *   <li><b>{@code X-Frame-Options: SAMEORIGIN}</b> en vez del {@code DENY} por
+ *       defecto de Spring Security: el visor de PDF de algunos navegadores
+ *       móviles (p.ej. Brave) carga {@code /media/recibos/...} en un iframe
+ *       interno y con {@code DENY} se queda en blanco. Sin cookies de sesión
+ *       (auth por Bearer), el riesgo de clickjacking que {@code DENY} evita
+ *       no aplica aquí.
  * </ul>
  */
 @Configuration
@@ -65,6 +71,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e.authenticationEntryPoint(
                         (req, res, ex) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED)))
+                .headers(h -> h.frameOptions(f -> f.sameOrigin()))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
