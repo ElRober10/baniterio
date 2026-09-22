@@ -262,8 +262,11 @@ export class CuentaDetalleComponent implements OnInit {
       }
     } catch (e) {
       console.error('No se pudo renderizar el PDF del recibo:', e);
+      // Temporal: el mensaje real en pantalla para depurar sin acceso a la consola del
+      // móvil. Se quita en cuanto se sepa la causa (ver conversación 2026-09-22).
+      const detalle = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
       contenedor.innerHTML =
-        '<p class="p-4 text-sm text-muted">No se ha podido mostrar el PDF.</p>';
+        `<p class="p-4 text-sm text-muted">No se ha podido mostrar el PDF.<br><span class="text-xs opacity-70">${detalle}</span></p>`;
     }
   }
 
