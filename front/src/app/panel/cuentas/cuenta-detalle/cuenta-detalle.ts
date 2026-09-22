@@ -1,8 +1,15 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import * as pdfjsLib from 'pdfjs-dist';
 import { environment } from '../../../../environments/environment';
+
+// El visor nativo `<embed type="application/pdf">` no funciona en los navegadores
+// móviles (Chrome/Brave Android no lo renderizan inline, solo ofrecen "Abrir" y ni
+// eso hace nada dentro de un modal): se dibuja el PDF a mano, página a página, en un
+// <canvas> con pdfjs-dist. El worker se sirve como asset aparte (ver angular.json).
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.mjs';
 import { Volver } from '../../../shared/volver/volver';
 import { CategoriaMovimiento, CuentaDetalle, PenistaCuota } from '../cuentas.types';
 import { CuentasService } from '../cuentas.service';
@@ -64,6 +71,18 @@ export class CuentaDetalleComponent implements OnInit {
   // Visor de recibo: modal embebido en vez de pestaña nueva, con el nombre del archivo abierto.
   protected readonly reciboAbierto = signal<string | null>(null);
   protected readonly reciboEsPdf = computed(() => (this.reciboAbierto() ?? '').toLowerCase().endsWith('.pdf'));
+  @ViewChild('pdfContenedor') private pdfContenedor?: ElementRef<HTMLDivElement>;
+
+  constructor() {
+    // Se dispara al abrir el modal con un PDF; `pdfContenedor` puede no existir
+    // aún en el primer tick (el `@if` del modal lo crea), de ahí el microtask.
+    effect(() => {
+      const archivo = this.reciboAbierto();
+      if (archivo && this.reciboEsPdf()) {
+        queueMicrotask(() => this.renderizarPdf(this.urlRecibo(archivo)));
+      }
+    });
+  }
 
   // Selector de año.
   private readonly anioSel = signal<number | null>(null);
@@ -206,6 +225,34 @@ export class CuentaDetalleComponent implements OnInit {
   private trasCambio(c: CuentaDetalle, msg: string): void {
     this.cuenta.set(c);
     this.aviso.set(msg);
+  }
+
+  /** Dibuja cada página del PDF en un `<canvas>`, una debajo de otra. */
+  private async renderizarPdf(url: string): Promise<void> {
+    const contenedor = this.pdfContenedor?.nativeElement;
+    if (!contenedor) return;
+    contenedor.innerHTML = '';
+    try {
+      const pdf = await pdfjsLib.getDocument({ url }).promise;
+      const anchoDisponible = contenedor.clientWidth || 600;
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const pagina = await pdf.getPage(i);
+        // Se ajusta al ancho del modal y se renderiza a 2x para que no se vea borroso.
+        const escala = (anchoDisponible / pagina.getViewport({ scale: 1 }).width) * 2;
+        const viewport = pagina.getViewport({ scale: escala });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        canvas.style.width = '100%';
+        canvas.style.display = 'block';
+        canvas.style.marginBottom = '8px';
+        await pagina.render({ canvas, viewport }).promise;
+        contenedor.appendChild(canvas);
+      }
+    } catch {
+      contenedor.innerHTML =
+        '<p class="p-4 text-sm text-muted">No se ha podido mostrar el PDF.</p>';
+    }
   }
 
   private formVacio() {
