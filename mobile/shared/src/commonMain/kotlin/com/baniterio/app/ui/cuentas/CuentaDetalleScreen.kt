@@ -411,7 +411,11 @@ fun CuentaDetalleScreen(
                                 if (m.importe > 0) "${formatoImporte(m.importe)} €" else "",
                                 ANCHO_DINERO, TextAlign.End, BaniterioColors.goldSoft,
                             )
-                            Column(Modifier.width(ANCHO_RECIBO).padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Row(
+                                Modifier.width(ANCHO_RECIBO).padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
                                 if (m.reciboArchivo != null) {
                                     Text(
                                         "📄",
