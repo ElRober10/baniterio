@@ -252,8 +252,8 @@
                   <td class="whitespace-nowrap px-3 py-2 text-right text-emerald-300">{{ m.importe > 0 ? (m.importe + ' €') : '' }}</td>
                   <td class="px-3 py-2 text-center">
                     @if (m.reciboArchivo) {
-                      <a [href]="urlRecibo(m.reciboArchivo)" target="_blank" rel="noopener"
-                        class="text-gold" title="Ver recibo">📄</a>
+                      <button type="button" (click)="reciboAbierto.set(m.reciboArchivo)"
+                        class="text-gold" title="Ver recibo">📄</button>
                     }
                     @if (c.puedoGestionar && c.esAnioActual && m.manual) {
                       <button type="button" (click)="pedirBorrarMovimiento(m.id)"
@@ -321,6 +321,31 @@
             class="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Sí, borrar</button>
           <button type="button" (click)="movABorrar.set(null)"
             class="rounded-xl border border-outline px-4 py-2 text-sm">No</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (reciboAbierto(); as archivo) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div class="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-2xl bg-surface p-4">
+        <div class="mb-2 flex items-center justify-between">
+          <h3 class="font-display text-lg font-bold">Recibo</h3>
+          <div class="flex items-center gap-4">
+            <a [href]="urlRecibo(archivo)" download class="text-xs text-muted underline hover:text-gold">
+              Descargar
+            </a>
+            <button type="button" (click)="reciboAbierto.set(null)" class="text-sm text-muted hover:text-gold">
+              ✕ Cerrar
+            </button>
+          </div>
+        </div>
+        <div class="flex-1 overflow-auto rounded-xl border border-outline">
+          @if (reciboEsPdf()) {
+            <embed [src]="urlRecibo(archivo)" type="application/pdf" class="h-[75vh] w-full" />
+          } @else {
+            <img [src]="urlRecibo(archivo)" class="mx-auto max-h-[75vh] w-auto" alt="Recibo" />
+          }
         </div>
       </div>
     </div>

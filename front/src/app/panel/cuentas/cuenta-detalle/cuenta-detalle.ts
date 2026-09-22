@@ -61,6 +61,10 @@ export class CuentaDetalleComponent implements OnInit {
   protected readonly movABorrar = signal<number | null>(null);
   protected readonly borrandoMov = signal(false);
 
+  // Visor de recibo: modal embebido en vez de pestaña nueva, con el nombre del archivo abierto.
+  protected readonly reciboAbierto = signal<string | null>(null);
+  protected readonly reciboEsPdf = computed(() => (this.reciboAbierto() ?? '').toLowerCase().endsWith('.pdf'));
+
   // Selector de año.
   private readonly anioSel = signal<number | null>(null);
   protected readonly mostrarAniosViejos = signal(false);
