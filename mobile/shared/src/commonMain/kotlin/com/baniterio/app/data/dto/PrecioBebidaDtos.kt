@@ -49,3 +49,52 @@ data class GuardarPrecioBody(
 /** Cuerpo de `POST /precio-bebida/eventos/{id}/alcohol/tamanos`. */
 @Serializable
 data class AnadirTamanoBody(val tamano: String)
+
+/** El precio de un artículo (de un pack de `cantidad` unidades), en una tienda. */
+@Serializable
+data class PrecioArticuloCeldaDto(
+    val nombreArticulo: String,
+    val tiendaId: Long,
+    val precio: Double? = null,
+    val cantidad: Int = 1,
+)
+
+/** Tamaño de botella (litros) apuntado para un artículo de refrescos/cerveza. */
+@Serializable
+data class TamanoArticuloDto(val nombreArticulo: String, val litros: Double)
+
+/** Precio por kilo y peso estimado de un embutido de Jamones Duriber (comida). */
+@Serializable
+data class ProductoKiloDto(
+    val nombreArticulo: String,
+    val precioKilo: Double? = null,
+    val pesoKg: Double? = null,
+)
+
+/** Raíz de `GET /precio-bebida/eventos/{id}/articulos/{categoria}`. */
+@Serializable
+data class GrillaArticuloDto(
+    val puedoEditar: Boolean = false,
+    val tiendas: List<TiendaDto> = emptyList(),
+    val articulos: List<String> = emptyList(),
+    val precios: List<PrecioArticuloCeldaDto> = emptyList(),
+    val tamanos: List<TamanoArticuloDto> = emptyList(),
+    val porKilo: List<ProductoKiloDto> = emptyList(),
+)
+
+/** Cuerpo de `PUT /precio-bebida/eventos/{id}/articulos/{categoria}/precio`. `precio` null borra la celda. */
+@Serializable
+data class GuardarPrecioArticuloBody(
+    val nombreArticulo: String,
+    val tiendaId: Long,
+    val precio: Double?,
+    val cantidad: Int? = null,
+)
+
+/** Cuerpo de `PUT /precio-bebida/eventos/{id}/articulos/{categoria}/tamano`. */
+@Serializable
+data class GuardarTamanoArticuloBody(val nombreArticulo: String, val litros: Double)
+
+/** Cuerpo de `PUT /precio-bebida/eventos/{id}/articulos/COMIDA/kilo`. */
+@Serializable
+data class GuardarProductoKiloBody(val nombreArticulo: String, val precioKilo: Double, val pesoKg: Double)

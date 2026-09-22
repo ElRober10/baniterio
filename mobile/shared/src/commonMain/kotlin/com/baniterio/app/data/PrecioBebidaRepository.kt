@@ -2,6 +2,7 @@ package com.baniterio.app.data
 
 import com.baniterio.app.data.dto.EventoPrecioBebidaDto
 import com.baniterio.app.data.dto.GrillaAlcoholDto
+import com.baniterio.app.data.dto.GrillaArticuloDto
 import com.baniterio.app.data.dto.TiendaDto
 
 /**
@@ -21,4 +22,27 @@ interface PrecioBebidaRepository {
         precio: Double?,
     ): ResultadoPrecioBebida<Unit>
     suspend fun anadirTamano(eventoId: Long, tamano: String): ResultadoPrecioBebida<List<String>>
+
+    /** Rejilla de una sección sin tamaños: `categoria` ∈ REFRESCOS/CERVEZA/LIMPIEZA/COMIDA. */
+    suspend fun articulos(eventoId: Long, categoria: String): ResultadoPrecioBebida<GrillaArticuloDto>
+    suspend fun guardarPrecioArticulo(
+        eventoId: Long,
+        categoria: String,
+        nombreArticulo: String,
+        tiendaId: Long,
+        precio: Double?,
+        cantidad: Int? = null,
+    ): ResultadoPrecioBebida<Unit>
+    suspend fun guardarTamanoArticulo(
+        eventoId: Long,
+        categoria: String,
+        nombreArticulo: String,
+        litros: Double,
+    ): ResultadoPrecioBebida<Unit>
+    suspend fun guardarProductoKilo(
+        eventoId: Long,
+        nombreArticulo: String,
+        precioKilo: Double,
+        pesoKg: Double,
+    ): ResultadoPrecioBebida<Unit>
 }

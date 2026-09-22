@@ -57,7 +57,9 @@ import com.baniterio.app.ui.miembros.MiembrosScreen
 import com.baniterio.app.ui.panel.PanelScreen
 import com.baniterio.app.ui.auth.registro.RegistroScreen
 import com.baniterio.app.ui.auth.solicitaracceso.SolicitarAccesoScreen
+import com.baniterio.app.ui.preciobebida.PrecioArticuloScreen
 import com.baniterio.app.ui.preciobebida.PrecioBebidaAlcoholScreen
+import com.baniterio.app.ui.preciobebida.PrecioBebidaEventoScreen
 import com.baniterio.app.ui.preciobebida.PrecioBebidaEventosScreen
 
 private const val CLAVE_DESBLOQUEO = "Desbloqueo"
@@ -84,7 +86,9 @@ private const val CLAVE_LISTA_COMPRA = "ListaCompra"
 private const val CLAVE_LISTA_COMPRA_ADMIN = "ListaCompraAdmin"
 private const val CLAVE_LISTA_COMPRA_ADMIN_EVENTO = "ListaCompraAdminEvento"
 private const val CLAVE_PRECIO_BEBIDA_EVENTOS = "PrecioBebidaEventos"
+private const val CLAVE_PRECIO_BEBIDA_EVENTO = "PrecioBebidaEvento"
 private const val CLAVE_PRECIO_BEBIDA_ALCOHOL = "PrecioBebidaAlcohol"
+private const val CLAVE_PRECIO_ARTICULO = "PrecioArticulo"
 private const val CLAVE_ADMIN_INDEX = "AdminIndex"
 private const val CLAVE_ADMIN_SOLICITUDES = "AdminSolicitudes"
 private const val CLAVE_ADMIN_PERMISOS = "AdminPermisos"
@@ -116,7 +120,9 @@ private fun Screen.aClave(): String = when (this) {
     Screen.ListaCompraAdmin -> CLAVE_LISTA_COMPRA_ADMIN
     Screen.ListaCompraAdminEvento -> CLAVE_LISTA_COMPRA_ADMIN_EVENTO
     Screen.PrecioBebidaEventos -> CLAVE_PRECIO_BEBIDA_EVENTOS
+    Screen.PrecioBebidaEvento -> CLAVE_PRECIO_BEBIDA_EVENTO
     Screen.PrecioBebidaAlcohol -> CLAVE_PRECIO_BEBIDA_ALCOHOL
+    Screen.PrecioArticulo -> CLAVE_PRECIO_ARTICULO
     Screen.AdminIndex -> CLAVE_ADMIN_INDEX
     Screen.AdminSolicitudes -> CLAVE_ADMIN_SOLICITUDES
     Screen.AdminPermisos -> CLAVE_ADMIN_PERMISOS
@@ -148,7 +154,9 @@ private fun claveAScreen(clave: String): Screen = when (clave) {
     CLAVE_LISTA_COMPRA_ADMIN -> Screen.ListaCompraAdmin
     CLAVE_LISTA_COMPRA_ADMIN_EVENTO -> Screen.ListaCompraAdminEvento
     CLAVE_PRECIO_BEBIDA_EVENTOS -> Screen.PrecioBebidaEventos
+    CLAVE_PRECIO_BEBIDA_EVENTO -> Screen.PrecioBebidaEvento
     CLAVE_PRECIO_BEBIDA_ALCOHOL -> Screen.PrecioBebidaAlcohol
+    CLAVE_PRECIO_ARTICULO -> Screen.PrecioArticulo
     CLAVE_ADMIN_INDEX -> Screen.AdminIndex
     CLAVE_ADMIN_SOLICITUDES -> Screen.AdminSolicitudes
     CLAVE_ADMIN_PERMISOS -> Screen.AdminPermisos
@@ -188,7 +196,8 @@ fun App(
                 screen == Screen.InventarioFiesta ||
                 screen == Screen.ListaCompra || screen == Screen.ListaCompraAdmin ||
                 screen == Screen.ListaCompraAdminEvento ||
-                screen == Screen.PrecioBebidaEventos || screen == Screen.PrecioBebidaAlcohol ||
+                screen == Screen.PrecioBebidaEventos || screen == Screen.PrecioBebidaEvento ||
+                screen == Screen.PrecioBebidaAlcohol || screen == Screen.PrecioArticulo ||
                 screen == Screen.AdminIndex || screen == Screen.AdminSolicitudes ||
                 screen == Screen.AdminPermisos || screen == Screen.AdminBebidas ||
                 screen == Screen.AdminPagos)
@@ -235,6 +244,7 @@ fun App(
 
     // Precio compras: el evento cuya rejilla de precios se está viendo.
     var precioBebidaEventoId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var precioArticuloCategoria by rememberSaveable { mutableStateOf<String?>(null) }
 
     fun ir(destino: Screen) {
         screenKey = destino.aClave()
@@ -529,12 +539,24 @@ fun App(
                     BackHandler { ir(Screen.Panel) }
                     PrecioBebidaEventosScreen(
                         precioBebidaRepo = deps.precioBebidaRepo,
-                        onAbrirEvento = { id -> precioBebidaEventoId = id; ir(Screen.PrecioBebidaAlcohol) },
+                        onAbrirEvento = { id -> precioBebidaEventoId = id; ir(Screen.PrecioBebidaEvento) },
                         onVolver = { ir(Screen.Panel) },
                     )
                 }
-                is Screen.PrecioBebidaAlcohol -> {
+                is Screen.PrecioBebidaEvento -> {
                     BackHandler { ir(Screen.PrecioBebidaEventos) }
+                    if (precioBebidaEventoId == null) {
+                        LaunchedEffect(Unit) { ir(Screen.PrecioBebidaEventos) }
+                    } else {
+                        PrecioBebidaEventoScreen(
+                            onAbrirAlcohol = { ir(Screen.PrecioBebidaAlcohol) },
+                            onAbrirArticulo = { categoria -> precioArticuloCategoria = categoria; ir(Screen.PrecioArticulo) },
+                            onVolver = { ir(Screen.PrecioBebidaEventos) },
+                        )
+                    }
+                }
+                is Screen.PrecioBebidaAlcohol -> {
+                    BackHandler { ir(Screen.PrecioBebidaEvento) }
                     val id = precioBebidaEventoId
                     if (id == null) {
                         LaunchedEffect(Unit) { ir(Screen.PrecioBebidaEventos) }
@@ -542,7 +564,22 @@ fun App(
                         PrecioBebidaAlcoholScreen(
                             precioBebidaRepo = deps.precioBebidaRepo,
                             eventoId = id,
-                            onVolver = { ir(Screen.PrecioBebidaEventos) },
+                            onVolver = { ir(Screen.PrecioBebidaEvento) },
+                        )
+                    }
+                }
+                is Screen.PrecioArticulo -> {
+                    BackHandler { ir(Screen.PrecioBebidaEvento) }
+                    val id = precioBebidaEventoId
+                    val categoria = precioArticuloCategoria
+                    if (id == null || categoria == null) {
+                        LaunchedEffect(Unit) { ir(Screen.PrecioBebidaEventos) }
+                    } else {
+                        PrecioArticuloScreen(
+                            precioBebidaRepo = deps.precioBebidaRepo,
+                            eventoId = id,
+                            categoria = categoria,
+                            onVolver = { ir(Screen.PrecioBebidaEvento) },
                         )
                     }
                 }
