@@ -2,14 +2,8 @@ import { DatePipe } from '@angular/common';
 import { Component, ElementRef, OnInit, ViewChild, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import * as pdfjsLib from 'pdfjs-dist';
+import type * as PdfjsLib from 'pdfjs-dist';
 import { environment } from '../../../../environments/environment';
-
-// El visor nativo `<embed type="application/pdf">` no funciona en los navegadores
-// móviles (Chrome/Brave Android no lo renderizan inline, solo ofrecen "Abrir" y ni
-// eso hace nada dentro de un modal): se dibuja el PDF a mano, página a página, en un
-// <canvas> con pdfjs-dist. El worker se sirve como asset aparte (ver angular.json).
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.mjs';
 import { Volver } from '../../../shared/volver/volver';
 import { CategoriaMovimiento, CuentaDetalle, PenistaCuota } from '../cuentas.types';
 import { CuentasService } from '../cuentas.service';
@@ -227,13 +221,28 @@ export class CuentaDetalleComponent implements OnInit {
     this.aviso.set(msg);
   }
 
-  /** Dibuja cada página del PDF en un `<canvas>`, una debajo de otra. */
+  private pdfjsLib?: typeof PdfjsLib;
+
+  /**
+   * Dibuja cada página del PDF en un `<canvas>`, una debajo de otra. `<embed
+   * type="application/pdf">` no funciona en navegadores móviles (Chrome/Brave Android no lo
+   * renderizan inline, y el botón "Abrir" que dejan en su lugar no hacía nada dentro del
+   * modal): pdfjs-dist sí pinta igual en escritorio y móvil.
+   *
+   * Se carga con `import()` dinámico (no en cabecera) para que no engorde el bundle inicial
+   * de toda la sección de Cuentas con algo que solo hace falta al abrir un recibo en PDF. El
+   * worker se sirve como asset aparte (`pdf.worker.min.mjs`, ver angular.json).
+   */
   private async renderizarPdf(url: string): Promise<void> {
     const contenedor = this.pdfContenedor?.nativeElement;
     if (!contenedor) return;
     contenedor.innerHTML = '';
     try {
-      const pdf = await pdfjsLib.getDocument({ url }).promise;
+      if (!this.pdfjsLib) {
+        this.pdfjsLib = await import('pdfjs-dist');
+        this.pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.mjs';
+      }
+      const pdf = await this.pdfjsLib.getDocument({ url }).promise;
       const anchoDisponible = contenedor.clientWidth || 600;
       for (let i = 1; i <= pdf.numPages; i++) {
         const pagina = await pdf.getPage(i);
