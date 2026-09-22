@@ -240,7 +240,9 @@ export class CuentaDetalleComponent implements OnInit {
     try {
       if (!this.pdfjsLib) {
         this.pdfjsLib = await import('pdfjs-dist');
-        this.pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.mjs';
+        // Absoluta, no relativa: esta pantalla vive en una ruta anidada
+        // (/panel/cuentas/...) y una relativa resolvía mal (404).
+        this.pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
       }
       const pdf = await this.pdfjsLib.getDocument({ url }).promise;
       const anchoDisponible = contenedor.clientWidth || 600;
@@ -258,7 +260,8 @@ export class CuentaDetalleComponent implements OnInit {
         await pagina.render({ canvas, viewport }).promise;
         contenedor.appendChild(canvas);
       }
-    } catch {
+    } catch (e) {
+      console.error('No se pudo renderizar el PDF del recibo:', e);
       contenedor.innerHTML =
         '<p class="p-4 text-sm text-muted">No se ha podido mostrar el PDF.</p>';
     }
