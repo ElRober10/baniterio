@@ -242,11 +242,6 @@ export class ListaCompra implements OnInit {
     return this.categorias().reduce((total, cat) => total + this.totalEstimado(cat), 0);
   }
 
-  /** Líneas ya compradas: no cuentan en el gasto estimado (su coste real va en Cuentas). */
-  protected lineasCompradas(): number {
-    return this.categorias().reduce((n, cat) => n + cat.lineas.filter((l) => l.comprada).length, 0);
-  }
-
   protected hayPrecios(): boolean {
     return this.categorias().some((cat) => this.tienePrecios(cat));
   }
