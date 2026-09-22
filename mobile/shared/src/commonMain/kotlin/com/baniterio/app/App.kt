@@ -35,6 +35,7 @@ import com.baniterio.app.ui.admin.AdminPermisosScreen
 import com.baniterio.app.ui.admin.AdminSolicitudesScreen
 import com.baniterio.app.ui.cuentas.CuentaDetalleScreen
 import com.baniterio.app.ui.cuentas.CuentasScreen
+import com.baniterio.app.ui.cuentas.VisorReciboScreen
 import com.baniterio.app.ui.eventos.EditorEventoScreen
 import com.baniterio.app.ui.eventos.EventoDetalleScreen
 import com.baniterio.app.ui.eventos.EventosOcultosScreen
@@ -75,6 +76,7 @@ private const val CLAVE_EDITOR_EVENTO = "EditorEvento"
 private const val CLAVE_EVENTOS_OCULTOS = "EventosOcultos"
 private const val CLAVE_CUENTAS = "Cuentas"
 private const val CLAVE_CUENTA_DETALLE = "CuentaDetalle"
+private const val CLAVE_VISOR_RECIBO = "VisorRecibo"
 private const val CLAVE_INVENTARIO = "Inventario"
 private const val CLAVE_INVENTARIO_CATEGORIA = "InventarioCategoria"
 private const val CLAVE_INVENTARIO_FIESTA = "InventarioFiesta"
@@ -106,6 +108,7 @@ private fun Screen.aClave(): String = when (this) {
     Screen.EventosOcultos -> CLAVE_EVENTOS_OCULTOS
     Screen.Cuentas -> CLAVE_CUENTAS
     Screen.CuentaDetalle -> CLAVE_CUENTA_DETALLE
+    Screen.VisorRecibo -> CLAVE_VISOR_RECIBO
     Screen.Inventario -> CLAVE_INVENTARIO
     Screen.InventarioCategoria -> CLAVE_INVENTARIO_CATEGORIA
     Screen.InventarioFiesta -> CLAVE_INVENTARIO_FIESTA
@@ -137,6 +140,7 @@ private fun claveAScreen(clave: String): Screen = when (clave) {
     CLAVE_EVENTOS_OCULTOS -> Screen.EventosOcultos
     CLAVE_CUENTAS -> Screen.Cuentas
     CLAVE_CUENTA_DETALLE -> Screen.CuentaDetalle
+    CLAVE_VISOR_RECIBO -> Screen.VisorRecibo
     CLAVE_INVENTARIO -> Screen.Inventario
     CLAVE_INVENTARIO_CATEGORIA -> Screen.InventarioCategoria
     CLAVE_INVENTARIO_FIESTA -> Screen.InventarioFiesta
@@ -179,7 +183,7 @@ fun App(
                 screen == Screen.Eventos || screen == Screen.ResponderEvento ||
                 screen == Screen.EventoDetalle || screen == Screen.EditorEvento ||
                 screen == Screen.EventosOcultos ||
-                screen == Screen.Cuentas || screen == Screen.CuentaDetalle ||
+                screen == Screen.Cuentas || screen == Screen.CuentaDetalle || screen == Screen.VisorRecibo ||
                 screen == Screen.Inventario || screen == Screen.InventarioCategoria ||
                 screen == Screen.InventarioFiesta ||
                 screen == Screen.ListaCompra || screen == Screen.ListaCompraAdmin ||
@@ -216,6 +220,9 @@ fun App(
 
     // Sección Cuentas: el id de la cuenta que se está viendo.
     var cuentaSeleccionada by rememberSaveable { mutableStateOf<Long?>(null) }
+
+    // Visor de recibos: el nombre del archivo (`recibo_archivo`) que se está viendo.
+    var reciboSeleccionado by rememberSaveable { mutableStateOf<String?>(null) }
 
     // Sección Inventario: la categoría cuyo listado se está viendo (se guarda la clave).
     var categoriaInventarioClave by rememberSaveable { mutableStateOf<String?>(null) }
@@ -426,6 +433,20 @@ fun App(
                             cuentasRepo = deps.cuentasRepo,
                             cuentaId = id,
                             onVolver = { ir(Screen.Cuentas) },
+                            onVerRecibo = { archivo -> reciboSeleccionado = archivo; ir(Screen.VisorRecibo) },
+                        )
+                    }
+                }
+                is Screen.VisorRecibo -> {
+                    BackHandler { ir(Screen.CuentaDetalle) }
+                    val archivo = reciboSeleccionado
+                    if (archivo == null) {
+                        LaunchedEffect(Unit) { ir(Screen.CuentaDetalle) }
+                    } else {
+                        VisorReciboScreen(
+                            mediaRepo = deps.mediaRepo,
+                            archivo = archivo,
+                            onVolver = { ir(Screen.CuentaDetalle) },
                         )
                     }
                 }

@@ -33,12 +33,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.baniterio.app.data.API_BASE_URL
 import com.baniterio.app.data.ArchivoElegido
 import com.baniterio.app.data.CuentasRepository
 import com.baniterio.app.data.ResultadoCuenta
@@ -126,6 +124,7 @@ fun CuentaDetalleScreen(
     cuentasRepo: CuentasRepository,
     cuentaId: Long,
     onVolver: () -> Unit,
+    onVerRecibo: (String) -> Unit,
 ) {
     var estado by remember { mutableStateOf<EstadoCarga<CuentaDetalleDto>>(EstadoCarga.Cargando) }
     var intento by remember { mutableStateOf(0) }
@@ -148,7 +147,6 @@ fun CuentaDetalleScreen(
     var guardandoMov by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
-    val uriHandler = LocalUriHandler.current
     val selectorArchivo = rememberSelectorArchivo()
 
     LaunchedEffect(cuentaId, intento, anioSel) {
@@ -419,9 +417,7 @@ fun CuentaDetalleScreen(
                                         "📄",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = BaniterioColors.gold,
-                                        modifier = Modifier.clickable {
-                                            uriHandler.openUri("$API_BASE_URL/media/recibos/${m.reciboArchivo}")
-                                        },
+                                        modifier = Modifier.clickable { onVerRecibo(m.reciboArchivo) },
                                     )
                                 }
                                 if (gestionar && m.manual) {

@@ -82,12 +82,26 @@ class ListaCompraRepositoryImpl(
         }.let { }
     }
 
-    override suspend fun ajustarLinea(eventoId: Long, lineaId: Long, cantidad: Double): ResultadoListaCompra<Unit> = peticion {
+    override suspend fun ajustarLinea(
+        eventoId: Long,
+        lineaId: Long,
+        cantidad: Double,
+        tamano: String?,
+        tienda: String?,
+    ): ResultadoListaCompra<Unit> = peticion {
         http.put("$API_BASE_URL/eventos/$eventoId/lista-compra/lineas/$lineaId") {
             auth()
             contentType(ContentType.Application.Json)
-            setBody(AjustarLineaBody(cantidad))
+            setBody(AjustarLineaBody(cantidad, tamano, tienda))
         }.let { }
+    }
+
+    override suspend fun restablecerLinea(eventoId: Long, lineaId: Long): ResultadoListaCompra<Unit> = peticion {
+        http.post("$API_BASE_URL/eventos/$eventoId/lista-compra/lineas/$lineaId/restablecer") { auth() }.let { }
+    }
+
+    override suspend fun restablecerTodo(eventoId: Long): ResultadoListaCompra<Unit> = peticion {
+        http.post("$API_BASE_URL/eventos/$eventoId/lista-compra/restablecer") { auth() }.let { }
     }
 
     private suspend fun <T> peticion(bloque: suspend () -> T): ResultadoListaCompra<T> =

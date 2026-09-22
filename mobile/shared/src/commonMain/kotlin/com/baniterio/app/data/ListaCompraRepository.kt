@@ -21,5 +21,15 @@ interface ListaCompraRepository {
     suspend fun borrarRegla(eventoId: Long, reglaId: Long): ResultadoListaCompra<Unit>
     suspend fun marcarComprada(eventoId: Long, lineaId: Long): ResultadoListaCompra<Unit>
     suspend fun cambiarBloqueo(eventoId: Long, bloqueada: Boolean): ResultadoListaCompra<Unit>
-    suspend fun ajustarLinea(eventoId: Long, lineaId: Long, cantidad: Double): ResultadoListaCompra<Unit>
+    suspend fun ajustarLinea(
+        eventoId: Long,
+        lineaId: Long,
+        cantidad: Double,
+        tamano: String? = null,
+        tienda: String? = null,
+    ): ResultadoListaCompra<Unit>
+    /** Quita la modificación a mano de la marca o artículo de una línea y la recalcula. */
+    suspend fun restablecerLinea(eventoId: Long, lineaId: Long): ResultadoListaCompra<Unit>
+    /** Quita todas las modificaciones a mano de la lista. */
+    suspend fun restablecerTodo(eventoId: Long): ResultadoListaCompra<Unit>
 }

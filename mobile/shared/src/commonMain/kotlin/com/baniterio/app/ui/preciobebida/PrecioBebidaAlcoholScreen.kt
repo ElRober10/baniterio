@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -46,6 +48,7 @@ import kotlinx.coroutines.launch
  * quien puede (`puedoEditar`). Equivalente a la tabla de la web, en formato de
  * lista porque una tabla ancha no cabe en una pantalla de móvil.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PrecioBebidaAlcoholScreen(
     precioBebidaRepo: PrecioBebidaRepository,
@@ -97,9 +100,13 @@ fun PrecioBebidaAlcoholScreen(
         }
 
         PantallaConEstado(estado, onReintentar = { intento++ }) { grilla ->
-            Row(
+            // FlowRow en vez de Row: con muchos tamaños, un Row los saca fuera de la
+            // pantalla y el último queda cortado (sin texto visible). FlowRow los envuelve
+            // a una segunda línea en vez de recortarlos.
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 grilla.tamanos.forEach { t ->
                     val activo = t == tamanoActivo
@@ -181,11 +188,20 @@ private fun TarjetaBebida(
                     var texto by remember(bebida.id, t.id, tamanoActivo, precio) {
                         mutableStateOf(precio?.toString() ?: "")
                     }
+                    // `onFocusChanged` también salta al aparecer el campo (aunque nunca haya
+                    // tenido el foco): sin `tuvoFoco`, guardar recarga la rejilla, el campo se
+                    // recrea, vuelve a "perder el foco" y se entra en un bucle de guardado.
+                    var tuvoFoco by remember(bebida.id, t.id, tamanoActivo) { mutableStateOf(false) }
                     OutlinedTextField(
                         value = texto,
                         onValueChange = { texto = it },
                         modifier = Modifier.width(90.dp).onFocusChanged { f ->
-                            if (!f.isFocused) onGuardar(t.id, texto)
+                            if (f.isFocused) {
+                                tuvoFoco = true
+                            } else if (tuvoFoco) {
+                                tuvoFoco = false
+                                onGuardar(t.id, texto)
+                            }
                         },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
