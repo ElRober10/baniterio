@@ -241,8 +241,12 @@ export class CuentaDetalleComponent implements OnInit {
       if (!this.pdfjsLib) {
         this.pdfjsLib = await import('pdfjs-dist');
         // Absoluta, no relativa: esta pantalla vive en una ruta anidada
-        // (/panel/cuentas/...) y una relativa resolvía mal (404).
-        this.pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+        // (/panel/cuentas/...) y una relativa resolvía mal (404). El `?v=` es
+        // para forzar una URL nueva: el primer despliegue lo sirvió con el
+        // content-type equivocado (application/octet-stream, ver git log) y
+        // algunos móviles se quedaron con esa respuesta en caché aunque el
+        // servidor ya lo arregló (headers de un 304 no pisan los cacheados).
+        this.pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs?v=${this.pdfjsLib.version}`;
       }
       const pdf = await this.pdfjsLib.getDocument({ url }).promise;
       const anchoDisponible = contenedor.clientWidth || 600;
