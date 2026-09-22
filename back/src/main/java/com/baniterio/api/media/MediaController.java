@@ -5,6 +5,8 @@ import java.util.regex.Pattern;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -68,6 +70,10 @@ public class MediaController {
         return recibos.leer(archivo)
                 .map(bytes -> ResponseEntity.ok()
                         .contentType(MediaType.parseMediaType(AlmacenRecibos.contentTypeDe(archivo)))
+                        // Sin esta cabecera, Chrome Android a veces no sabe si mostrar el PDF
+                        // inline o descargarlo y se queda en blanco; en escritorio no hace falta.
+                        .header(HttpHeaders.CONTENT_DISPOSITION,
+                                ContentDisposition.inline().filename(archivo).build().toString())
                         .cacheControl(CacheControl.maxAge(Duration.ofDays(7)).cachePrivate())
                         .body(bytes))
                 .orElseGet(() -> ResponseEntity.notFound().build());
