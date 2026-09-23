@@ -41,4 +41,22 @@ public class LogEventoService {
             log.warn("no se pudo registrar el log de {} {}", metodo, ruta, e);
         }
     }
+
+    /** Lo llama LogEventoController ante un error de móvil/web que nunca llegó a golpear el backend. */
+    @Transactional
+    public void registrarCliente(Long usuarioId, String origenTexto, String pantalla, String mensaje) {
+        try {
+            OrigenLog origen = "WEB".equalsIgnoreCase(origenTexto) ? OrigenLog.WEB : OrigenLog.MOBILE;
+            LogEvento fila = LogEvento.builder()
+                    .pena(pena.entidad())
+                    .usuario(usuarioId == null ? null : usuarios.getReferenceById(usuarioId))
+                    .origen(origen)
+                    .ruta(pantalla)
+                    .mensaje(mensaje)
+                    .build();
+            repo.save(fila);
+        } catch (Exception e) {
+            log.warn("no se pudo registrar el log de cliente ({}): {}", pantalla, mensaje, e);
+        }
+    }
 }
