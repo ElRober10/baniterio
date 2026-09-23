@@ -78,3 +78,24 @@ export interface SolicitudEventoResumen {
   mensaje: string | null;
   createdAt: string;
 }
+
+/** Fila de `GET /api/v1/logs` (ver back `com.baniterio.api.logs.dto.LogEventoDto`). */
+export interface LogEvento {
+  id: number;
+  origen: 'BACKEND' | 'WEB' | 'MOBILE';
+  usuarioId: number | null;
+  usuarioNombre: string | null;
+  metodo: string | null;
+  ruta: string | null;
+  estado: number | null;
+  codigoError: string | null;
+  mensaje: string | null;
+  creadoEn: string;
+}
+
+export interface LogEventoPagina {
+  contenido: LogEvento[];
+  total: number;
+  pagina: number;
+  tamano: number;
+}

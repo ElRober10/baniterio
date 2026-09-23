@@ -1,9 +1,10 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   AprobarResultado,
+  LogEventoPagina,
   MiembroResumen,
   Rol,
   SolicitudEventoResumen,
@@ -82,5 +83,17 @@ export class AdminService {
       `${this.base}/admin/solicitudes-evento/${id}/rechazar`,
       motivo ? { motivo } : {},
     );
+  }
+
+  /** Consulta paginada de `GET /api/v1/logs`. Solo administrador (lo comprueba el backend). */
+  listarLogs(
+    filtros: { usuarioId?: number; origen?: string; desde?: string; hasta?: string; pagina?: number; tamano?: number } = {},
+  ): Observable<LogEventoPagina> {
+    let params = new HttpParams().set('pagina', filtros.pagina ?? 0).set('tamano', filtros.tamano ?? 50);
+    if (filtros.usuarioId != null) params = params.set('usuarioId', filtros.usuarioId);
+    if (filtros.origen) params = params.set('origen', filtros.origen);
+    if (filtros.desde) params = params.set('desde', filtros.desde);
+    if (filtros.hasta) params = params.set('hasta', filtros.hasta);
+    return this.http.get<LogEventoPagina>(`${this.base}/logs`, { params });
   }
 }

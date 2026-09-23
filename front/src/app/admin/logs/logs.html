@@ -1,0 +1,66 @@
+<section class="mx-auto w-full max-w-7xl">
+  <div class="mb-6">
+    <app-volver destino="/panel/administracion" />
+  </div>
+
+  <h1 class="font-display text-2xl font-extrabold leading-tight">Registro de eventos y errores</h1>
+  <p class="mt-2 text-sm leading-relaxed text-muted">
+    Toda petición que escribe algo en la app, y los errores de móvil/web que no llegaron a golpear el
+    servidor.
+  </p>
+
+  <div class="mt-8">
+    @switch (estado()) {
+      @case ('cargando') {
+        <p class="text-sm text-muted">Cargando…</p>
+      }
+      @case ('error') {
+        <p class="text-sm text-red-300">No se ha podido cargar el registro.</p>
+      }
+      @case ('lista') {
+        <div class="overflow-x-auto rounded-2xl border border-outline">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-panel text-muted">
+              <tr>
+                <th class="px-4 py-3">Fecha</th>
+                <th class="px-4 py-3">Origen</th>
+                <th class="px-4 py-3">Usuario</th>
+                <th class="px-4 py-3">Método</th>
+                <th class="px-4 py-3">Ruta / pantalla</th>
+                <th class="px-4 py-3">Estado</th>
+                <th class="px-4 py-3">Código / mensaje</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (fila of filas(); track fila.id) {
+                <tr class="border-t border-outline">
+                  <td class="px-4 py-3">{{ fila.creadoEn | date: 'short' }}</td>
+                  <td class="px-4 py-3">{{ fila.origen }}</td>
+                  <td class="px-4 py-3">{{ fila.usuarioNombre ?? '—' }}</td>
+                  <td class="px-4 py-3">{{ fila.metodo ?? '—' }}</td>
+                  <td class="px-4 py-3">{{ fila.ruta ?? '—' }}</td>
+                  <td class="px-4 py-3">{{ fila.estado ?? '—' }}</td>
+                  <td class="px-4 py-3">{{ fila.codigoError ?? fila.mensaje ?? '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="mt-4 flex items-center justify-between text-sm text-muted">
+          <button type="button" (click)="anterior()" [disabled]="pagina() === 0" class="disabled:opacity-40">
+            ← Anterior
+          </button>
+          <span>{{ total() }} en total</span>
+          <button
+            type="button"
+            (click)="siguiente()"
+            [disabled]="(pagina() + 1) * tamano >= total()"
+            class="disabled:opacity-40"
+          >
+            Siguiente →
+          </button>
+        </div>
+      }
+    }
+  </div>
+</section>

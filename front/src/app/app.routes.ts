@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { areaGuard } from './admin/area.guard';
 import { AdminBebidas } from './admin/bebidas/bebidas';
+import { AdminLogs } from './admin/logs/logs';
 import { AdminPagos } from './admin/pagos/pagos';
 import { AdminIndice } from './admin/indice/indice';
 import { AdminPermisos } from './admin/permisos/permisos';
@@ -126,6 +127,13 @@ export const routes: Routes = [
       {
         path: 'administracion/pagos',
         component: AdminPagos,
+        canActivate: [perfilCompletoGuard],
+      },
+      // Registro de eventos y errores: cualquier admin/superadmin; el componente
+      // rebota a /panel si no lo eres.
+      {
+        path: 'administracion/logs',
+        component: AdminLogs,
         canActivate: [perfilCompletoGuard],
       },
     ],
