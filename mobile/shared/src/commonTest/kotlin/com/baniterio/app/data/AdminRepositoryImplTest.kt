@@ -1,5 +1,6 @@
 package com.baniterio.app.data
 
+import com.baniterio.app.data.dto.PaginaLogsDto
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -77,5 +78,23 @@ class AdminRepositoryImplTest {
         assertEquals("POST", vistas[0].metodo)
         assertEquals("/api/v1/admin/solicitudes-evento/3/rechazar", vistas[0].path)
         assertTrue(vistas[0].cuerpo.contains("\"motivo\":\"tarde\""), "cuerpo: ${vistas[0].cuerpo}")
+    }
+
+    @Test
+    fun logs_hace_get_con_paginacion_y_devuelve_la_pagina() = runTest {
+        val (r, vistas) = repo(
+            cuerpoRespuesta = """{"contenido":[{"id":1,"origen":"MOBILE","usuarioId":null,
+                "usuarioNombre":null,"metodo":null,"ruta":"cuentas.crearMovimiento",
+                "estado":null,"codigoError":null,"mensaje":"IOException","creadoEn":"2026-09-23T10:00:00Z"}],
+                "total":1,"pagina":0,"tamano":50}""",
+        )
+        val res = r.logs(pagina = 0, tamano = 50)
+        assertEquals("GET", vistas[0].metodo)
+        assertEquals("/api/v1/logs", vistas[0].path)
+        assertTrue(vistas[0].query.contains("tamano=50"), "query: ${vistas[0].query}")
+        assertEquals("Bearer jwt-x", vistas[0].auth)
+        val pagina = assertIs<ResultadoAdmin.Exito<PaginaLogsDto>>(res).dato
+        assertEquals(1, pagina.contenido.size)
+        assertEquals("cuentas.crearMovimiento", pagina.contenido[0].ruta)
     }
 }

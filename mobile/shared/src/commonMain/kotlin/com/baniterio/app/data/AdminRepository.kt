@@ -2,6 +2,7 @@ package com.baniterio.app.data
 
 import com.baniterio.app.data.dto.AprobarResponse
 import com.baniterio.app.data.dto.MiembroResumen
+import com.baniterio.app.data.dto.PaginaLogsDto
 import com.baniterio.app.data.dto.SolicitudEventoResumen
 import com.baniterio.app.data.dto.SolicitudResumen
 
@@ -40,4 +41,7 @@ interface AdminRepository {
     suspend fun solicitudesEvento(estado: String = "PENDIENTE"): ResultadoAdmin<List<SolicitudEventoResumen>>
     suspend fun aprobarSolicitudEvento(id: Long): ResultadoAdmin<Unit>
     suspend fun rechazarSolicitudEvento(id: Long, motivo: String?): ResultadoAdmin<Unit>
+
+    /** Registro de eventos y errores (`GET /api/v1/logs`, ver spec 2026-09-23). Solo administrador. */
+    suspend fun logs(usuarioId: Long? = null, pagina: Int = 0, tamano: Int = 50): ResultadoAdmin<PaginaLogsDto>
 }

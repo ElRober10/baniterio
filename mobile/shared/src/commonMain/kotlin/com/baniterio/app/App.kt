@@ -30,6 +30,7 @@ import com.baniterio.app.nav.SolicitudPrecarga
 import com.baniterio.app.theme.BaniterioTheme
 import com.baniterio.app.ui.admin.AdminBebidasScreen
 import com.baniterio.app.ui.admin.AdminPagosScreen
+import com.baniterio.app.ui.admin.LogsScreen
 import com.baniterio.app.ui.admin.AdminIndexScreen
 import com.baniterio.app.ui.admin.AdminPermisosScreen
 import com.baniterio.app.ui.admin.AdminSolicitudesScreen
@@ -94,6 +95,7 @@ private const val CLAVE_ADMIN_SOLICITUDES = "AdminSolicitudes"
 private const val CLAVE_ADMIN_PERMISOS = "AdminPermisos"
 private const val CLAVE_ADMIN_BEBIDAS = "AdminBebidas"
 private const val CLAVE_ADMIN_PAGOS = "AdminPagos"
+private const val CLAVE_LOGS = "Logs"
 
 private fun Screen.aClave(): String = when (this) {
     Screen.Desbloqueo -> CLAVE_DESBLOQUEO
@@ -128,6 +130,7 @@ private fun Screen.aClave(): String = when (this) {
     Screen.AdminPermisos -> CLAVE_ADMIN_PERMISOS
     Screen.AdminBebidas -> CLAVE_ADMIN_BEBIDAS
     Screen.AdminPagos -> CLAVE_ADMIN_PAGOS
+    Screen.Logs -> CLAVE_LOGS
 }
 
 private fun claveAScreen(clave: String): Screen = when (clave) {
@@ -162,6 +165,7 @@ private fun claveAScreen(clave: String): Screen = when (clave) {
     CLAVE_ADMIN_PERMISOS -> Screen.AdminPermisos
     CLAVE_ADMIN_BEBIDAS -> Screen.AdminBebidas
     CLAVE_ADMIN_PAGOS -> Screen.AdminPagos
+    CLAVE_LOGS -> Screen.Logs
     else -> Screen.Login
 }
 
@@ -200,7 +204,7 @@ fun App(
                 screen == Screen.PrecioBebidaAlcohol || screen == Screen.PrecioArticulo ||
                 screen == Screen.AdminIndex || screen == Screen.AdminSolicitudes ||
                 screen == Screen.AdminPermisos || screen == Screen.AdminBebidas ||
-                screen == Screen.AdminPagos)
+                screen == Screen.AdminPagos || screen == Screen.Logs)
         ) {
             screenKey = if (deps.almacen.hayCredenciales) CLAVE_DESBLOQUEO else CLAVE_LOGIN
         }
@@ -621,6 +625,13 @@ fun App(
                     BackHandler { ir(Screen.AdminIndex) }
                     AdminPagosScreen(
                         eventosRepo = deps.eventosRepo,
+                        onVolver = { ir(Screen.AdminIndex) },
+                    )
+                }
+                is Screen.Logs -> {
+                    BackHandler { ir(Screen.AdminIndex) }
+                    LogsScreen(
+                        adminRepo = deps.adminRepo,
                         onVolver = { ir(Screen.AdminIndex) },
                     )
                 }

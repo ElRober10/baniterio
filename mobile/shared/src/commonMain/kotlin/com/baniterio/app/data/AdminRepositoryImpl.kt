@@ -5,6 +5,7 @@ import com.baniterio.app.data.dto.AprobarResponse
 import com.baniterio.app.data.dto.AreasRequest
 import com.baniterio.app.data.dto.ErrorResponse
 import com.baniterio.app.data.dto.MiembroResumen
+import com.baniterio.app.data.dto.PaginaLogsDto
 import com.baniterio.app.data.dto.RechazoRequest
 import com.baniterio.app.data.dto.RolRequest
 import com.baniterio.app.data.dto.SolicitudEventoResumen
@@ -130,6 +131,16 @@ class AdminRepositoryImpl(
      * SIN_CONEXION. La CancellationException se relanza para no romper la
      * concurrencia estructurada.
      */
+    override suspend fun logs(usuarioId: Long?, pagina: Int, tamano: Int): ResultadoAdmin<PaginaLogsDto> =
+        peticion {
+            http.get("$API_BASE_URL/logs") {
+                auth()
+                usuarioId?.let { parameter("usuarioId", it) }
+                parameter("pagina", pagina)
+                parameter("tamano", tamano)
+            }.body<PaginaLogsDto>()
+        }
+
     private suspend fun <T> peticion(bloque: suspend () -> T): ResultadoAdmin<T> =
         try {
             ResultadoAdmin.Exito(bloque())

@@ -116,6 +116,13 @@ fun AdminIndexScreen(
                 onClick = { onAbrir(Screen.AdminPagos) },
             )
             Spacer(Modifier.height(16.dp))
+            TarjetaAdmin(
+                nombre = "Registro",
+                descripcion = "Qué ha hecho cada uno y qué errores han dado móvil y web.",
+                cuenta = 0,
+                onClick = { onAbrir(Screen.Logs) },
+            )
+            Spacer(Modifier.height(16.dp))
         }
         if (!esAdmin && areas.none { it == "ADMIN_SOLICITUDES" || it == "ADMIN_PERMISOS" || it == "INVENTARIO" }) {
             Text(
