@@ -3,6 +3,7 @@ package com.baniterio.api.config;
 import java.util.List;
 
 import com.baniterio.api.auth.JwtAuthenticationFilter;
+import com.baniterio.api.logs.LogEventoFilter;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
@@ -54,7 +55,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter,
+            LogEventoFilter logEventoFilter) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> {})
@@ -64,7 +66,7 @@ public class SecurityConfig {
                         // estado real (400 del firewall, 404, etc.) en vez de taparlo con un 401.
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers("/api/v1/health", "/api/v1/auth/registro", "/api/v1/auth/login",
-                                "/api/v1/auth/solicitudes", "/api/v1/media/**").permitAll()
+                                "/api/v1/auth/solicitudes", "/api/v1/logs/cliente", "/api/v1/media/**").permitAll()
                         // Documentación de la API: Swagger UI en /api, su JSON en
                         // /api/api-docs/** y los recursos estáticos en /swagger-ui/**.
                         .requestMatchers("/api", "/api/api-docs/**", "/swagger-ui/**").permitAll()
@@ -73,6 +75,7 @@ public class SecurityConfig {
                         (req, res, ex) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED)))
                 .headers(h -> h.frameOptions(f -> f.sameOrigin()))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(logEventoFilter, JwtAuthenticationFilter.class)
                 .build();
     }
 

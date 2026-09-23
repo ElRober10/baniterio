@@ -17,6 +17,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import com.baniterio.api.perfil.AvatarInexistenteException;
@@ -45,8 +47,20 @@ import com.baniterio.api.perfil.VinculoNoEncontradoException;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    /** Atributo de la petición donde se deja el código de error para {@code LogEventoFilter}. */
+    public static final String ATRIBUTO_CODIGO_LOG = "logEvento.codigo";
+
+    /** Deja el código en la petición para que el filtro de logs lo recoja al terminar la respuesta. */
+    private static void marcarCodigo(String codigo) {
+        RequestAttributes atributos = RequestContextHolder.getRequestAttributes();
+        if (atributos != null) {
+            atributos.setAttribute(ATRIBUTO_CODIGO_LOG, codigo, RequestAttributes.SCOPE_REQUEST);
+        }
+    }
+
     /** {@code { "codigo": <codigo> }} con el estado dado. */
     private static ResponseEntity<Map<String, Object>> error(HttpStatus estado, String codigo) {
+        marcarCodigo(codigo);
         return ResponseEntity.status(estado).body(Map.of("codigo", codigo));
     }
 
@@ -132,6 +146,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler({HttpMessageNotReadableException.class,
             MethodArgumentTypeMismatchException.class})
     ResponseEntity<Map<String, Object>> entradaInvalida() {
+        marcarCodigo("VALIDACION");
         return ResponseEntity.badRequest()
                 .body(Map.of("codigo", "VALIDACION", "errores", Map.of()));
     }
@@ -404,6 +419,7 @@ public class ApiExceptionHandler {
         for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
             errores.putIfAbsent(fe.getField(), fe.getDefaultMessage());
         }
+        marcarCodigo("VALIDACION");
         return ResponseEntity.badRequest()
                 .body(Map.of("codigo", "VALIDACION", "errores", errores));
     }
