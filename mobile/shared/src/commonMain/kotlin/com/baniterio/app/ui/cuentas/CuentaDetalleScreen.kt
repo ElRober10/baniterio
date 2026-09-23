@@ -47,6 +47,7 @@ import com.baniterio.app.data.dto.PenistaCuotaDto
 import com.baniterio.app.data.rememberSelectorArchivo
 import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.ui.comun.CabeceraPantalla
+import com.baniterio.app.ui.comun.CajaFecha
 import com.baniterio.app.ui.comun.CajaSelect
 import com.baniterio.app.ui.comun.EstadoCarga
 import com.baniterio.app.ui.comun.PantallaConEstado
@@ -596,11 +597,7 @@ private fun FormMovimiento(
             label = { Text("Concepto") }, singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
-            value = fecha, onValueChange = onFecha,
-            label = { Text("Fecha (aaaa-mm-dd, opcional)") }, singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        CajaFecha("Fecha (opcional)", fecha, onFecha, opcional = true)
         CajaSelect(
             "Categoría (opcional)",
             CATEGORIAS.firstOrNull { it.first == categoria }?.second ?: "—",

@@ -38,6 +38,7 @@ import com.baniterio.app.data.dto.CuentaResumen
 import com.baniterio.app.data.dto.GuardarEventoRequest
 import com.baniterio.app.theme.BaniterioColors
 import com.baniterio.app.ui.comun.CabeceraPantalla
+import com.baniterio.app.ui.comun.CajaFecha
 import com.baniterio.app.ui.comun.relieveDeCarta
 import kotlinx.coroutines.launch
 
@@ -212,17 +213,8 @@ fun EditorEventoScreen(
                         label = { Text("Lugar (opcional)") }, singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    OutlinedTextField(
-                        value = fecha, onValueChange = { fecha = it },
-                        label = { Text("Fecha (aaaa-mm-dd)") }, singleLine = true,
-                        placeholder = { Text("2027-03-26") },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    OutlinedTextField(
-                        value = fechaFin, onValueChange = { fechaFin = it },
-                        label = { Text("Fecha de fin (opcional, aaaa-mm-dd)") }, singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    CajaFecha("Fecha", fecha, { fecha = it })
+                    CajaFecha("Fecha de fin (opcional)", fechaFin, { fechaFin = it }, opcional = true)
 
                     if (esAdmin) {
                         Text(
