@@ -10,6 +10,7 @@ enum class CodigoErrorCuenta {
     SIN_PERMISO,
     SIN_PRECIO_ROPA,
     VALIDACION,
+    RECIBO_NO_VALIDO,
     SIN_CONEXION,
     DESCONOCIDO;
 
@@ -19,6 +20,7 @@ enum class CodigoErrorCuenta {
             "SIN_PERMISO" -> SIN_PERMISO
             "SIN_PRECIO_ROPA" -> SIN_PRECIO_ROPA
             "VALIDACION" -> VALIDACION
+            "RECIBO_NO_VALIDO" -> RECIBO_NO_VALIDO
             else -> DESCONOCIDO
         }
     }
@@ -29,6 +31,7 @@ enum class CodigoErrorCuenta {
             SIN_PERMISO -> "No tienes permiso para esto."
             SIN_PRECIO_ROPA -> "Pon antes el precio de la camiseta / sudadera en el evento."
             VALIDACION -> "Revisa los datos del formulario."
+            RECIBO_NO_VALIDO -> "Ese archivo no vale como recibo: solo PDF, JPG o PNG."
             SIN_CONEXION -> "No se pudo conectar con el servidor."
             DESCONOCIDO -> "Algo ha ido mal. Inténtalo de nuevo."
         }

@@ -6,6 +6,22 @@ import android.provider.OpenableColumns
 import com.baniterio.app.data.ArchivoElegido
 
 /**
+ * Tipos que el backend acepta como recibo ([AlmacenRecibos.extensionDe] en el
+ * back). Si el content resolver no da uno de estos (pasa con algunos gestores
+ * de archivos y PDFs descargados, que devuelven `application/octet-stream`),
+ * se adivina por la extensión del nombre en vez de dejar que el back lo
+ * rechace con un archivo perfectamente válido.
+ */
+private val TIPOS_RECIBO_VALIDOS = setOf("application/pdf", "image/jpeg", "image/jpg", "image/png")
+
+private fun tipoPorExtension(nombre: String): String? = when {
+    nombre.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
+    nombre.endsWith(".png", ignoreCase = true) -> "image/png"
+    nombre.endsWith(".jpg", ignoreCase = true) || nombre.endsWith(".jpeg", ignoreCase = true) -> "image/jpeg"
+    else -> null
+}
+
+/**
  * Lee el contenido de [uri] (el recibo que el usuario ha elegido: PDF o imagen)
  * a un [ArchivoElegido] con sus bytes, nombre y tipo MIME. Sin recompresión: el
  * PDF sube tal cual y las imágenes de recibo suelen ser razonables. Devuelve
@@ -19,6 +35,10 @@ fun leerArchivo(context: Context, uri: Uri): ArchivoElegido? = runCatching {
         ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
         ?: "recibo"
 
-    val tipo = resolver.getType(uri) ?: "application/octet-stream"
+    val tipoResolver = resolver.getType(uri)
+    val tipo = tipoResolver?.takeIf { it in TIPOS_RECIBO_VALIDOS }
+        ?: tipoPorExtension(nombre)
+        ?: tipoResolver
+        ?: "application/octet-stream"
     ArchivoElegido(bytes, nombre, tipo)
 }.getOrNull()
