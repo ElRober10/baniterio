@@ -1,4 +1,4 @@
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
@@ -19,12 +19,14 @@ import { AuthService } from './auth.service';
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const router = inject(Router);
+  const http = inject(HttpClient);
 
   const esApi = req.url.startsWith(environment.apiBaseUrl);
   const esPublica =
     req.url.includes('/auth/login') ||
     req.url.includes('/auth/registro') ||
     req.url.includes('/auth/solicitudes');
+  const esLogCliente = req.url.endsWith('/logs/cliente');
   const token = auth.token();
   const protegida = esApi && !esPublica;
 
@@ -36,6 +38,18 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       if (err.status === 401 && protegida) {
         auth.cerrarSesion();
         router.navigate(['/login'], { queryParams: { expirada: 1 } });
+      }
+      // status 0: la petición nunca llegó a tener respuesta (sin red, CORS, servidor
+      // caído). Se reporta sin esperar ni propagar el resultado: si esto también
+      // falla, no hay nada más que hacer (y esLogCliente evita el bucle).
+      if (err.status === 0 && esApi && !esLogCliente) {
+        http
+          .post(`${environment.apiBaseUrl}/logs/cliente`, {
+            origen: 'WEB',
+            pantalla: req.url,
+            mensaje: 'Sin conexión',
+          })
+          .subscribe({ error: () => {} });
       }
       return throwError(() => err);
     }),
