@@ -18,7 +18,7 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
  * <p>Convención Maven: los {@code *Test} los ejecuta el plugin Surefire en
  * {@code mvn test}; los {@code *IT} los ejecuta Failsafe en {@code mvn verify}.
  */
-@SpringBootTest(webEnvironment = RANDOM_PORT)
+@SpringBootTest(webEnvironment = RANDOM_PORT, properties = "app.identidad.telefono-fundador=600000001")
 @Import(TestcontainersConfiguration.class)
 public abstract class IntegrationTest {
 }

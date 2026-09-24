@@ -32,7 +32,7 @@ app:
     secret: ${JWT_SECRET:ZGV2LW9ubHktYmFuaXRlcmlvLXNlY3JldC1jaGFuZ2UtaW4tcHJvZC0xMjM0NQ==}
     expiracion-dias: 7
   identidad:
-    telefono-fundador: ${TELEFONO_FUNDADOR:600000001}   # este teléfono entra como superadmin al registrarse
+    telefono-fundador: ${TELEFONO_FUNDADOR}   # obligatorio (sin valor por defecto): este teléfono entra como superadmin al registrarse
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}   # desde qué origen (el front) acepta peticiones el navegador
   email:

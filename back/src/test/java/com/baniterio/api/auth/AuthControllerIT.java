@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class AuthControllerIT extends IntegrationTest {
 
-    /** Sembrado por V6 y además es `app.identidad.telefono-fundador`. */
+    /** Ficticio: coincide con `app.identidad.telefono-fundador` fijado en {@link IntegrationTest}. */
     private static final String TELEFONO_FUNDADOR = "600000001";
 
     @LocalServerPort
@@ -103,6 +103,12 @@ class AuthControllerIT extends IntegrationTest {
 
     @Test
     void el_fundador_es_superadmin_y_ve_todas_las_areas() {
+        // V6 ya no siembra el teléfono del fundador: el test lo autoriza él mismo.
+        telefonos.save(TelefonoAutorizado.builder()
+                .telefono(TELEFONO_FUNDADOR)
+                .pena(penas.findBySlug("baniterio").orElseThrow())
+                .usado(false)
+                .build());
         @SuppressWarnings("unchecked")
         Map<String, Object> body = http.post().uri("/api/v1/auth/registro")
                 .body(registroValido(TELEFONO_FUNDADOR, "fundador@baniterio.com"))

@@ -265,23 +265,13 @@ ON CONFLICT (slug) DO NOTHING;
 INSERT INTO telefono_autorizado (telefono, pena_id)
 SELECT numero, (SELECT id FROM pena WHERE slug = 'baniterio')
 FROM (VALUES
-    ('600000001'),
-    ('600000002'), ('600010016'), ('600010009'), ('600010043'), ('600010047'),
-    ('600010040'), ('600010038'), ('600010042'), ('600010053'), ('600010033'),
-    ('600010030'), ('600010048'), ('600010008'), ('600010001'), ('600010046'),
-    ('600010018'), ('600010037'), ('600010019'), ('600010036'), ('600010026'),
-    ('600010049'), ('600010032'), ('600010005'), ('600010044'), ('600010035'),
-    ('600010028'), ('600010050'), ('600010029'), ('600010017'), ('600010023'),
-    ('600010054'), ('600010024'), ('600010022'), ('600010012'), ('600010003'),
-    ('600010051'), ('600010039'), ('600010027'), ('600010014'), ('600010013'),
-    ('600010020'), ('600010015'), ('600010052'), ('600010021'), ('600010025'),
-    ('600010004'), ('600010031'), ('600010010'), ('600010034'), ('600010045'),
-    ('600010002'), ('600010007'), ('600010011'), ('600010041'), ('600010006')
+    ('600000001')   -- fundador ficticio; los números reales NO van en git:
+    -- viven en back/scripts/seed-telefonos-baniterio.local.sql (ignorado)
 ) AS t(numero)
 ON CONFLICT (telefono) DO NOTHING;
 ```
 
-(56 números: 1 fundador + 55. La constraint `uk_telefono_autorizado_telefono` hace el `ON CONFLICT` seguro.)
+(En el plan original eran 56 números reales, retirados de git por ser datos personales. La constraint `uk_telefono_autorizado_telefono` hace el `ON CONFLICT` seguro.)
 
 - [ ] **Step 2: Ejecutar el test de migraciones — ahora pasa**
 

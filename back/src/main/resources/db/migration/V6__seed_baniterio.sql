@@ -5,9 +5,6 @@ INSERT INTO pena (nombre, slug, activa)
 VALUES ('Bañiterio', 'baniterio', TRUE)
 ON CONFLICT (slug) DO NOTHING;
 
--- Único teléfono sembrado: el del usuario fundador (coincide con app.identidad.telefono-fundador).
--- El resto de teléfonos autorizados de la peña piloto son datos personales y no viven en git:
--- se cargan a mano con back/scripts/seed-telefonos-baniterio.local.sql (ver README).
-INSERT INTO telefono_autorizado (telefono, pena_id)
-SELECT '600000001', (SELECT id FROM pena WHERE slug = 'baniterio')
-ON CONFLICT (telefono) DO NOTHING;
+-- Los teléfonos autorizados (incluido el del fundador, app.identidad.telefono-fundador) son datos
+-- personales y no viven en git: se cargan a mano con back/scripts/seed-telefonos-baniterio.local.sql
+-- (ver README).
