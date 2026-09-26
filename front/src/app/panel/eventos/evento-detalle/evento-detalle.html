@@ -25,7 +25,7 @@
                 type="button"
                 (click)="pedirBorrar()"
                 aria-label="Borrar evento"
-                class="shrink-0 rounded-xl bg-red-600 p-3 text-ink transition hover:bg-red-700"
+                class="shrink-0 rounded-xl bg-red-600 p-3 text-ink transition hover:bg-red-700 md:hidden"
               >
                 <svg viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5" aria-hidden="true">
                   <path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12ZM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4Z" />
@@ -91,7 +91,13 @@
           }
           @if (e.asistencia.ficha.miFicha; as f) {
             @if (f.cuota != null) {
-              <div class="mt-3 flex items-center justify-between gap-3">
+              <div
+                class="tu-cuota-brillo mt-3 hidden rounded-xl border border-gold/50 bg-brand/20 p-4 text-center md:block"
+              >
+                <p class="text-xs font-semibold uppercase tracking-wide text-gold-soft">Tu cuota</p>
+                <p class="font-display text-2xl font-extrabold text-gold">{{ f.cuota }} €</p>
+              </div>
+              <div class="mt-3 flex items-center justify-between gap-3 md:hidden">
                 <p class="text-base">Tu cuota: {{ f.cuota }} €</p>
                 @if (e.asistencia.ficha.llevaFicha) {
                   @if (pagoConfirmado()) {
@@ -148,7 +154,66 @@
           }
 
           @if (e.asistencia.ficha.llevaFicha && !editandoFicha()) {
-            <div class="mt-4 flex flex-col gap-2 md:mx-auto md:max-w-md">
+            <div class="mt-3 hidden flex-col gap-2 md:flex md:flex-row md:items-stretch">
+              @if (e.asistencia.ficha.miFicha && puedeEditarFicha()) {
+                <button
+                  type="button"
+                  (click)="abrirEditorFicha()"
+                  class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark md:flex-1"
+                >
+                  Cambiar lo que voy a beber
+                </button>
+              }
+              <button
+                type="button"
+                (click)="modalAsistentes.set(true)"
+                class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark md:flex-1"
+              >
+                Listado de asistentes
+              </button>
+              @if (e.asistencia.ficha.miFicha?.cuota != null) {
+                @if (pagoConfirmado()) {
+                  <button
+                    type="button"
+                    (click)="modalPagoInfo.set(true)"
+                    class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark md:flex-1"
+                  >
+                    Ya he pagado
+                  </button>
+                } @else if (pagoDeclaradoPendiente()) {
+                  <button
+                    type="button"
+                    (click)="modalPagoDeclarado.set(true)"
+                    class="rounded-xl border border-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand/20 md:flex-1"
+                  >
+                    Ver mi pago declarado
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    (click)="modalPago.set(true)"
+                    class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark md:flex-1"
+                  >
+                    Confirmar el pago
+                  </button>
+                }
+              }
+            </div>
+            <div class="mt-2 hidden gap-2 grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] md:grid">
+              <a
+                [routerLink]="['/panel/eventos', e.id, 'lista-compra']"
+                class="rounded-xl border border-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand/20"
+              >
+                Lista de la compra
+              </a>
+              <a
+                [routerLink]="['/panel/eventos', e.id, 'inventario']"
+                class="rounded-xl border border-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand/20"
+              >
+                Inventario de la fiesta
+              </a>
+            </div>
+            <div class="mt-4 flex flex-col gap-2 md:hidden">
               @if (e.asistencia.ficha.miFicha && puedeEditarFicha()) {
                 <button type="button" (click)="abrirEditorFicha()" class="rounded-xl bg-brand px-4 py-3 text-center text-sm font-bold text-gold transition hover:bg-brand-dark">
                   Cambiar lo que voy a beber
@@ -181,7 +246,55 @@
           }
 
           @if (e.puedoEditar || e.puedoBorrar) {
-            <div class="mt-4 flex flex-col gap-2 md:mx-auto md:max-w-md">
+            <div class="mt-6 hidden flex-wrap items-center justify-between gap-3 border-t border-outline/40 pt-4 md:flex">
+              @if (e.puedoEditar) {
+                <button
+                  type="button"
+                  (click)="editar()"
+                  class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark"
+                >
+                  Editar
+                </button>
+              }
+              @if (e.puedoEditar && e.asistencia.puedeNotificar) {
+                <button
+                  type="button"
+                  (click)="abrirDialogoNotif()"
+                  [disabled]="reenvioBloqueado()"
+                  class="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-gold transition hover:bg-brand-dark disabled:opacity-50"
+                >
+                  Mandar notificación
+                </button>
+              }
+              @if (e.puedoEditar) {
+                <button
+                  type="button"
+                  (click)="modalAnadirAsistente.set(true)"
+                  class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-brand-bright/60"
+                >
+                  Añadir asistente
+                </button>
+              }
+              @if (e.puedoBorrar && !e.oculto) {
+                <button
+                  type="button"
+                  (click)="pedirBorrar()"
+                  class="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-ink transition hover:bg-red-700"
+                >
+                  Borrar
+                </button>
+              }
+              @if (e.puedoBorrar && e.oculto) {
+                <button
+                  type="button"
+                  (click)="recuperar()"
+                  class="rounded-xl border border-outline px-4 py-2 text-sm font-medium text-ink transition hover:border-brand-bright/60"
+                >
+                  Recuperar
+                </button>
+              }
+            </div>
+            <div class="mt-4 flex flex-col gap-2 md:hidden">
               @if (e.puedoEditar) {
                 <button type="button" (click)="editar()" class="rounded-xl border border-outline px-4 py-3 text-center text-sm font-bold text-ink transition hover:border-brand-bright/60">
                   Editar
