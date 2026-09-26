@@ -203,6 +203,7 @@ data class AsistenteFilaDto(
     val metodoPago: String? = null,
     val pagadoPor: String? = null,
     val pagadoAt: String? = null,
+    val pendienteTransferir: Double? = null,
 )
 
 /** Alguien a quien puedo incluir en mi pago. `relacion` = PAREJA | HIJO | INVITADO. */
@@ -224,7 +225,12 @@ data class ListadoAsistentesDto(
     val puedoPagarPor: List<PersonaPagableDto> = emptyList(),
     val miCuota: Double? = null,
     val puedoConfirmarPagos: Boolean = false,
+    val opcionesCuota: List<OpcionCuotaDto> = emptyList(),
 )
+
+/** Una de las cuotas del evento, para actualizar la de un asistente. */
+@Serializable
+data class OpcionCuotaDto(val texto: String, val importe: Double)
 
 @Serializable
 data class AnadirAsistenteBody(
@@ -240,6 +246,10 @@ data class MandarNotificacionBody(val texto: String? = null)
 /** Cuerpo de `PUT /eventos/{id}/asistencias/{asistenciaId}/pago`. */
 @Serializable
 data class ConfirmarPagoBody(val metodo: String)
+
+/** Cuerpo de `PUT /eventos/{id}/asistencias/{asistenciaId}/cuota`. */
+@Serializable
+data class ActualizarCuotaBody(val cuota: Double, val metodo: String? = null)
 
 /** Persona por quien es un pendiente: uno mismo, o pareja/hijo con cuenta por quien se responde. */
 @Serializable

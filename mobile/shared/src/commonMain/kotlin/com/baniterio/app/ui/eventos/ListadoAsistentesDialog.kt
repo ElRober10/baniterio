@@ -2,13 +2,18 @@ package com.baniterio.app.ui.eventos
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -22,6 +27,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.baniterio.app.data.AsistenciaRepository
 import com.baniterio.app.data.BebidaRepository
@@ -29,6 +36,7 @@ import com.baniterio.app.data.EventosRepository
 import com.baniterio.app.data.ResultadoEvento
 import com.baniterio.app.data.dto.AsistenteFilaDto
 import com.baniterio.app.data.dto.ListadoAsistentesDto
+import com.baniterio.app.theme.BaniterioColors
 import kotlinx.coroutines.launch
 
 private fun modalidadTexto(m: String) = when (m) {
@@ -87,6 +95,10 @@ fun ListadoAsistentesDialog(
     var metodoElegido by remember { mutableStateOf("BIZUM") }
     var guardando by remember { mutableStateOf(false) }
     var mostrarAnadir by remember { mutableStateOf(false) }
+    var actualizando by remember { mutableStateOf<AsistenteFilaDto?>(null) }
+    var cuotaElegida by remember { mutableStateOf<Double?>(null) }
+    var metodoCuota by remember { mutableStateOf("BIZUM") }
+    var errorCuota by remember { mutableStateOf(false) }
 
     fun cargar() {
         scope.launch {
@@ -143,8 +155,21 @@ fun ListadoAsistentesDialog(
                                         }),
                                     style = MaterialTheme.typography.bodySmall,
                                 )
+                                a.pendienteTransferir?.let {
+                                    Text(
+                                        "${formatoImporte(it)} € de la cuota pendientes de transferir",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = BaniterioColors.gold,
+                                    )
+                                }
                                 Text(bebidaTexto(a), style = MaterialTheme.typography.bodySmall)
                                 if (d.puedoConfirmarPagos && a.cuota != null) {
+                                    TextButton(onClick = {
+                                        metodoCuota = "BIZUM"
+                                        errorCuota = false
+                                        cuotaElegida = a.cuota
+                                        actualizando = a
+                                    }) { Text("Actualizar cuota") }
                                     if (!confirmado) {
                                         TextButton(onClick = {
                                             metodoElegido = "BIZUM"
@@ -212,6 +237,117 @@ fun ListadoAsistentesDialog(
                                 style = MaterialTheme.typography.labelMedium,
                             )
                         }
+                    }
+                }
+            },
+        )
+    }
+
+    actualizando?.let { fila ->
+        val opciones = datos?.opcionesCuota ?: emptyList()
+        val actual = fila.cuota ?: 0.0
+        val nueva = cuotaElegida
+        val diferencia = if (nueva != null) Math.round((nueva - actual) * 100) / 100.0 else 0.0
+        val confirmadoFila = fila.estadoPago == "CONFIRMADO_EN_CUENTA" ||
+            fila.estadoPago == "CONFIRMADO_PENDIENTE_ENVIO"
+        val pideMetodo = confirmadoFila && diferencia > 0
+        AlertDialog(
+            onDismissRequest = { actualizando = null },
+            confirmButton = {
+                TextButton(
+                    enabled = !guardando && nueva != null && diferencia != 0.0,
+                    onClick = {
+                        guardando = true
+                        errorCuota = false
+                        scope.launch {
+                            when (
+                                val r = repo.actualizarCuota(
+                                    eventoId, fila.asistenciaId, nueva ?: actual,
+                                    if (pideMetodo) metodoCuota else null,
+                                )
+                            ) {
+                                is ResultadoEvento.Exito -> {
+                                    datos = r.dato
+                                    actualizando = null
+                                }
+                                is ResultadoEvento.Error -> errorCuota = true
+                            }
+                            guardando = false
+                        }
+                    },
+                ) { Text("Actualizar") }
+            },
+            dismissButton = { TextButton(onClick = { actualizando = null }) { Text("Cancelar") } },
+            title = { Text("Actualizar la cuota de ${fila.nombre}") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Cuota actual: ${formatoImporte(actual)} €")
+                    Text("¿A qué cuota se actualiza?")
+                    opciones.chunked(2).forEach { par ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            par.forEach { o ->
+                                val elegida = cuotaElegida == o.importe
+                                val texto = "${o.texto}\n${formatoImporte(o.importe)} €"
+                                if (elegida) {
+                                    Button(
+                                        onClick = { cuotaElegida = o.importe },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = BaniterioColors.brand,
+                                            contentColor = BaniterioColors.gold,
+                                        ),
+                                        modifier = Modifier.weight(1f),
+                                    ) { Text(texto, textAlign = TextAlign.Center) }
+                                } else {
+                                    OutlinedButton(
+                                        onClick = { cuotaElegida = o.importe },
+                                        modifier = Modifier.weight(1f),
+                                    ) { Text(texto, textAlign = TextAlign.Center) }
+                                }
+                            }
+                            if (par.size == 1) Spacer(Modifier.weight(1f))
+                        }
+                    }
+                    if (diferencia != 0.0) {
+                        Text(
+                            "Diferencia: " + (if (diferencia > 0) "+" else "") +
+                                "${formatoImporte(diferencia)} €",
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    if (pideMetodo) {
+                        Text("¿Cómo ha pagado la diferencia?")
+                        @OptIn(ExperimentalMaterial3Api::class)
+                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                            METODOS_PAGO.forEachIndexed { i, (valor, etiqueta) ->
+                                SegmentedButton(
+                                    selected = metodoCuota == valor,
+                                    onClick = { metodoCuota = valor },
+                                    shape = SegmentedButtonDefaults.itemShape(i, METODOS_PAGO.size),
+                                ) {
+                                    Text(
+                                        etiqueta,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
+                                }
+                            }
+                        }
+                        if (metodoCuota != "TRANSFERENCIA") {
+                            Text(
+                                "Quedarán ${formatoImporte(diferencia)} € pendientes de transferir " +
+                                    "a la cuenta de la peña.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = BaniterioColors.muted,
+                            )
+                        }
+                    }
+                    if (errorCuota) {
+                        Text("No se pudo actualizar la cuota.", color = MaterialTheme.colorScheme.error)
                     }
                 }
             },

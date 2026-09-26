@@ -154,6 +154,17 @@ class EventosRepositoryImplTest {
     }
 
     @Test
+    fun actualizarCuota_hace_put_con_cuota_y_metodo() = runTest {
+        val (r, vistas) = repo(cuerpoRespuesta = listadoVacio)
+        val res = r.actualizarCuota(3, 7, 26.0, "BIZUM")
+        assertIs<ResultadoEvento.Exito<*>>(res)
+        assertEquals("PUT", vistas[0].metodo)
+        assertEquals("/api/v1/eventos/3/asistencias/7/cuota", vistas[0].path)
+        assertTrue(vistas[0].cuerpo.contains("\"cuota\":26.0"), vistas[0].cuerpo)
+        assertTrue(vistas[0].cuerpo.contains("\"metodo\":\"BIZUM\""), vistas[0].cuerpo)
+    }
+
+    @Test
     fun deshacerPago_hace_delete() = runTest {
         val (r, vistas) = repo(cuerpoRespuesta = listadoVacio)
         val res = r.deshacerPago(3, 7)

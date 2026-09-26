@@ -1,5 +1,6 @@
 package com.baniterio.app.data
 
+import com.baniterio.app.data.dto.ActualizarCuotaBody
 import com.baniterio.app.data.dto.ConfirmarPagoBody
 import com.baniterio.app.data.dto.DeclararPagoBody
 import com.baniterio.app.data.dto.PagoDeclaradoPendienteDto
@@ -91,6 +92,19 @@ class EventosRepositoryImpl(
             auth()
             contentType(ContentType.Application.Json)
             setBody(ConfirmarPagoBody(metodo))
+        }.body()
+    }
+
+    override suspend fun actualizarCuota(
+        eventoId: Long,
+        asistenciaId: Long,
+        cuota: Double,
+        metodo: String?,
+    ): ResultadoEvento<ListadoAsistentesDto> = peticion {
+        http.put("$API_BASE_URL/eventos/$eventoId/asistencias/$asistenciaId/cuota") {
+            auth()
+            contentType(ContentType.Application.Json)
+            setBody(ActualizarCuotaBody(cuota, metodo))
         }.body()
     }
 

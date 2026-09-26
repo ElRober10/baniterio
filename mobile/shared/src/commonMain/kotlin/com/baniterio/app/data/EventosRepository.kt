@@ -34,6 +34,14 @@ interface EventosRepository {
         metodo: String,
     ): ResultadoEvento<ListadoAsistentesDto>
 
+    /** Un administrador cambia la cuota de una asistencia; `metodo` es cómo se pagó la diferencia. */
+    suspend fun actualizarCuota(
+        eventoId: Long,
+        asistenciaId: Long,
+        cuota: Double,
+        metodo: String?,
+    ): ResultadoEvento<ListadoAsistentesDto>
+
     /** Deshace la confirmación de pago de una asistencia. */
     suspend fun deshacerPago(
         eventoId: Long,
