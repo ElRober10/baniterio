@@ -21,6 +21,7 @@ import com.baniterio.api.evento.dto.BebidaFila;
 import com.baniterio.api.evento.dto.FichaBebidaRequest;
 import com.baniterio.api.evento.dto.FichaBebidaResponse;
 import com.baniterio.api.evento.dto.ListadoAsistentesResponse;
+import com.baniterio.api.evento.dto.OpcionCuota;
 import com.baniterio.api.evento.dto.PendienteRespuesta;
 import com.baniterio.api.evento.dto.PersonaPagable;
 import com.baniterio.api.identidad.AsistenciaEvento;
@@ -343,6 +344,7 @@ public class AsistenciaService {
         f.setMetodoPago(metodo);
         f.setPagadoConfirmadoPor(admin);
         f.setPagadoAt(Instant.now());
+        f.setImportePendienteEnvio(null);
         fichas.save(f);
         // El dinero cuenta en el saldo al confirmar, sea el método que sea.
         movimientoCuenta.registrarCuota(f, admin);
@@ -359,9 +361,63 @@ public class AsistenciaService {
         f.setMetodoPago(null);
         f.setPagadoConfirmadoPor(null);
         f.setPagadoAt(null);
+        f.setImportePendienteEnvio(null);
         fichas.save(f);
         movimientoCuenta.revertirCuota(f);
         return listadoAsistentes(usuarioId, eventoId);
+    }
+
+    /**
+     * Un administrador cambia la cuota de una asistencia (p. ej. de cervezas a
+     * cubatas: 16 → 26). Si el pago aún no estaba confirmado, solo cambia el importe.
+     * Si ya lo estaba, el movimiento de la cuenta pasa al importe nuevo (el saldo
+     * sube la diferencia) y, si la cuota sube, hay que decir con qué método se ha
+     * pagado la diferencia ({@link CuotaSinMetodoException} si falta): bizum o
+     * efectivo dejan esa diferencia pendiente de transferir a la cuenta de la peña
+     * (se suma a lo que ya hubiera pendiente); transferencia no deja nada. Si la
+     * cuota baja, lo pendiente se recorta a la cuota nueva.
+     */
+    @Transactional
+    public ListadoAsistentesResponse actualizarCuota(Long usuarioId, Long eventoId,
+            Long asistenciaId, BigDecimal nueva, MetodoPago metodo) {
+        FichaBebida f = fichaParaPago(usuarioId, eventoId, asistenciaId);
+        BigDecimal anterior = f.getCuota() == null ? BigDecimal.ZERO : f.getCuota();
+        BigDecimal diferencia = nueva.subtract(anterior);
+        boolean confirmado = f.getEstadoPago() != null && f.getEstadoPago().confirmado();
+        if (confirmado && diferencia.signum() > 0 && metodo == null) {
+            throw new CuotaSinMetodoException();
+        }
+        f.setCuota(nueva);
+        if (confirmado) {
+            Usuario admin = usuarios.findById(usuarioId).orElseThrow();
+            BigDecimal pendiente = f.getEstadoPago() == EstadoPagoCuota.CONFIRMADO_PENDIENTE_ENVIO
+                    ? pendienteDe(f, anterior)
+                    : BigDecimal.ZERO;
+            if (diferencia.signum() > 0) {
+                f.setMetodoPago(metodo);
+                if (metodo != MetodoPago.TRANSFERENCIA) {
+                    pendiente = pendiente.add(diferencia);
+                }
+            } else {
+                pendiente = pendiente.min(nueva);
+            }
+            if (pendiente.signum() > 0) {
+                f.setEstadoPago(EstadoPagoCuota.CONFIRMADO_PENDIENTE_ENVIO);
+                f.setImportePendienteEnvio(pendiente);
+            } else {
+                f.setEstadoPago(EstadoPagoCuota.CONFIRMADO_EN_CUENTA);
+                f.setImportePendienteEnvio(null);
+            }
+            movimientoCuenta.revertirCuota(f);
+            movimientoCuenta.registrarCuota(f, admin);
+        }
+        fichas.save(f);
+        return listadoAsistentes(usuarioId, eventoId);
+    }
+
+    /** Lo cobrado por bizum/efectivo sin ingresar: el importe guardado o, si no hay, toda la cuota. */
+    private static BigDecimal pendienteDe(FichaBebida f, BigDecimal cuota) {
+        return f.getImportePendienteEnvio() != null ? f.getImportePendienteEnvio() : cuota;
     }
 
     private FichaBebida fichaParaPago(Long usuarioId, Long eventoId, Long asistenciaId) {
@@ -455,9 +511,27 @@ public class AsistenciaService {
                 .map(FichaBebida::getCuota).filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        boolean gestiona = puedeGestionar(usuarioId, e);
         return new ListadoAsistentesResponse(asistentes, totalCuotas, totalPagado,
                 puedoPagarPor(usuarioId, eventoId, fichaPorAsistencia), miCuota,
-                puedeGestionar(usuarioId, e));
+                gestiona, gestiona ? opcionesCuota(e) : List.of());
+    }
+
+    /** Las cuotas fijadas en el evento (las que no estén puestas no salen). */
+    private static List<OpcionCuota> opcionesCuota(Evento e) {
+        List<OpcionCuota> out = new ArrayList<>();
+        anadirOpcion(out, "Cubatas", e.getCuotaCubatas());
+        anadirOpcion(out, "Cervezas", e.getCuotaCervezas());
+        anadirOpcion(out, "Cubatas (1 día)", e.getCuotaCubatas1Dia());
+        anadirOpcion(out, "Cervezas (1 día)", e.getCuotaCervezas1Dia());
+        anadirOpcion(out, "Embarazada", e.getCuotaEmbarazada());
+        return out;
+    }
+
+    private static void anadirOpcion(List<OpcionCuota> out, String texto, BigDecimal importe) {
+        if (importe != null) {
+            out.add(new OpcionCuota(texto, importe));
+        }
     }
 
     private static String nombreDe(AsistenciaEvento a) {
@@ -483,7 +557,9 @@ public class AsistenciaService {
                 confirmado && f.getMetodoPago() != null ? f.getMetodoPago().name() : null,
                 confirmado && f.getPagadoConfirmadoPor() != null
                         ? f.getPagadoConfirmadoPor().getNombre() : null,
-                confirmado ? f.getPagadoAt() : null);
+                confirmado ? f.getPagadoAt() : null,
+                estado == EstadoPagoCuota.CONFIRMADO_PENDIENTE_ENVIO
+                        ? pendienteDe(f, f.getCuota()) : null);
     }
 
     private List<PersonaPagable> puedoPagarPor(Long usuarioId, Long eventoId,

@@ -95,6 +95,13 @@ public class FichaBebida {
     @Column(name = "pagado_at")
     private Instant pagadoAt;
 
+    /**
+     * Parte de la cuota cobrada por bizum/efectivo y aún sin ingresar en la cuenta
+     * de la peña. {@code null} = toda la cuota (ver V64).
+     */
+    @Column(name = "importe_pendiente_envio", precision = 7, scale = 2)
+    private BigDecimal importePendienteEnvio;
+
     @Column(name = "camiseta_cantidad", nullable = false)
     @Builder.Default
     private int camisetaCantidad = 0;

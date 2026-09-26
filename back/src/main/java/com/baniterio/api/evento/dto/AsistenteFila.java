@@ -11,7 +11,9 @@ import java.time.Instant;
  * confirmado, van rellenos {@code metodoPago}, {@code pagadoPor} (nombre de quien
  * lo confirmó) y {@code pagadoAt}. {@code esManual} ("invitado" en la UI) es
  * {@code true} solo si no tiene usuario y, además, no tiene teléfono o ese
- * teléfono todavía no está en la lista de autorizados.
+ * teléfono todavía no está en la lista de autorizados. {@code pendienteTransferir}
+ * es lo cobrado por bizum/efectivo que aún no está en la cuenta de la peña
+ * ({@code null} si no hay nada pendiente).
  */
 public record AsistenteFila(
         String nombre,
@@ -24,5 +26,6 @@ public record AsistenteFila(
         Long asistenciaId,
         String metodoPago,
         String pagadoPor,
-        Instant pagadoAt) {
+        Instant pagadoAt,
+        BigDecimal pendienteTransferir) {
 }

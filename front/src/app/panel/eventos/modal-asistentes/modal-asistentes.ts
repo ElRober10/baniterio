@@ -1,6 +1,7 @@
 import {
   Component,
   ElementRef,
+  computed,
   OnInit,
   inject,
   input,
@@ -87,6 +88,25 @@ export class ModalAsistentes implements OnInit {
   protected readonly guardandoPago = signal(false);
   protected readonly errorPago = signal('');
 
+  protected readonly filaCuota = signal<AsistenteFila | null>(null);
+  protected readonly cuotaElegida = signal<number | null>(null);
+  protected readonly metodoCuota = signal<MetodoPago>('BIZUM');
+  protected readonly errorCuota = signal('');
+  protected readonly opciones = computed(() => this.datos()?.opcionesCuota ?? []);
+
+  /** Lo que sube la cuota elegida respecto a la actual (negativo si baja). */
+  protected readonly diferenciaCuota = computed(() => {
+    const fila = this.filaCuota();
+    const nueva = this.cuotaElegida();
+    return fila && nueva != null ? Math.round((nueva - (fila.cuota ?? 0)) * 100) / 100 : 0;
+  });
+
+  /** Hay que decir cómo se ha pagado la diferencia: ya estaba confirmado y la cuota sube. */
+  protected readonly pideMetodoCuota = computed(() => {
+    const fila = this.filaCuota();
+    return !!fila && this.confirmado(fila) && this.diferenciaCuota() > 0;
+  });
+
   private readonly lista = viewChild<ElementRef<HTMLElement>>('lista');
 
   ngOnInit(): void {
@@ -153,6 +173,45 @@ export class ModalAsistentes implements OnInit {
         error: () => {
           this.guardandoPago.set(false);
           this.errorPago.set('No se pudo confirmar el pago.');
+        },
+      });
+  }
+
+  protected abrirActualizarCuota(a: AsistenteFila): void {
+    this.metodoCuota.set('BIZUM');
+    this.errorCuota.set('');
+    this.cuotaElegida.set(a.cuota);
+    this.filaCuota.set(a);
+  }
+
+  protected cerrarActualizarCuota(): void {
+    this.filaCuota.set(null);
+  }
+
+  protected actualizarCuota(): void {
+    const fila = this.filaCuota();
+    const nueva = this.cuotaElegida();
+    if (!fila || nueva == null || this.guardandoPago()) {
+      return;
+    }
+    this.guardandoPago.set(true);
+    this.eventosService
+      .actualizarCuota(
+        this.eventoId(),
+        fila.asistenciaId,
+        nueva,
+        this.pideMetodoCuota() ? this.metodoCuota() : null,
+      )
+      .subscribe({
+        next: (d) => {
+          this.datos.set(d);
+          this.guardandoPago.set(false);
+          this.filaCuota.set(null);
+          this.ajustarColumnas();
+        },
+        error: () => {
+          this.guardandoPago.set(false);
+          this.errorCuota.set('No se pudo actualizar la cuota.');
         },
       });
   }

@@ -88,6 +88,7 @@ public class CuentaAdminService {
         cuentas.findById(cuentaId).orElseThrow(CuentaNoEncontradaException::new);
         for (FichaBebida f : fichas.findByEstadoYCuenta(EstadoPagoCuota.CONFIRMADO_PENDIENTE_ENVIO, cuentaId)) {
             f.setEstadoPago(EstadoPagoCuota.CONFIRMADO_EN_CUENTA);
+            f.setImportePendienteEnvio(null);
             fichas.save(f);
         }
         return consulta.detalle(adminId, cuentaId);

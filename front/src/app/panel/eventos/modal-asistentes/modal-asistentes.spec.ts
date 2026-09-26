@@ -54,6 +54,12 @@ describe('ModalAsistentes', () => {
     );
   }
 
+  function opcion(texto: string): HTMLButtonElement | undefined {
+    return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')).find((b) =>
+      b.textContent?.trim().startsWith(texto),
+    );
+  }
+
   it('carga el listado y pinta una fila por asistente con su cuota', () => {
     flushListado({ puedoConfirmarPagos: false });
     const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
@@ -144,5 +150,76 @@ describe('ModalAsistentes', () => {
       miCuota: null,
       puedoConfirmarPagos: true,
     });
+  });
+
+  const opcionesCuota = [
+    { texto: 'Cubatas', importe: 26 },
+    { texto: 'Cervezas', importe: 16 },
+  ];
+  const listadoVacio = {
+    asistentes: [],
+    totalCuotas: 0,
+    totalPagado: 0,
+    puedoPagarPor: [],
+    miCuota: null,
+    puedoConfirmarPagos: true,
+    opcionesCuota,
+  };
+
+  it('actualizar la cuota de un pago confirmado pide el método y manda cuota + método', () => {
+    flushListado({
+      asistentes: [
+        { ...filaAna, cuota: 16, estadoPago: 'CONFIRMADO_EN_CUENTA', metodoPago: 'TRANSFERENCIA' },
+      ],
+      opcionesCuota,
+    });
+    boton('Actualizar cuota')!.click();
+    fixture.detectChanges();
+    opcion('Cubatas')!.click();
+    fixture.detectChanges();
+    const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(texto).toContain('+10 €');
+    boton('Bizum')!.click();
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Quedarán 10 € pendientes de transferir',
+    );
+    boton('Actualizar')!.click();
+    const req = httpMock.expectOne(`${base}/eventos/3/asistencias/11/cuota`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ cuota: 26, metodo: 'BIZUM' });
+    req.flush(listadoVacio);
+  });
+
+  it('sin pago confirmado no pide método', () => {
+    flushListado({ asistentes: [{ ...filaAna, cuota: 16 }], opcionesCuota });
+    boton('Actualizar cuota')!.click();
+    fixture.detectChanges();
+    opcion('Cubatas')!.click();
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
+      '¿Cómo ha pagado la diferencia?',
+    );
+    boton('Actualizar')!.click();
+    const req = httpMock.expectOne(`${base}/eventos/3/asistencias/11/cuota`);
+    expect(req.request.body).toEqual({ cuota: 26, metodo: null });
+    req.flush(listadoVacio);
+  });
+
+  it('muestra lo pendiente de transferir de la fila', () => {
+    flushListado({
+      asistentes: [
+        {
+          ...filaAna,
+          cuota: 26,
+          estadoPago: 'CONFIRMADO_PENDIENTE_ENVIO',
+          metodoPago: 'BIZUM',
+          pendienteTransferir: 10,
+        },
+      ],
+    });
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      '10 € de la cuota pendientes de transferir',
+    );
   });
 });

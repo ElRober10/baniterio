@@ -1,6 +1,7 @@
 package com.baniterio.api.evento;
 
 import com.baniterio.api.auth.UsuarioPrincipal;
+import com.baniterio.api.evento.dto.ActualizarCuotaRequest;
 import com.baniterio.api.evento.dto.AnadirAsistenteRequest;
 import com.baniterio.api.evento.dto.AsistenciaResumen;
 import com.baniterio.api.evento.dto.ConfirmarPagoRequest;
@@ -100,6 +101,15 @@ public class AsistenciaController {
             @PathVariable Long id, @PathVariable Long asistenciaId,
             @Valid @RequestBody ConfirmarPagoRequest req) {
         return asistenciaService.confirmarPago(principal.id(), id, asistenciaId, req.metodo());
+    }
+
+    /** El admin cambia la cuota de un asistente (y, si ya había pagado, cómo ha pagado la diferencia). */
+    @PutMapping("/{id}/asistencias/{asistenciaId}/cuota")
+    public ListadoAsistentesResponse actualizarCuota(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable Long id, @PathVariable Long asistenciaId,
+            @Valid @RequestBody ActualizarCuotaRequest req) {
+        return asistenciaService.actualizarCuota(principal.id(), id, asistenciaId, req.cuota(), req.metodo());
     }
 
     /** Deshace la confirmación de pago de un asistente. */

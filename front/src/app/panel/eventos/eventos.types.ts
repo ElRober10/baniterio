@@ -256,6 +256,8 @@ export interface AsistenteFila {
   metodoPago: MetodoPago | null;
   pagadoPor: string | null;
   pagadoAt: string | null;
+  /** Lo cobrado por bizum/efectivo que aún no está en la cuenta de la peña. */
+  pendienteTransferir: number | null;
 }
 
 /** Una fila de la cola "Confirmar pagos" del panel de administración. */
@@ -287,6 +289,13 @@ export interface ListadoAsistentes {
   puedoPagarPor: PersonaPagable[];
   miCuota: number | null;
   puedoConfirmarPagos: boolean;
+  /** Las cuotas del evento, para actualizar la de un asistente (vacío si no puede). */
+  opcionesCuota: OpcionCuota[];
+}
+
+export interface OpcionCuota {
+  texto: string;
+  importe: number;
 }
 
 /** Códigos de error propios de eventos (ver ApiExceptionHandler.java). */

@@ -319,7 +319,7 @@ describe('EventoDetalleComponent', () => {
     expect(txt).toContain('Oculto (borrado)');
     expect(
       Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')).find(
-        (b) => b.textContent?.trim() === 'Borrar',
+        (b) => b.getAttribute('aria-label') === 'Borrar evento',
       ),
     ).toBeUndefined();
   });
@@ -332,7 +332,7 @@ describe('EventoDetalleComponent', () => {
 
     const botones = () =>
       Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button'));
-    const borrar = botones().find((b) => b.textContent?.trim() === 'Borrar');
+    const borrar = botones().find((b) => b.getAttribute('aria-label') === 'Borrar evento');
     borrar?.dispatchEvent(new Event('click'));
     fixture.detectChanges();
 

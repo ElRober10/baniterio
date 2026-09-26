@@ -14,6 +14,8 @@ import com.baniterio.api.identidad.EventoRepository;
 import com.baniterio.api.identidad.FichaBebidaRepository;
 import com.baniterio.api.identidad.Membresia;
 import com.baniterio.api.identidad.MembresiaRepository;
+import com.baniterio.api.identidad.MovimientoCuentaRepository;
+import com.baniterio.api.identidad.OrigenMovimiento;
 import com.baniterio.api.identidad.Pena;
 import com.baniterio.api.identidad.PenaRepository;
 import com.baniterio.api.identidad.RolMembresia;
@@ -30,6 +32,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 /** IT de la confirmación de pago por el administrador (pieza 5 recortada). */
@@ -44,6 +47,7 @@ class ConfirmacionPagoIT extends IntegrationTest {
     @Autowired AsistenciaEventoRepository asistencias;
     @Autowired FichaBebidaRepository fichas;
     @Autowired BebidaRepository bebidas;
+    @Autowired MovimientoCuentaRepository movimientos;
     @Autowired PasswordEncoder passwordEncoder;
 
     RestTestClient http;
@@ -208,5 +212,115 @@ class ConfirmacionPagoIT extends IntegrationTest {
                 .jsonPath("$.asistencia.ficha.miFicha.estadoPago").isEqualTo("CONFIRMADO_EN_CUENTA")
                 .jsonPath("$.asistencia.ficha.miFicha.metodoPago").isEqualTo("TRANSFERENCIA")
                 .jsonPath("$.asistencia.ficha.miFicha.pagadoPor").isNotEmpty();
+    }
+
+    private void confirmar(Sesion admin, Long eventoId, Long asisId, String metodo) {
+        http.put().uri("/api/v1/eventos/" + eventoId + "/asistencias/" + asisId + "/pago")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .body(Map.of("metodo", metodo)).exchange().expectStatus().isOk();
+    }
+
+    private RestTestClient.ResponseSpec actualizarCuota(Sesion quien, Long eventoId, Long asisId,
+            Map<String, Object> cuerpo) {
+        return http.put().uri("/api/v1/eventos/" + eventoId + "/asistencias/" + asisId + "/cuota")
+                .header(AUTHORIZATION, "Bearer " + quien.token()).body(cuerpo).exchange();
+    }
+
+    @Test
+    void subir_la_cuota_con_bizum_deja_solo_la_diferencia_pendiente_de_transferir() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Sesion penista = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sanMiguel(new BigDecimal("26"));
+        Long asisId = apuntarConFicha(penista, e.getId());
+        confirmar(admin, e.getId(), asisId, "TRANSFERENCIA"); // 16 € ya en la cuenta
+
+        actualizarCuota(admin, e.getId(), asisId, Map.of("cuota", 26, "metodo", "BIZUM"))
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.asistentes[0].cuota").isEqualTo(26.0)
+                .jsonPath("$.asistentes[0].estadoPago").isEqualTo("CONFIRMADO_PENDIENTE_ENVIO")
+                .jsonPath("$.asistentes[0].pendienteTransferir").isEqualTo(10.0)
+                .jsonPath("$.totalPagado").isEqualTo(26.0);
+
+        assertThat(movimientos.findByFichaAsistenciaIdAndOrigen(asisId, OrigenMovimiento.CUOTA).orElseThrow()
+                .getImporte()).isEqualByComparingTo("26");
+    }
+
+    @Test
+    void una_segunda_subida_por_efectivo_suma_a_lo_pendiente() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Sesion penista = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sanMiguel(new BigDecimal("26"));
+        Long asisId = apuntarConFicha(penista, e.getId());
+        confirmar(admin, e.getId(), asisId, "BIZUM"); // 16 pendientes de transferir
+
+        actualizarCuota(admin, e.getId(), asisId, Map.of("cuota", 26, "metodo", "EFECTIVO"))
+                .expectStatus().isOk()
+                .expectBody().jsonPath("$.asistentes[0].pendienteTransferir").isEqualTo(26.0);
+    }
+
+    @Test
+    void subir_la_cuota_por_transferencia_no_deja_nada_pendiente() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Sesion penista = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sanMiguel(new BigDecimal("26"));
+        Long asisId = apuntarConFicha(penista, e.getId());
+        confirmar(admin, e.getId(), asisId, "TRANSFERENCIA");
+
+        actualizarCuota(admin, e.getId(), asisId, Map.of("cuota", 26, "metodo", "TRANSFERENCIA"))
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.asistentes[0].estadoPago").isEqualTo("CONFIRMADO_EN_CUENTA")
+                .jsonPath("$.asistentes[0].pendienteTransferir").isEmpty();
+    }
+
+    @Test
+    void subir_la_cuota_de_un_pago_confirmado_sin_metodo_es_400() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Sesion penista = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sanMiguel(new BigDecimal("26"));
+        Long asisId = apuntarConFicha(penista, e.getId());
+        confirmar(admin, e.getId(), asisId, "TRANSFERENCIA");
+
+        actualizarCuota(admin, e.getId(), asisId, Map.of("cuota", 26))
+                .expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.codigo").isEqualTo("CUOTA_SIN_METODO");
+    }
+
+    @Test
+    void cambiar_la_cuota_sin_pago_confirmado_solo_cambia_el_importe() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Sesion penista = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sanMiguel(new BigDecimal("26"));
+        Long asisId = apuntarConFicha(penista, e.getId());
+
+        actualizarCuota(admin, e.getId(), asisId, Map.of("cuota", 26))
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.asistentes[0].cuota").isEqualTo(26.0)
+                .jsonPath("$.asistentes[0].estadoPago").isEqualTo("PENDIENTE_PAGO");
+        assertThat(movimientos.findByFichaAsistenciaIdAndOrigen(asisId, OrigenMovimiento.CUOTA)).isEmpty();
+    }
+
+    @Test
+    void solo_un_admin_puede_actualizar_la_cuota_y_el_listado_trae_las_opciones() {
+        Sesion admin = crearMiembro(RolMembresia.ADMIN);
+        Sesion penista = crearMiembro(RolMembresia.MIEMBRO);
+        Evento e = sanMiguel(new BigDecimal("26"));
+        Long asisId = apuntarConFicha(penista, e.getId());
+
+        actualizarCuota(penista, e.getId(), asisId, Map.of("cuota", 26))
+                .expectStatus().isForbidden();
+
+        http.get().uri("/api/v1/eventos/" + e.getId() + "/asistentes")
+                .header(AUTHORIZATION, "Bearer " + admin.token())
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.opcionesCuota.length()").isEqualTo(5)
+                .jsonPath("$.opcionesCuota[0].texto").isEqualTo("Cubatas")
+                .jsonPath("$.opcionesCuota[0].importe").isEqualTo(26.0);
+        http.get().uri("/api/v1/eventos/" + e.getId() + "/asistentes")
+                .header(AUTHORIZATION, "Bearer " + penista.token())
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.opcionesCuota.length()").isEqualTo(0);
     }
 }

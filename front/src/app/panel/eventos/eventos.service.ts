@@ -79,6 +79,19 @@ export class EventosService {
     );
   }
 
+  /** Un administrador cambia la cuota de una asistencia; `metodo` es cómo se ha pagado la diferencia. */
+  actualizarCuota(
+    eventoId: number,
+    asistenciaId: number,
+    cuota: number,
+    metodo: MetodoPago | null,
+  ): Observable<ListadoAsistentes> {
+    return this.http.put<ListadoAsistentes>(
+      `${this.base}/eventos/${eventoId}/asistencias/${asistenciaId}/cuota`,
+      { cuota, metodo },
+    );
+  }
+
   /** Deshace la confirmación de pago de una asistencia. */
   deshacerPago(eventoId: number, asistenciaId: number): Observable<ListadoAsistentes> {
     return this.http.delete<ListadoAsistentes>(

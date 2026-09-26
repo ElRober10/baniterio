@@ -236,6 +236,11 @@ public class ApiExceptionHandler {
         return error(HttpStatus.CONFLICT, "FICHA_SIN_CUOTA");
     }
 
+    @ExceptionHandler(com.baniterio.api.evento.CuotaSinMetodoException.class)
+    ResponseEntity<Map<String, Object>> cuotaSinMetodo() {
+        return error(HttpStatus.BAD_REQUEST, "CUOTA_SIN_METODO");
+    }
+
     @ExceptionHandler(com.baniterio.api.evento.PagoDeclaradoYaPendienteException.class)
     ResponseEntity<Map<String, Object>> pagoDeclaradoYaPendiente() {
         return error(HttpStatus.CONFLICT, "PAGO_DECLARADO_YA_PENDIENTE");

@@ -45,7 +45,7 @@ public interface FichaBebidaRepository extends JpaRepository<FichaBebida, Long> 
     List<FichaBebida> findConCuotaDeCuenta(@Param("cuentaId") Long cuentaId);
 
     @Query("""
-        select coalesce(sum(f.cuota), 0) from FichaBebida f
+        select coalesce(sum(coalesce(f.importePendienteEnvio, f.cuota)), 0) from FichaBebida f
         where f.estadoPago = com.baniterio.api.identidad.EstadoPagoCuota.CONFIRMADO_PENDIENTE_ENVIO
           and f.asistencia.evento.cuenta.id = :cuentaId
         """)

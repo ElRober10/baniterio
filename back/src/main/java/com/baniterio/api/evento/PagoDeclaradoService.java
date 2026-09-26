@@ -244,6 +244,7 @@ public class PagoDeclaradoService {
                     .orElseThrow(FichaSinCuotaException::new);
             f.setEstadoPago(destino);
             f.setMetodoPago(metodo);
+            f.setImportePendienteEnvio(null);
             f.setPagadoConfirmadoPor(admin);
             f.setPagadoAt(ahora);
             fichas.save(f);
